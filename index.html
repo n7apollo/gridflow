@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GridFlow - Project Management Tool</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- External libraries for export functionality -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- SortableJS for reliable drag and drop -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <div class="header-left">
+                <h1>GridFlow</h1>
+                <div class="board-selector">
+                    <select id="boardSelect" onchange="switchBoard(this.value)">
+                        <!-- Boards will be populated here -->
+                    </select>
+                    <button class="btn btn-small btn-secondary" onclick="showBoardModal()" title="Manage boards">⚙️</button>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-secondary" onclick="toggleSettings()">⚙️ Settings</button>
+                <button class="btn btn-secondary" onclick="showExportModal()">📤 Export</button>
+                <button class="btn btn-primary" onclick="addGroup()">+ Add Group</button>
+                <button class="btn btn-primary" onclick="addRow()">+ Add Row</button>
+            </div>
+        </header>
+        
+        <!-- Settings Panel -->
+        <div class="settings-panel" id="settingsPanel">
+            <div class="settings-content">
+                <h3>Settings</h3>
+                <div class="settings-section">
+                    <h4>Columns Management</h4>
+                    <div class="columns-list" id="columnsList">
+                        <!-- Columns will be listed here -->
+                    </div>
+                    <button class="btn btn-small btn-primary" onclick="addColumn()">+ Add Column</button>
+                    <div class="reorder-info">
+                        <small>💡 Drag column headers to reorder them</small>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <h4>Groups Management</h4>
+                    <div class="groups-list" id="groupsList">
+                        <!-- Groups will be listed here -->
+                    </div>
+                    <button class="btn btn-small btn-primary" onclick="addGroup()">+ Add Group</button>
+                </div>
+                <div class="settings-section">
+                    <h4>Display Options</h4>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="showCheckboxes" onchange="toggleCheckboxes()">
+                        Show completion checkboxes on cards
+                    </label>
+                </div>
+                <div class="settings-actions">
+                    <button class="btn btn-secondary" onclick="toggleSettings()">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="board-container">
+            <div class="column-headers" id="columnHeaders">
+                <div class="row-label-header">Projects
+                    <div class="reorder-hint">💡 Drag to reorder</div>
+                </div>
+                <!-- Column headers will be dynamically generated -->
+            </div>
+            
+            <div class="rows-container" id="rowsContainer">
+                <!-- Rows will be dynamically added here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal for adding/editing cards -->
+    <div class="modal" id="cardModal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2 id="modalTitle">Add Card</h2>
+            <form id="cardForm">
+                <div class="form-group">
+                    <label for="cardTitle">Card Title:</label>
+                    <input type="text" id="cardTitle" required>
+                </div>
+                <div class="form-group">
+                    <label for="cardDescription">Description:</label>
+                    <textarea id="cardDescription" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="cardCompleted">
+                        Mark as completed
+                    </label>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save Card</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal for adding/editing rows -->
+    <div class="modal" id="rowModal">
+        <div class="modal-content">
+            <span class="close" onclick="closeRowModal()">&times;</span>
+            <h2 id="rowModalTitle">Add Row</h2>
+            <form id="rowForm">
+                <div class="form-group">
+                    <label for="rowName">Row Name:</label>
+                    <input type="text" id="rowName" required>
+                </div>
+                <div class="form-group">
+                    <label for="rowDescription">Description:</label>
+                    <textarea id="rowDescription" rows="3" placeholder="Optional description for this row"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="rowGroup">Group:</label>
+                    <select id="rowGroup">
+                        <option value="">No Group</option>
+                        <!-- Groups will be populated here -->
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save Row</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeRowModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal for column management -->
+    <div class="modal" id="columnModal">
+        <div class="modal-content">
+            <span class="close" onclick="closeColumnModal()">&times;</span>
+            <h2 id="columnModalTitle">Add Column</h2>
+            <form id="columnForm">
+                <div class="form-group">
+                    <label for="columnName">Column Name:</label>
+                    <input type="text" id="columnName" required>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save Column</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeColumnModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal for group management -->
+    <div class="modal" id="groupModal">
+        <div class="modal-content">
+            <span class="close" onclick="closeGroupModal()">&times;</span>
+            <h2 id="groupModalTitle">Add Group</h2>
+            <form id="groupForm">
+                <div class="form-group">
+                    <label for="groupName">Group Name:</label>
+                    <input type="text" id="groupName" required>
+                </div>
+                <div class="form-group">
+                    <label for="groupColor">Group Color:</label>
+                    <input type="color" id="groupColor" value="#0079bf">
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save Group</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeGroupModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal for export options -->
+    <div class="modal" id="exportModal">
+        <div class="modal-content">
+            <span class="close" onclick="closeExportModal()">&times;</span>
+            <h2>Export Board</h2>
+            <div class="export-options">
+                <button class="btn btn-primary export-btn" onclick="exportToPDF()">📄 Export as PDF</button>
+                <button class="btn btn-primary export-btn" onclick="exportToPNG()">🖼️ Export as PNG</button>
+                <button class="btn btn-primary export-btn" onclick="exportToExcel()">📊 Export as Excel</button>
+                <button class="btn btn-secondary export-btn" onclick="exportToJSON()">💾 Backup Data (JSON)</button>
+            </div>
+            
+            <div class="sync-section">
+                <h3>💡 Cross-Device Sync</h3>
+                <div class="sync-instructions">
+                    <p><strong>Easy cloud sync workflow:</strong></p>
+                    <ol>
+                        <li><strong>Export:</strong> Click "Backup Data" to download your JSON file</li>
+                        <li><strong>Upload:</strong> Save to iCloud Drive, Google Drive, or Dropbox</li>
+                        <li><strong>Sync:</strong> On other devices, download and import the file</li>
+                    </ol>
+                    <p class="sync-tip">💡 Tip: Files are automatically named with dates for easy organization!</p>
+                </div>
+            </div>
+            
+            <div class="import-section">
+                <h3>Import Data</h3>
+                <input type="file" id="importFile" accept=".json" onchange="importFromJSON()">
+                <label for="importFile" class="btn btn-secondary">📂 Import JSON Backup</label>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal for column outline -->
+    <div class="modal" id="outlineModal">
+        <div class="modal-content outline-modal">
+            <span class="close" onclick="closeOutlineModal()">&times;</span>
+            <h2 id="outlineModalTitle">Column Outline</h2>
+            <div class="outline-container">
+                <div class="outline-content" id="outlineContent">
+                    <!-- Outline will be generated here -->
+                </div>
+            </div>
+            <div class="outline-actions">
+                <button class="btn btn-primary" onclick="copyOutlineAsFormatted()" title="Copy with bullet formatting">📋 Copy Formatted</button>
+                <button class="btn btn-secondary" onclick="copyOutlineAsPlain()" title="Copy as plain text">📄 Copy Plain Text</button>
+                <button class="btn btn-secondary" onclick="copyOutlineAsMarkdown()" title="Copy as markdown">📝 Copy Markdown</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal for board management -->
+    <div class="modal" id="boardModal">
+        <div class="modal-content">
+            <span class="close" onclick="closeBoardModal()">&times;</span>
+            <h2>Manage Boards</h2>
+            <div class="boards-list" id="boardsList">
+                <!-- Boards will be listed here -->
+            </div>
+            <div class="board-actions">
+                <button class="btn btn-primary" onclick="createNewBoard()">+ Create New Board</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal for board creation/editing -->
+    <div class="modal" id="boardEditModal">
+        <div class="modal-content">
+            <span class="close" onclick="closeBoardEditModal()">&times;</span>
+            <h2 id="boardEditModalTitle">Create New Board</h2>
+            <form id="boardEditForm">
+                <div class="form-group">
+                    <label for="boardEditName">Board Name:</label>
+                    <input type="text" id="boardEditName" required>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save Board</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeBoardEditModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
