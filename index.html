@@ -25,7 +25,7 @@
                 </div>
             </div>
             <div class="header-actions">
-                <button class="btn btn-secondary" onclick="toggleSettings()">⚙️ Settings</button>
+                <button class="btn btn-secondary" onclick="showSettingsModal()">⚙️ Settings</button>
                 <button class="btn btn-secondary" onclick="showExportModal()">📤 Export</button>
                 <button class="btn btn-primary" onclick="addGroup()">+ Add Group</button>
                 <button class="btn btn-primary" onclick="addRow()">+ Add Row</button>
@@ -264,6 +264,142 @@
         </div>
     </div>
     
+    <!-- Modal for board settings -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content settings-modal-content">
+            <span class="close" onclick="closeSettingsModal()">&times;</span>
+            <h2>Board Settings</h2>
+            <div class="settings-modal-body">
+                <div class="settings-tabs">
+                    <div class="tab-list" role="tablist">
+                        <button class="tab-button active" onclick="switchTab('columns')" data-tab="columns">
+                            <span class="tab-icon">📊</span>
+                            <span class="tab-label">Columns</span>
+                        </button>
+                        <button class="tab-button" onclick="switchTab('groups')" data-tab="groups">
+                            <span class="tab-icon">📁</span>
+                            <span class="tab-label">Groups</span>
+                        </button>
+                        <button class="tab-button" onclick="switchTab('display')" data-tab="display">
+                            <span class="tab-icon">👁️</span>
+                            <span class="tab-label">Display</span>
+                        </button>
+                        <button class="tab-button" onclick="switchTab('board')" data-tab="board">
+                            <span class="tab-icon">⚙️</span>
+                            <span class="tab-label">Board</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="settings-content-area">
+                    <!-- Columns Tab -->
+                    <div id="columns-tab" class="tab-content active">
+                        <div class="mobile-back-header">
+                            <button class="mobile-back-btn" onclick="showMobileTabList()">
+                                <span>←</span>
+                                <span>Settings</span>
+                            </button>
+                            <h3 class="mobile-tab-title">Columns</h3>
+                        </div>
+                        <div class="tab-header">
+                            <h3>Columns Management</h3>
+                            <p>Manage your board columns and their order</p>
+                        </div>
+                        <div class="columns-list" id="columnsListModal">
+                            <!-- Columns will be listed here -->
+                        </div>
+                        <button class="btn btn-primary" onclick="addColumn()">+ Add Column</button>
+                        <div class="reorder-info">
+                            <small>💡 Drag column headers to reorder them, or use the arrow buttons below</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Groups Tab -->
+                    <div id="groups-tab" class="tab-content">
+                        <div class="mobile-back-header">
+                            <button class="mobile-back-btn" onclick="showMobileTabList()">
+                                <span>←</span>
+                                <span>Settings</span>
+                            </button>
+                            <h3 class="mobile-tab-title">Groups</h3>
+                        </div>
+                        <div class="tab-header">
+                            <h3>Groups Management</h3>
+                            <p>Organize your rows into colored groups</p>
+                        </div>
+                        <div class="groups-list" id="groupsListModal">
+                            <!-- Groups will be listed here -->
+                        </div>
+                        <button class="btn btn-primary" onclick="addGroup()">+ Add Group</button>
+                    </div>
+                    
+                    <!-- Display Tab -->
+                    <div id="display-tab" class="tab-content">
+                        <div class="mobile-back-header">
+                            <button class="mobile-back-btn" onclick="showMobileTabList()">
+                                <span>←</span>
+                                <span>Settings</span>
+                            </button>
+                            <h3 class="mobile-tab-title">Display</h3>
+                        </div>
+                        <div class="tab-header">
+                            <h3>Display Options</h3>
+                            <p>Customize how information is shown on your board</p>
+                        </div>
+                        <div class="display-options">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="showCheckboxesModal" onchange="toggleCheckboxes()">
+                                <span class="checkbox-text">
+                                    <strong>Show completion checkboxes</strong>
+                                    <small>Display checkboxes on cards to mark them as complete</small>
+                                </span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="showSubtaskProgressModal" onchange="toggleSubtaskProgress()">
+                                <span class="checkbox-text">
+                                    <strong>Show subtask progress</strong>
+                                    <small>Display progress bars showing subtask completion on cards</small>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Board Tab -->
+                    <div id="board-tab" class="tab-content">
+                        <div class="mobile-back-header">
+                            <button class="mobile-back-btn" onclick="showMobileTabList()">
+                                <span>←</span>
+                                <span>Settings</span>
+                            </button>
+                            <h3 class="mobile-tab-title">Board</h3>
+                        </div>
+                        <div class="tab-header">
+                            <h3>Board Settings</h3>
+                            <p>Manage board name and general settings</p>
+                        </div>
+                        <div class="board-settings">
+                            <div class="form-group">
+                                <label for="boardNameInput">Board Name</label>
+                                <input type="text" id="boardNameInput" class="form-input" placeholder="Enter board name">
+                                <button class="btn btn-primary" onclick="saveBoardName()">Save Name</button>
+                            </div>
+                            <div class="board-info">
+                                <div class="info-item">
+                                    <strong>Created:</strong> <span id="boardCreatedDate">-</span>
+                                </div>
+                                <div class="info-item">
+                                    <strong>Total Cards:</strong> <span id="boardCardCount">0</span>
+                                </div>
+                                <div class="info-item">
+                                    <strong>Total Rows:</strong> <span id="boardRowCount">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal for card detail view -->
     <div class="modal" id="cardDetailModal">
         <div class="modal-content card-detail-content">

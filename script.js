@@ -773,6 +773,7 @@ function moveGroupUp(index) {
     
     renderBoard();
     renderGroupsList();
+    renderGroupsListModal();
 }
 
 function moveGroupDown(index) {
@@ -783,6 +784,7 @@ function moveGroupDown(index) {
     
     renderBoard();
     renderGroupsList();
+    renderGroupsListModal();
 }
 
 // Group functions
@@ -832,6 +834,7 @@ function deleteGroup(groupId) {
         boardData.groups = boardData.groups.filter(g => g.id !== groupId);
         renderBoard();
         renderGroupsList();
+    renderGroupsListModal();
     }
 }
 
@@ -858,6 +861,7 @@ function saveGroup(event) {
     closeGroupModal();
     renderBoard();
     renderGroupsList();
+    renderGroupsListModal();
 }
 
 function closeGroupModal() {
@@ -865,25 +869,155 @@ function closeGroupModal() {
     currentEditingGroup = null;
 }
 
-// Settings functions
-function toggleSettings() {
-    const panel = document.getElementById('settingsPanel');
-    panel.classList.toggle('active');
-    if (panel.classList.contains('active')) {
-        renderColumnsList();
-        renderGroupsList();
+// Settings Modal functions
+function showSettingsModal() {
+    const modal = document.getElementById('settingsModal');
+    modal.style.display = 'block';
+    
+    // Render content for all tabs
+    renderColumnsListModal();
+    renderGroupsListModal();
+    updateModalSettingsUI();
+    updateBoardInfo();
+    
+    // Check if mobile and initialize accordingly
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile) {
+        // Start with tab list on mobile
+        showMobileTabList();
+    } else {
+        // Show first tab by default on desktop
+        switchTab('columns');
     }
 }
 
+function closeSettingsModal() {
+    document.getElementById('settingsModal').style.display = 'none';
+}
+
+function switchTab(tabName) {
+    // Check if we're on mobile
+    const isMobile = window.innerWidth <= 768;
+    
+    if (isMobile) {
+        // Mobile navigation - show specific tab content
+        showMobileTabContent(tabName);
+    } else {
+        // Desktop navigation - traditional tab switching
+        document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        
+        document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+        document.getElementById(`${tabName}-tab`).classList.add('active');
+    }
+}
+
+function showMobileTabContent(tabName) {
+    const settingsTabs = document.querySelector('.settings-tabs');
+    const contentArea = document.querySelector('.settings-content-area');
+    
+    // Hide tab list and show content area
+    settingsTabs.classList.add('mobile-hidden');
+    contentArea.classList.add('mobile-active');
+    
+    // Show only the selected tab content
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('mobile-current');
+    });
+    document.getElementById(`${tabName}-tab`).classList.add('mobile-current');
+    
+    // Update active tab button
+    document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+    document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+}
+
+function showMobileTabList() {
+    const settingsTabs = document.querySelector('.settings-tabs');
+    const contentArea = document.querySelector('.settings-content-area');
+    
+    // Show tab list and hide content area
+    settingsTabs.classList.remove('mobile-hidden');
+    contentArea.classList.remove('mobile-active');
+    
+    // Clear current mobile content
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('mobile-current');
+    });
+}
+
+// Handle window resize to switch between mobile and desktop modes
+function handleSettingsResize() {
+    const modal = document.getElementById('settingsModal');
+    if (modal.style.display !== 'block') return;
+    
+    const isMobile = window.innerWidth <= 768;
+    const settingsTabs = document.querySelector('.settings-tabs');
+    const contentArea = document.querySelector('.settings-content-area');
+    
+    if (!isMobile) {
+        // Switch to desktop mode
+        settingsTabs.classList.remove('mobile-hidden');
+        contentArea.classList.remove('mobile-active');
+        
+        // Reset mobile classes
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('mobile-current');
+        });
+        
+        // Apply desktop active states
+        const activeButton = document.querySelector('.tab-button.active');
+        if (activeButton) {
+            const tabName = activeButton.dataset.tab;
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+        }
+    } else {
+        // Switch to mobile mode - show tab list by default
+        showMobileTabList();
+    }
+}
+
+// Add resize listener
+window.addEventListener('resize', handleSettingsResize);
+
 function toggleCheckboxes() {
-    const checkbox = document.getElementById('showCheckboxes');
-    boardData.settings.showCheckboxes = checkbox.checked;
+    // Handle both old and new checkboxes
+    const oldCheckbox = document.getElementById('showCheckboxes');
+    const modalCheckbox = document.getElementById('showCheckboxesModal');
+    
+    let checked = false;
+    if (oldCheckbox && oldCheckbox.checked !== undefined) {
+        checked = oldCheckbox.checked;
+    } else if (modalCheckbox && modalCheckbox.checked !== undefined) {
+        checked = modalCheckbox.checked;
+    }
+    
+    boardData.settings.showCheckboxes = checked;
+    
+    // Sync both checkboxes
+    if (oldCheckbox) oldCheckbox.checked = checked;
+    if (modalCheckbox) modalCheckbox.checked = checked;
+    
     renderBoard();
 }
 
 function toggleSubtaskProgress() {
-    const checkbox = document.getElementById('showSubtaskProgress');
-    boardData.settings.showSubtaskProgress = checkbox.checked;
+    // Handle both old and new checkboxes
+    const oldCheckbox = document.getElementById('showSubtaskProgress');
+    const modalCheckbox = document.getElementById('showSubtaskProgressModal');
+    
+    let checked = false;
+    if (oldCheckbox && oldCheckbox.checked !== undefined) {
+        checked = oldCheckbox.checked;
+    } else if (modalCheckbox && modalCheckbox.checked !== undefined) {
+        checked = modalCheckbox.checked;
+    }
+    
+    boardData.settings.showSubtaskProgress = checked;
+    
+    // Sync both checkboxes
+    if (oldCheckbox) oldCheckbox.checked = checked;
+    if (modalCheckbox) modalCheckbox.checked = checked;
+    
     renderBoard();
 }
 
@@ -897,6 +1031,53 @@ function updateSettingsUI() {
     if (subtaskCheckbox) {
         subtaskCheckbox.checked = boardData.settings.showSubtaskProgress;
     }
+}
+
+function updateModalSettingsUI() {
+    const checkboxModal = document.getElementById('showCheckboxesModal');
+    if (checkboxModal) {
+        checkboxModal.checked = boardData.settings.showCheckboxes;
+    }
+    
+    const subtaskCheckboxModal = document.getElementById('showSubtaskProgressModal');
+    if (subtaskCheckboxModal) {
+        subtaskCheckboxModal.checked = boardData.settings.showSubtaskProgress;
+    }
+}
+
+function saveBoardName() {
+    const input = document.getElementById('boardNameInput');
+    const newName = input.value.trim();
+    
+    if (!newName) {
+        alert('Please enter a board name');
+        return;
+    }
+    
+    boardData.name = newName;
+    saveData();
+    updateBoardTitle();
+    alert('Board name saved successfully!');
+}
+
+function updateBoardInfo() {
+    // Set board name in input
+    const nameInput = document.getElementById('boardNameInput');
+    if (nameInput) {
+        nameInput.value = boardData.name || 'My Board';
+    }
+    
+    // Calculate and display stats
+    const rowCount = boardData.rows ? boardData.rows.length : 0;
+    const cardCount = boardData.rows ? boardData.rows.reduce((total, row) => {
+        return total + Object.values(row.cards || {}).reduce((rowTotal, cards) => rowTotal + cards.length, 0);
+    }, 0) : 0;
+    
+    document.getElementById('boardRowCount').textContent = rowCount;
+    document.getElementById('boardCardCount').textContent = cardCount;
+    
+    // For now, we don't track creation date, so show when the board was initialized
+    document.getElementById('boardCreatedDate').textContent = 'Not available';
 }
 
 // Column management
@@ -917,6 +1098,57 @@ function renderColumnsList() {
                 <button class="btn btn-small btn-secondary" onclick="editColumn(${column.id})">Edit</button>
                 <button class="btn btn-small btn-danger" onclick="deleteColumn(${column.id})" 
                         ${boardData.columns.length <= 1 ? 'disabled' : ''}>Delete</button>
+            </div>
+        `;
+        container.appendChild(item);
+    });
+}
+
+// Modal versions of list renderers
+function renderColumnsListModal() {
+    const container = document.getElementById('columnsListModal');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    boardData.columns.forEach((column, index) => {
+        const item = document.createElement('div');
+        item.className = 'column-item';
+        item.innerHTML = `
+            <span class="column-item-name">${column.name}</span>
+            <div class="column-item-actions">
+                <div class="reorder-controls">
+                    <button class="reorder-btn" onclick="moveColumnUp(${index})" ${index === 0 ? 'disabled' : ''} title="Move up">↑</button>
+                    <button class="reorder-btn" onclick="moveColumnDown(${index})" ${index === boardData.columns.length - 1 ? 'disabled' : ''} title="Move down">↓</button>
+                </div>
+                <button class="btn btn-small btn-secondary" onclick="editColumn(${column.id})">Edit</button>
+                <button class="btn btn-small btn-danger" onclick="deleteColumn(${column.id})" 
+                        ${boardData.columns.length <= 1 ? 'disabled' : ''}>Delete</button>
+            </div>
+        `;
+        container.appendChild(item);
+    });
+}
+
+function renderGroupsListModal() {
+    const container = document.getElementById('groupsListModal');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    boardData.groups.forEach((group, index) => {
+        const item = document.createElement('div');
+        item.className = 'group-item';
+        item.style.borderLeftColor = group.color;
+        item.innerHTML = `
+            <span class="group-item-name">${group.name}</span>
+            <div class="group-item-actions">
+                <div class="reorder-controls">
+                    <button class="reorder-btn" onclick="moveGroupUp(${index})" ${index === 0 ? 'disabled' : ''} title="Move up">↑</button>
+                    <button class="reorder-btn" onclick="moveGroupDown(${index})" ${index === boardData.groups.length - 1 ? 'disabled' : ''} title="Move down">↓</button>
+                </div>
+                <button class="btn btn-small btn-secondary" onclick="editGroup(${group.id})">Edit</button>
+                <button class="btn btn-small btn-danger" onclick="deleteGroup(${group.id})">Delete</button>
             </div>
         `;
         container.appendChild(item);
@@ -982,6 +1214,7 @@ function deleteColumn(columnId) {
             
             renderBoard();
             renderColumnsList();
+            renderColumnsListModal();
         }
     }
 }
@@ -1012,6 +1245,7 @@ function saveColumn(event) {
     closeColumnModal();
     renderBoard();
     renderColumnsList();
+    renderColumnsListModal();
 }
 
 function closeColumnModal() {

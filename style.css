@@ -1286,7 +1286,422 @@ body {
     background: #e4e6ea;
 }
 
-/* Responsive design */
+/* Settings Modal with Vertical Tabs */
+.settings-modal-content {
+    max-width: 900px;
+    width: 95%;
+    max-height: 90vh;
+    overflow: hidden;
+}
+
+.settings-modal-body {
+    display: flex;
+    gap: 0;
+    height: 600px;
+    max-height: 70vh;
+}
+
+.settings-tabs {
+    border-right: 1px solid #e4e6ea;
+    background: #f8f9fa;
+    min-width: 180px;
+}
+
+.tab-list {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    margin: 0;
+}
+
+.tab-button {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s ease;
+    border-bottom: 1px solid #e4e6ea;
+    font-size: 14px;
+    font-weight: 500;
+    color: #5e6c84;
+}
+
+.tab-button:hover {
+    background: rgba(0, 121, 191, 0.1);
+    color: #172b4d;
+}
+
+.tab-button.active {
+    background: white;
+    color: #0079bf;
+    border-right: 3px solid #0079bf;
+    font-weight: 600;
+}
+
+.tab-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.tab-label {
+    flex: 1;
+}
+
+.settings-content-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    background: white;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.tab-header {
+    margin-bottom: 24px;
+    border-bottom: 1px solid #f1f2f4;
+    padding-bottom: 16px;
+}
+
+.tab-header h3 {
+    margin: 0 0 8px 0;
+    color: #172b4d;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.tab-header p {
+    margin: 0;
+    color: #5e6c84;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* Enhanced checkbox styling for settings */
+.display-options .checkbox-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px 0;
+    border-bottom: 1px solid #f1f2f4;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.display-options .checkbox-label:last-child {
+    border-bottom: none;
+}
+
+.display-options .checkbox-label:hover {
+    background-color: #f8f9fa;
+    margin: 0 -16px;
+    padding: 16px;
+    border-radius: 6px;
+}
+
+.checkbox-text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.checkbox-text strong {
+    color: #172b4d;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.checkbox-text small {
+    color: #5e6c84;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+/* Board settings styles */
+.board-settings .form-group {
+    margin-bottom: 24px;
+}
+
+.board-settings .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #172b4d;
+    font-size: 14px;
+}
+
+.form-input {
+    width: 100%;
+    max-width: 300px;
+    padding: 10px 12px;
+    border: 2px solid #e4e6ea;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border-color 0.2s ease;
+    margin-bottom: 8px;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #0079bf;
+}
+
+.board-info {
+    background: #f8f9fa;
+    padding: 16px;
+    border-radius: 8px;
+    border-left: 4px solid #0079bf;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #e4e6ea;
+    font-size: 14px;
+}
+
+.info-item:last-child {
+    border-bottom: none;
+}
+
+.info-item strong {
+    color: #172b4d;
+    font-weight: 600;
+}
+
+.info-item span {
+    color: #5e6c84;
+}
+
+/* Enhanced list item styles for modal */
+.column-item, .group-item {
+    background: white;
+    border: 1px solid #e4e6ea;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    padding: 16px;
+    transition: all 0.2s ease;
+}
+
+.column-item:hover, .group-item:hover {
+    border-color: #0079bf;
+    box-shadow: 0 2px 8px rgba(0, 121, 191, 0.15);
+}
+
+.reorder-info {
+    margin-top: 16px;
+    padding: 12px;
+    background: #fff3cd;
+    border-radius: 6px;
+    border-left: 4px solid #ffc107;
+}
+
+.reorder-info small {
+    color: #856404;
+    font-size: 12px;
+}
+
+/* Hide mobile back header on desktop */
+.mobile-back-header {
+    display: none;
+}
+
+/* Mobile Settings Navigation (iOS-style) */
+@media (max-width: 768px) {
+    .settings-modal-content {
+        width: 100%;
+        height: 100vh;
+        max-height: 100vh;
+        margin: 0;
+        border-radius: 0;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+    }
+    
+    .settings-modal-body {
+        height: calc(100vh - 80px);
+        max-height: none;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    /* Mobile tab list view */
+    .settings-tabs {
+        width: 100%;
+        border-right: none;
+        background: white;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 10;
+        transition: transform 0.3s ease;
+    }
+    
+    .settings-tabs.mobile-hidden {
+        transform: translateX(-100%);
+    }
+    
+    .tab-list {
+        height: 100%;
+        overflow-y: auto;
+    }
+    
+    .tab-button {
+        padding: 20px;
+        border-bottom: 1px solid #e4e6ea;
+        border-right: none;
+        position: relative;
+        background: white;
+    }
+    
+    .tab-button::after {
+        content: '>';
+        position: absolute;
+        right: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #8993a4;
+        font-weight: bold;
+    }
+    
+    .tab-button:hover {
+        background: #f8f9fa;
+    }
+    
+    .tab-button.active {
+        background: white;
+        color: #172b4d;
+        border-right: none;
+    }
+    
+    /* Mobile content area */
+    .settings-content-area {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+        padding: 20px;
+        z-index: 20;
+        background: white;
+    }
+    
+    .settings-content-area.mobile-active {
+        transform: translateX(0);
+    }
+    
+    /* Mobile tab content */
+    .tab-content {
+        display: block;
+        height: 100%;
+        overflow-y: auto;
+    }
+    
+    .tab-content:not(.mobile-current) {
+        display: none;
+    }
+    
+    .tab-content.mobile-current {
+        display: block;
+    }
+    
+    /* Mobile back button */
+    .mobile-back-header {
+        display: flex !important;
+        align-items: center;
+        gap: 12px;
+        padding: 16px 0 24px 0;
+        border-bottom: 1px solid #e4e6ea;
+        margin-bottom: 24px;
+        background: white;
+        position: sticky;
+        top: 0;
+        z-index: 30;
+    }
+    
+    .mobile-back-btn {
+        background: none;
+        border: none;
+        color: #0079bf;
+        font-size: 16px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px;
+        border-radius: 6px;
+        transition: background-color 0.2s ease;
+    }
+    
+    .mobile-back-btn:hover {
+        background: rgba(0, 121, 191, 0.1);
+    }
+    
+    .mobile-tab-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #172b4d;
+        margin: 0;
+    }
+    
+    /* Hide desktop tab headers on mobile */
+    .tab-header {
+        display: none;
+    }
+    
+    /* Adjust spacing for mobile */
+    .display-options .checkbox-label {
+        padding: 20px 0;
+    }
+    
+    .board-settings .form-group {
+        margin-bottom: 32px;
+    }
+    
+    .form-input {
+        max-width: 100%;
+    }
+    
+    /* Make list items more touch-friendly */
+    .column-item, .group-item {
+        padding: 20px;
+        margin-bottom: 16px;
+    }
+    
+    .column-item-actions, .group-item-actions {
+        gap: 12px;
+    }
+    
+    .reorder-controls {
+        gap: 8px;
+    }
+    
+    .reorder-btn {
+        padding: 12px;
+        min-width: 44px;
+        min-height: 44px;
+    }
+}
+
+/* Continue with other responsive styles */
 @media (max-width: 768px) {
     .app-header {
         flex-direction: column;
