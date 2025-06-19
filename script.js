@@ -12,7 +12,8 @@ let appData = {
             nextColumnId: 1,
             nextGroupId: 1,
             settings: {
-                showCheckboxes: false
+                showCheckboxes: false,
+                showSubtaskProgress: true
             }
         }
     }
@@ -25,6 +26,7 @@ let currentEditingCard = null;
 let currentEditingRow = null;
 let currentEditingColumn = null;
 let currentEditingGroup = null;
+let currentDetailCard = null; // Track card in detail modal
 // SortableJS handles all drag state - no global variables needed
 
 // Initialize the application
@@ -76,7 +78,7 @@ function loadData() {
             // Ensure all required properties exist
             if (!boardData.groups) boardData.groups = [];
             if (!boardData.columns) boardData.columns = [];
-            if (!boardData.settings) boardData.settings = { showCheckboxes: false };
+            if (!boardData.settings) boardData.settings = { showCheckboxes: false, showSubtaskProgress: true };
             if (!boardData.nextColumnId) boardData.nextColumnId = 1;
             if (!boardData.nextGroupId) boardData.nextGroupId = 1;
         } else {
@@ -117,14 +119,25 @@ function initializeSampleData() {
                 groupId: 1,
                 cards: {
                     todo: [
-                        { id: 1, title: 'Create press release', description: 'Draft announcement for website launch', completed: false },
-                        { id: 2, title: 'Social media campaign', description: 'Plan social media posts', completed: false }
+                        { id: 1, title: 'Create press release', description: 'Draft announcement for website launch', completed: false, subtasks: [
+                            { text: 'Write initial draft', completed: true },
+                            { text: 'Review with marketing team', completed: false },
+                            { text: 'Get legal approval', completed: false }
+                        ] },
+                        { id: 2, title: 'Social media campaign', description: 'Plan social media posts', completed: false, subtasks: [] }
                     ],
                     inprogress: [
-                        { id: 3, title: 'Update marketing materials', description: 'Refresh brochures and presentations', completed: false }
+                        { id: 3, title: 'Update marketing materials', description: 'Refresh brochures and presentations', completed: false, subtasks: [
+                            { text: 'Update company logo', completed: true },
+                            { text: 'Revise product descriptions', completed: false }
+                        ] }
                     ],
                     done: [
-                        { id: 4, title: 'Website testing', description: 'Complete QA testing', completed: true }
+                        { id: 4, title: 'Website testing', description: 'Complete QA testing', completed: true, subtasks: [
+                            { text: 'Cross-browser testing', completed: true },
+                            { text: 'Mobile responsiveness', completed: true },
+                            { text: 'Performance testing', completed: true }
+                        ] }
                     ]
                 }
             },
@@ -135,11 +148,18 @@ function initializeSampleData() {
                 groupId: 2,
                 cards: {
                     todo: [
-                        { id: 5, title: 'User authentication', description: 'Implement login and signup features', completed: false },
-                        { id: 6, title: 'Push notifications', description: 'Set up notification system', completed: false }
+                        { id: 5, title: 'User authentication', description: 'Implement login and signup features', completed: false, subtasks: [
+                            { text: 'Set up OAuth providers', completed: false },
+                            { text: 'Create login form', completed: false },
+                            { text: 'Add password reset', completed: false }
+                        ] },
+                        { id: 6, title: 'Push notifications', description: 'Set up notification system', completed: false, subtasks: [] }
                     ],
                     inprogress: [
-                        { id: 7, title: 'Database setup', description: 'Configure backend database', completed: false }
+                        { id: 7, title: 'Database setup', description: 'Configure backend database', completed: false, subtasks: [
+                            { text: 'Design schema', completed: true },
+                            { text: 'Set up migrations', completed: false }
+                        ] }
                     ],
                     done: []
                 }
@@ -151,11 +171,14 @@ function initializeSampleData() {
                 groupId: 2,
                 cards: {
                     todo: [
-                        { id: 8, title: 'Write API specs', description: 'Document all endpoints', completed: false }
+                        { id: 8, title: 'Write API specs', description: 'Document all endpoints', completed: false, subtasks: [
+                            { text: 'List all endpoints', completed: true },
+                            { text: 'Document request/response', completed: false }
+                        ] }
                     ],
                     inprogress: [],
                     done: [
-                        { id: 9, title: 'Set up documentation site', description: 'Configure docs hosting', completed: true }
+                        { id: 9, title: 'Set up documentation site', description: 'Configure docs hosting', completed: true, subtasks: [] }
                     ]
                 }
             },
@@ -166,8 +189,12 @@ function initializeSampleData() {
                 groupId: 3,
                 cards: {
                     todo: [
-                        { id: 10, title: 'Market research', description: 'Analyze Q3 performance and trends', completed: false },
-                        { id: 11, title: 'Budget allocation', description: 'Plan Q4 marketing spend', completed: false }
+                        { id: 10, title: 'Market research', description: 'Analyze Q3 performance and trends', completed: false, subtasks: [
+                            { text: 'Gather Q3 data', completed: true },
+                            { text: 'Analyze trends', completed: false },
+                            { text: 'Create report', completed: false }
+                        ] },
+                        { id: 11, title: 'Budget allocation', description: 'Plan Q4 marketing spend', completed: false, subtasks: [] }
                     ],
                     inprogress: [],
                     done: []
@@ -179,7 +206,8 @@ function initializeSampleData() {
                 nextColumnId: 4,
                 nextGroupId: 4,
                 settings: {
-                    showCheckboxes: false
+                    showCheckboxes: false,
+                    showSubtaskProgress: true
                 }
             }
         }
@@ -475,13 +503,33 @@ function createCardElement(card, rowId, columnKey) {
         </div>
     ` : '';
     
+    // Generate subtask progress
+    let progressHtml = '';
+    if (boardData.settings.showSubtaskProgress && card.subtasks && card.subtasks.length > 0) {
+        const completed = card.subtasks.filter(st => st.completed).length;
+        const total = card.subtasks.length;
+        const percentage = Math.round((completed / total) * 100);
+        
+        progressHtml = `
+            <div class="card-progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${percentage}%"></div>
+                </div>
+                <span class="progress-text">${completed}/${total} subtasks</span>
+            </div>
+        `;
+    }
+    
     cardDiv.innerHTML = `
         <div class="card-actions">
             <button onclick="editCard(${card.id}, ${rowId}, '${columnKey}')" title="Edit">✏️</button>
             <button onclick="deleteCard(${card.id}, ${rowId}, '${columnKey}')" title="Delete">🗑️</button>
         </div>
-        <div class="card-title">${card.title}</div>
-        <div class="card-description">${card.description}</div>
+        <div class="card-content" onclick="showCardDetailModal(${card.id}, ${rowId}, '${columnKey}')">
+            <div class="card-title">${card.title}</div>
+            <div class="card-description">${card.description}</div>
+            ${progressHtml}
+        </div>
         ${checkboxHtml}
     `;
     
@@ -833,10 +881,21 @@ function toggleCheckboxes() {
     renderBoard();
 }
 
+function toggleSubtaskProgress() {
+    const checkbox = document.getElementById('showSubtaskProgress');
+    boardData.settings.showSubtaskProgress = checkbox.checked;
+    renderBoard();
+}
+
 function updateSettingsUI() {
     const checkbox = document.getElementById('showCheckboxes');
     if (checkbox) {
         checkbox.checked = boardData.settings.showCheckboxes;
+    }
+    
+    const subtaskCheckbox = document.getElementById('showSubtaskProgress');
+    if (subtaskCheckbox) {
+        subtaskCheckbox.checked = boardData.settings.showSubtaskProgress;
     }
 }
 
@@ -1105,7 +1164,8 @@ function saveCard(event) {
             id: boardData.nextCardId++,
             title: title,
             description: description,
-            completed: completed
+            completed: completed,
+            subtasks: []
         };
         row.cards[currentEditingCard.columnKey].push(newCard);
     }
@@ -1117,6 +1177,263 @@ function saveCard(event) {
 function closeModal() {
     document.getElementById('cardModal').style.display = 'none';
     currentEditingCard = null;
+}
+
+// Card detail modal functions
+function showCardDetailModal(cardId, rowId, columnKey) {
+    const row = boardData.rows.find(r => r.id === rowId);
+    if (!row) return;
+    
+    const card = row.cards[columnKey].find(c => c.id === cardId);
+    if (!card) return;
+    
+    const column = boardData.columns.find(c => c.key === columnKey);
+    if (!column) return;
+    
+    // Store current card reference
+    currentDetailCard = { card, rowId, columnKey };
+    
+    // Ensure subtasks array exists
+    if (!card.subtasks) card.subtasks = [];
+    
+    // Find group information
+    const group = row.groupId ? boardData.groups.find(g => g.id === row.groupId) : null;
+    
+    // Populate modal content
+    document.getElementById('cardDetailTitle').textContent = card.title;
+    document.getElementById('cardDetailDescription').textContent = card.description || 'No description provided';
+    document.getElementById('cardDetailGroup').textContent = group ? group.name : 'No Group';
+    document.getElementById('cardDetailRow').textContent = row.name;
+    document.getElementById('cardDetailColumn').textContent = column.name;
+    
+    // Update status badge
+    const statusElement = document.getElementById('cardDetailCompletionStatus');
+    if (card.completed) {
+        statusElement.textContent = 'Completed';
+        statusElement.className = 'status-badge completed';
+    } else {
+        statusElement.textContent = 'Pending';
+        statusElement.className = 'status-badge pending';
+    }
+    
+    // Set up action buttons
+    const editBtn = document.getElementById('editCardFromDetailBtn');
+    const deleteBtn = document.getElementById('deleteCardFromDetailBtn');
+    
+    editBtn.onclick = () => {
+        closeCardDetailModal();
+        editCard(cardId, rowId, columnKey);
+    };
+    
+    deleteBtn.onclick = () => {
+        closeCardDetailModal();
+        deleteCard(cardId, rowId, columnKey);
+    };
+    
+    // Setup add subtask button and form
+    const addSubtaskBtn = document.getElementById('addSubtaskBtn');
+    const saveSubtaskBtn = document.getElementById('saveSubtaskBtn');
+    const cancelSubtaskBtn = document.getElementById('cancelSubtaskBtn');
+    const newSubtaskInput = document.getElementById('newSubtaskInput');
+    
+    addSubtaskBtn.onclick = () => showAddSubtaskForm();
+    saveSubtaskBtn.onclick = () => saveNewSubtask();
+    cancelSubtaskBtn.onclick = () => hideAddSubtaskForm();
+    
+    // Handle enter key in input
+    newSubtaskInput.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            saveNewSubtask();
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            hideAddSubtaskForm();
+        }
+    };
+    
+    // Render subtasks
+    renderSubtasks();
+    
+    // Show modal
+    document.getElementById('cardDetailModal').style.display = 'block';
+}
+
+function closeCardDetailModal() {
+    document.getElementById('cardDetailModal').style.display = 'none';
+    
+    // Hide add subtask form if it's open
+    hideAddSubtaskForm();
+    
+    currentDetailCard = null;
+}
+
+// Subtask functions
+function renderSubtasks() {
+    if (!currentDetailCard) return;
+    
+    const subtasksList = document.getElementById('subtasksList');
+    subtasksList.innerHTML = '';
+    
+    const subtasks = currentDetailCard.card.subtasks || [];
+    
+    if (subtasks.length === 0) {
+        subtasksList.innerHTML = '<div class="no-subtasks">No subtasks yet. Click "Add Subtask" to get started.</div>';
+        return;
+    }
+    
+    subtasks.forEach((subtask, index) => {
+        const subtaskElement = document.createElement('div');
+        subtaskElement.className = `subtask-item ${subtask.completed ? 'completed' : ''}`;
+        subtaskElement.dataset.index = index;
+        
+        subtaskElement.innerHTML = `
+            <div class="subtask-content">
+                <input type="checkbox" ${subtask.completed ? 'checked' : ''} 
+                       onchange="toggleSubtask(${index})" class="subtask-checkbox">
+                <span class="subtask-text ${subtask.completed ? 'completed' : ''}" 
+                      onclick="startEditSubtask(${index})">${subtask.text}</span>
+            </div>
+            <div class="subtask-edit-form" style="display: none;">
+                <div class="subtask-input-group">
+                    <input type="text" class="subtask-edit-input" value="${subtask.text}">
+                    <div class="subtask-input-actions">
+                        <button onclick="saveEditSubtask(${index})" class="btn btn-small btn-primary">Save</button>
+                        <button onclick="cancelEditSubtask(${index})" class="btn btn-small btn-secondary">Cancel</button>
+                    </div>
+                </div>
+            </div>
+            <div class="subtask-actions">
+                <button onclick="startEditSubtask(${index})" title="Edit subtask">✏️</button>
+                <button onclick="deleteSubtask(${index})" title="Delete subtask">🗑️</button>
+            </div>
+        `;
+        subtasksList.appendChild(subtaskElement);
+    });
+}
+
+// Add subtask form functions
+function showAddSubtaskForm() {
+    const form = document.getElementById('addSubtaskForm');
+    const input = document.getElementById('newSubtaskInput');
+    const button = document.getElementById('addSubtaskBtn');
+    
+    form.style.display = 'block';
+    button.style.display = 'none';
+    input.value = '';
+    input.focus();
+}
+
+function hideAddSubtaskForm() {
+    const form = document.getElementById('addSubtaskForm');
+    const button = document.getElementById('addSubtaskBtn');
+    
+    if (form) form.style.display = 'none';
+    if (button) button.style.display = 'inline-block';
+}
+
+function saveNewSubtask() {
+    if (!currentDetailCard) return;
+    
+    const input = document.getElementById('newSubtaskInput');
+    const text = input.value.trim();
+    
+    if (!text) {
+        input.focus();
+        return;
+    }
+    
+    if (!currentDetailCard.card.subtasks) {
+        currentDetailCard.card.subtasks = [];
+    }
+    
+    currentDetailCard.card.subtasks.push({
+        text: text,
+        completed: false
+    });
+    
+    saveData();
+    hideAddSubtaskForm();
+    renderSubtasks();
+    renderBoard(); // Update progress on cards
+}
+
+// Edit subtask inline functions
+function startEditSubtask(index) {
+    const subtaskItem = document.querySelector(`[data-index="${index}"]`);
+    if (!subtaskItem) return;
+    
+    const content = subtaskItem.querySelector('.subtask-content');
+    const editForm = subtaskItem.querySelector('.subtask-edit-form');
+    const actions = subtaskItem.querySelector('.subtask-actions');
+    const editInput = subtaskItem.querySelector('.subtask-edit-input');
+    
+    content.style.display = 'none';
+    actions.style.display = 'none';
+    editForm.style.display = 'block';
+    editInput.focus();
+    editInput.select();
+    
+    // Handle enter/escape keys
+    editInput.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            saveEditSubtask(index);
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            cancelEditSubtask(index);
+        }
+    };
+}
+
+function saveEditSubtask(index) {
+    if (!currentDetailCard || !currentDetailCard.card.subtasks[index]) return;
+    
+    const subtaskItem = document.querySelector(`[data-index="${index}"]`);
+    const editInput = subtaskItem.querySelector('.subtask-edit-input');
+    const newText = editInput.value.trim();
+    
+    if (!newText) {
+        editInput.focus();
+        return;
+    }
+    
+    currentDetailCard.card.subtasks[index].text = newText;
+    saveData();
+    renderSubtasks();
+    renderBoard(); // Update progress on cards
+}
+
+function cancelEditSubtask(index) {
+    const subtaskItem = document.querySelector(`[data-index="${index}"]`);
+    if (!subtaskItem) return;
+    
+    const content = subtaskItem.querySelector('.subtask-content');
+    const editForm = subtaskItem.querySelector('.subtask-edit-form');
+    const actions = subtaskItem.querySelector('.subtask-actions');
+    
+    editForm.style.display = 'none';
+    content.style.display = 'flex';
+    actions.style.display = 'flex';
+}
+
+function deleteSubtask(index) {
+    if (!currentDetailCard || !currentDetailCard.card.subtasks[index]) return;
+    
+    if (confirm('Are you sure you want to delete this subtask?')) {
+        currentDetailCard.card.subtasks.splice(index, 1);
+        saveData();
+        renderSubtasks();
+        renderBoard(); // Update progress on cards
+    }
+}
+
+function toggleSubtask(index) {
+    if (!currentDetailCard || !currentDetailCard.card.subtasks[index]) return;
+    
+    currentDetailCard.card.subtasks[index].completed = !currentDetailCard.card.subtasks[index].completed;
+    saveData();
+    renderSubtasks();
+    renderBoard(); // Update progress on cards
 }
 
 // Export functions
@@ -1373,7 +1690,7 @@ function importFromJSON() {
             
             // Ensure all required properties exist on current board
             if (!boardData.groups) boardData.groups = [];
-            if (!boardData.settings) boardData.settings = { showCheckboxes: false };
+            if (!boardData.settings) boardData.settings = { showCheckboxes: false, showSubtaskProgress: true };
             if (!boardData.nextRowId) boardData.nextRowId = boardData.rows && boardData.rows.length > 0 ? Math.max(...boardData.rows.map(r => r.id)) + 1 : 1;
             if (!boardData.nextCardId) {
                 let maxCardId = 0;
@@ -1794,7 +2111,8 @@ function saveBoardEdit(event) {
             nextColumnId: 4,
             nextGroupId: 1,
             settings: {
-                showCheckboxes: false
+                showCheckboxes: false,
+                showSubtaskProgress: true
             }
         };
         

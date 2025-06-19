@@ -59,6 +59,10 @@
                         <input type="checkbox" id="showCheckboxes" onchange="toggleCheckboxes()">
                         Show completion checkboxes on cards
                     </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="showSubtaskProgress" onchange="toggleSubtaskProgress()">
+                        Show subtask progress on cards
+                    </label>
                 </div>
                 <div class="settings-actions">
                     <button class="btn btn-secondary" onclick="toggleSettings()">Close</button>
@@ -257,6 +261,60 @@
                     <button type="button" class="btn btn-secondary" onclick="closeBoardEditModal()">Cancel</button>
                 </div>
             </form>
+        </div>
+    </div>
+    
+    <!-- Modal for card detail view -->
+    <div class="modal" id="cardDetailModal">
+        <div class="modal-content card-detail-content">
+            <span class="close" onclick="closeCardDetailModal()">&times;</span>
+            <div class="card-detail-header">
+                <h2 id="cardDetailTitle">Card Title</h2>
+                <div class="card-detail-meta">
+                    <span class="card-detail-location">
+                        <span id="cardDetailGroup"></span>
+                        <span id="cardDetailRow"></span> → 
+                        <span id="cardDetailColumn"></span>
+                    </span>
+                </div>
+            </div>
+            <div class="card-detail-body">
+                <div class="card-detail-section">
+                    <h3>Description</h3>
+                    <div id="cardDetailDescription" class="card-detail-description">
+                        No description provided
+                    </div>
+                </div>
+                <div class="card-detail-section">
+                    <h3>Status</h3>
+                    <div class="card-detail-status">
+                        <span id="cardDetailCompletionStatus" class="status-badge">Pending</span>
+                    </div>
+                </div>
+                <div class="card-detail-section">
+                    <div class="subtask-header">
+                        <h3>Subtasks</h3>
+                        <button id="addSubtaskBtn" class="btn btn-small btn-primary">+ Add Subtask</button>
+                    </div>
+                    <div id="addSubtaskForm" class="add-subtask-form" style="display: none;">
+                        <div class="subtask-input-group">
+                            <input type="text" id="newSubtaskInput" placeholder="Enter subtask description..." class="subtask-input">
+                            <div class="subtask-input-actions">
+                                <button id="saveSubtaskBtn" class="btn btn-small btn-primary">Add</button>
+                                <button id="cancelSubtaskBtn" class="btn btn-small btn-secondary">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="subtasksList" class="subtasks-list">
+                        <!-- Subtasks will be rendered here -->
+                    </div>
+                </div>
+            </div>
+            <div class="card-detail-actions">
+                <button id="editCardFromDetailBtn" class="btn btn-primary">✏️ Edit Card</button>
+                <button id="deleteCardFromDetailBtn" class="btn btn-danger">🗑️ Delete Card</button>
+                <button class="btn btn-secondary" onclick="closeCardDetailModal()">Close</button>
+            </div>
         </div>
     </div>
     

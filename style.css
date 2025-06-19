@@ -946,6 +946,346 @@ body {
     border-top: 1px solid #e4e6ea;
 }
 
+/* Card detail modal styles */
+.card-detail-content {
+    max-width: 600px;
+    width: 95%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.card-detail-header {
+    border-bottom: 1px solid #e4e6ea;
+    padding-bottom: 20px;
+    margin-bottom: 20px;
+}
+
+.card-detail-header h2 {
+    margin-bottom: 10px;
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #172b4d;
+    word-wrap: break-word;
+}
+
+.card-detail-meta {
+    color: #5e6c84;
+    font-size: 14px;
+}
+
+.card-detail-location {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.card-detail-body {
+    margin-bottom: 30px;
+}
+
+.card-detail-section {
+    margin-bottom: 25px;
+}
+
+.card-detail-section h3 {
+    color: #172b4d;
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #f1f2f4;
+    padding-bottom: 5px;
+}
+
+.card-detail-description {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 6px;
+    border-left: 4px solid #0079bf;
+    color: #172b4d;
+    line-height: 1.6;
+    font-size: 14px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.card-detail-description:empty::before {
+    content: "No description provided";
+    color: #8993a4;
+    font-style: italic;
+}
+
+.card-detail-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-badge.completed {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.status-badge.pending {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.card-detail-actions {
+    border-top: 1px solid #e4e6ea;
+    padding-top: 20px;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+.card-content {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    padding: 2px;
+    border-radius: 4px;
+    margin: 2px 0;
+}
+
+.card-content:hover {
+    background-color: rgba(0, 121, 191, 0.05);
+}
+
+/* Subtask styles */
+.subtask-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.subtask-header h3 {
+    margin-bottom: 0;
+}
+
+.btn-small {
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.subtasks-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.no-subtasks {
+    color: #8993a4;
+    font-style: italic;
+    text-align: center;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 2px dashed #e4e6ea;
+}
+
+.subtask-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #f1f2f4;
+    gap: 10px;
+}
+
+.subtask-item:last-child {
+    border-bottom: none;
+}
+
+.subtask-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+}
+
+.subtask-checkbox {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.subtask-text {
+    color: #172b4d;
+    font-size: 14px;
+    line-height: 1.4;
+    cursor: pointer;
+    word-wrap: break-word;
+    flex: 1;
+}
+
+.subtask-text.completed {
+    text-decoration: line-through;
+    color: #8993a4;
+}
+
+
+.subtask-actions {
+    display: flex;
+    gap: 5px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    flex-shrink: 0;
+}
+
+.subtask-item:hover .subtask-actions {
+    opacity: 1;
+}
+
+.subtask-actions button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    color: #8993a4;
+    font-size: 12px;
+    border-radius: 3px;
+    transition: all 0.2s ease;
+}
+
+.subtask-actions button:hover {
+    color: #172b4d;
+    background-color: #f1f2f4;
+}
+
+.subtask-item.completed {
+    opacity: 0.7;
+}
+
+/* Inline editing styles */
+.add-subtask-form {
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 2px solid #e4e6ea;
+}
+
+.subtask-input-group {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.subtask-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 2px solid #e4e6ea;
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: border-color 0.2s ease;
+}
+
+.subtask-input:focus {
+    outline: none;
+    border-color: #0079bf;
+}
+
+.subtask-edit-input {
+    flex: 1;
+    padding: 6px 8px;
+    border: 2px solid #e4e6ea;
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: border-color 0.2s ease;
+    background: white;
+}
+
+.subtask-edit-input:focus {
+    outline: none;
+    border-color: #0079bf;
+}
+
+.subtask-input-actions {
+    display: flex;
+    gap: 5px;
+    flex-shrink: 0;
+}
+
+.subtask-edit-form {
+    padding: 5px 0;
+}
+
+.subtask-edit-form .subtask-input-group {
+    align-items: center;
+}
+
+/* Improved hover states for better UX */
+.subtask-text {
+    padding: 4px 6px;
+    border-radius: 3px;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.subtask-text:hover {
+    background-color: rgba(0, 121, 191, 0.1);
+    cursor: pointer;
+}
+
+/* Progress bar styles */
+.card-progress {
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.progress-bar {
+    flex: 1;
+    height: 6px;
+    background-color: #e4e6ea;
+    border-radius: 3px;
+    overflow: hidden;
+    position: relative;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #0079bf 0%, #026aa7 100%);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    font-size: 11px;
+    color: #5e6c84;
+    font-weight: 500;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* Progress bar variations based on completion */
+.progress-fill[style*="100%"] {
+    background: linear-gradient(90deg, #0f8043 0%, #166434 100%);
+}
+
+.progress-fill[style*="0%"] {
+    background: #e4e6ea;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
     .app-header {
