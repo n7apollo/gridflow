@@ -81,6 +81,22 @@ function loadData() {
             if (!boardData.settings) boardData.settings = { showCheckboxes: false, showSubtaskProgress: true };
             if (!boardData.nextColumnId) boardData.nextColumnId = 1;
             if (!boardData.nextGroupId) boardData.nextGroupId = 1;
+            
+            // Migrate existing cards to include new fields
+            Object.values(appData.boards).forEach(board => {
+                if (board.rows) {
+                    board.rows.forEach(row => {
+                        if (row.cards) {
+                            Object.keys(row.cards).forEach(columnKey => {
+                                row.cards[columnKey].forEach(card => {
+                                    if (card.dueDate === undefined) card.dueDate = null;
+                                    if (card.priority === undefined) card.priority = 'medium';
+                                });
+                            });
+                        }
+                    });
+                }
+            });
         } else {
             initializeSampleData();
         }
@@ -520,6 +536,46 @@ function createCardElement(card, rowId, columnKey) {
         `;
     }
     
+    // Generate due date display
+    let dueDateHtml = '';
+    if (card.dueDate) {
+        const dueDate = new Date(card.dueDate);
+        const today = new Date();
+        const isOverdue = dueDate < today;
+        const isToday = dueDate.toDateString() === today.toDateString();
+        
+        let dueDateClass = 'card-due-date';
+        if (isOverdue) dueDateClass += ' overdue';
+        else if (isToday) dueDateClass += ' today';
+        
+        dueDateHtml = `
+            <div class="${dueDateClass}">
+                📅 ${dueDate.toLocaleDateString()}
+            </div>
+        `;
+    }
+    
+    // Generate priority display
+    let priorityHtml = '';
+    if (card.priority && card.priority !== 'medium') {
+        const priorityIcons = {
+            'low': '🔵',
+            'high': '🔴',
+            'urgent': '⚡'
+        };
+        const priorityColors = {
+            'low': '#4CAF50',
+            'high': '#FF9800', 
+            'urgent': '#F44336'
+        };
+        
+        priorityHtml = `
+            <div class="card-priority priority-${card.priority}" style="color: ${priorityColors[card.priority]}">
+                ${priorityIcons[card.priority]} ${card.priority.toUpperCase()}
+            </div>
+        `;
+    }
+
     cardDiv.innerHTML = `
         <div class="card-actions">
             <button onclick="editCard(${card.id}, ${rowId}, '${columnKey}')" title="Edit">✏️</button>
@@ -528,6 +584,8 @@ function createCardElement(card, rowId, columnKey) {
         <div class="card-content" onclick="showCardDetailModal(${card.id}, ${rowId}, '${columnKey}')">
             <div class="card-title">${card.title}</div>
             <div class="card-description">${card.description}</div>
+            ${dueDateHtml}
+            ${priorityHtml}
             ${progressHtml}
         </div>
         ${checkboxHtml}
@@ -1348,12 +1406,16 @@ function openCardModal(rowId, columnKey, cardId = null) {
         document.getElementById('cardTitle').value = card.title;
         document.getElementById('cardDescription').value = card.description;
         document.getElementById('cardCompleted').checked = card.completed || false;
+        document.getElementById('cardDueDate').value = card.dueDate || '';
+        document.getElementById('cardPriority').value = card.priority || 'medium';
     } else {
         currentEditingCard = { rowId, columnKey };
         document.getElementById('modalTitle').textContent = 'Add Card';
         document.getElementById('cardTitle').value = '';
         document.getElementById('cardDescription').value = '';
         document.getElementById('cardCompleted').checked = false;
+        document.getElementById('cardDueDate').value = '';
+        document.getElementById('cardPriority').value = 'medium';
     }
     
     document.getElementById('cardModal').style.display = 'block';
@@ -1378,6 +1440,8 @@ function saveCard(event) {
     const title = document.getElementById('cardTitle').value.trim();
     const description = document.getElementById('cardDescription').value.trim();
     const completed = document.getElementById('cardCompleted').checked;
+    const dueDate = document.getElementById('cardDueDate').value || null;
+    const priority = document.getElementById('cardPriority').value;
     
     if (!title) return;
     
@@ -1391,6 +1455,8 @@ function saveCard(event) {
             card.title = title;
             card.description = description;
             card.completed = completed;
+            card.dueDate = dueDate;
+            card.priority = priority;
         }
     } else {
         // Add new card
@@ -1399,7 +1465,9 @@ function saveCard(event) {
             title: title,
             description: description,
             completed: completed,
-            subtasks: []
+            subtasks: [],
+            dueDate: null,
+            priority: 'medium'
         };
         row.cards[currentEditingCard.columnKey].push(newCard);
     }
@@ -2361,4 +2429,448 @@ function saveBoardEdit(event) {
     
     saveData();
     closeBoardEditModal();
+}
+
+// Task Management Functions
+function switchToView(viewType) {
+    const boardContainer = document.getElementById('boardContainer');
+    const taskContainer = document.getElementById('taskContainer');
+    const boardViewBtn = document.getElementById('boardViewBtn');
+    const taskViewBtn = document.getElementById('taskViewBtn');
+    
+    if (viewType === 'board') {
+        boardContainer.style.display = 'block';
+        taskContainer.style.display = 'none';
+        boardViewBtn.classList.add('active');
+        taskViewBtn.classList.remove('active');
+    } else if (viewType === 'tasks') {
+        boardContainer.style.display = 'none';
+        taskContainer.style.display = 'block';
+        boardViewBtn.classList.remove('active');
+        taskViewBtn.classList.add('active');
+        
+        // Initialize task view
+        populateTaskView();
+    }
+}
+
+function populateTaskView() {
+    populateTaskBoardFilters();
+    populateTaskFilters();
+    renderTaskList();
+}
+
+function populateTaskBoardFilters() {
+    const taskBoardFilter = document.getElementById('taskBoardFilter');
+    const taskBoard = document.getElementById('taskBoard');
+    
+    // Clear existing options (except "All Boards")
+    taskBoardFilter.innerHTML = '<option value="all">All Boards</option>';
+    taskBoard.innerHTML = '';
+    
+    // Add boards
+    Object.keys(appData.boards).forEach(boardId => {
+        const board = appData.boards[boardId];
+        
+        // Add to filter dropdown
+        const filterOption = document.createElement('option');
+        filterOption.value = boardId;
+        filterOption.textContent = board.name;
+        taskBoardFilter.appendChild(filterOption);
+        
+        // Add to task creation dropdown
+        const taskOption = document.createElement('option');
+        taskOption.value = boardId;
+        taskOption.textContent = board.name;
+        if (boardId === appData.currentBoardId) {
+            taskOption.selected = true;
+        }
+        taskBoard.appendChild(taskOption);
+    });
+}
+
+function populateTaskFilters() {
+    updateTaskGroupOptions();
+    updateTaskRowOptions();
+    updateTaskColumnOptions();
+}
+
+function getAllTasks() {
+    const tasks = [];
+    const selectedBoardId = document.getElementById('taskBoardFilter').value;
+    
+    const boardsToCheck = selectedBoardId === 'all' 
+        ? Object.keys(appData.boards) 
+        : [selectedBoardId];
+    
+    boardsToCheck.forEach(boardId => {
+        const board = appData.boards[boardId];
+        if (!board) return;
+        
+        board.rows.forEach(row => {
+            Object.keys(row.cards).forEach(columnKey => {
+                row.cards[columnKey].forEach(card => {
+                    const group = board.groups.find(g => g.id === row.groupId);
+                    const column = board.columns.find(c => c.key === columnKey);
+                    
+                    tasks.push({
+                        ...card,
+                        boardId: boardId,
+                        boardName: board.name,
+                        rowId: row.id,
+                        rowName: row.name,
+                        columnKey: columnKey,
+                        columnName: column ? column.name : columnKey,
+                        groupId: row.groupId,
+                        groupName: group ? group.name : 'No Group'
+                    });
+                });
+            });
+        });
+    });
+    
+    return tasks;
+}
+
+function renderTaskList() {
+    const taskList = document.getElementById('taskList');
+    const tasks = getAllTasks();
+    
+    // Apply filters
+    const filteredTasks = filterTaskList(tasks);
+    
+    // Apply sorting
+    const sortedTasks = sortTaskList(filteredTasks);
+    
+    if (sortedTasks.length === 0) {
+        taskList.innerHTML = '<div class="no-tasks">No tasks found matching your criteria.</div>';
+        return;
+    }
+    
+    taskList.innerHTML = sortedTasks.map(task => createTaskElement(task)).join('');
+}
+
+function filterTaskList(tasks) {
+    const statusFilter = document.getElementById('taskStatusFilter').value;
+    const priorityFilter = document.getElementById('taskPriorityFilter').value;
+    
+    return tasks.filter(task => {
+        // Status filter
+        if (statusFilter !== 'all') {
+            if (statusFilter === 'completed' && !task.completed) return false;
+            if (statusFilter === 'pending' && task.completed) return false;
+        }
+        
+        // Priority filter
+        if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
+        
+        return true;
+    });
+}
+
+function sortTaskList(tasks) {
+    const sortBy = document.getElementById('taskSortBy').value;
+    
+    return tasks.sort((a, b) => {
+        switch (sortBy) {
+            case 'priority':
+                const priorityOrder = { urgent: 4, high: 3, medium: 2, low: 1 };
+                return (priorityOrder[b.priority] || 2) - (priorityOrder[a.priority] || 2);
+            
+            case 'dueDate':
+                if (!a.dueDate && !b.dueDate) return 0;
+                if (!a.dueDate) return 1;
+                if (!b.dueDate) return -1;
+                return new Date(a.dueDate) - new Date(b.dueDate);
+            
+            case 'title':
+                return a.title.localeCompare(b.title);
+            
+            case 'created':
+                return a.id - b.id;
+            
+            default:
+                return 0;
+        }
+    });
+}
+
+function createTaskElement(task) {
+    const dueDate = task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date';
+    const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && !task.completed;
+    
+    const subtaskProgress = task.subtasks.length > 0 
+        ? `${task.subtasks.filter(st => st.completed).length}/${task.subtasks.length}` 
+        : '0';
+    
+    return `
+        <div class="task-item ${task.completed ? 'completed' : ''}" data-task-id="${task.id}" data-board-id="${task.boardId}" data-row-id="${task.rowId}" data-column-key="${task.columnKey}">
+            <div class="task-header">
+                <div class="task-title-section">
+                    <h3 class="task-title">${task.title}</h3>
+                    <span class="task-priority priority-${task.priority}">${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}</span>
+                    ${task.completed ? '<span class="task-status completed">✓ Completed</span>' : '<span class="task-status pending">⏳ Pending</span>'}
+                </div>
+                <div class="task-actions">
+                    <button class="btn btn-small btn-secondary" onclick="editTaskFromList('${task.id}', '${task.boardId}', '${task.rowId}', '${task.columnKey}')">Edit</button>
+                    <button class="btn btn-small btn-danger" onclick="deleteTaskFromList('${task.id}', '${task.boardId}', '${task.rowId}', '${task.columnKey}')">Delete</button>
+                </div>
+            </div>
+            
+            <div class="task-meta">
+                <div class="task-location">
+                    📍 ${task.boardName} → ${task.groupName} → ${task.rowName} → ${task.columnName}
+                </div>
+                <div class="task-details">
+                    <span class="task-due-date ${isOverdue ? 'overdue' : ''}">${dueDate}</span>
+                    <span class="task-subtasks">📋 ${subtaskProgress} subtasks</span>
+                </div>
+            </div>
+            
+            ${task.description ? `<div class="task-description">${task.description}</div>` : ''}
+            
+            ${task.subtasks.length > 0 ? `
+                <div class="task-subtasks-preview">
+                    ${task.subtasks.slice(0, 3).map(subtask => `
+                        <div class="subtask-preview ${subtask.completed ? 'completed' : ''}">
+                            ${subtask.completed ? '✓' : '○'} ${subtask.text}
+                        </div>
+                    `).join('')}
+                    ${task.subtasks.length > 3 ? `<div class="subtask-more">... and ${task.subtasks.length - 3} more</div>` : ''}
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+// Task filtering functions
+function filterTasksByBoard() {
+    renderTaskList();
+}
+
+function filterTasks() {
+    renderTaskList();
+}
+
+function sortTasks() {
+    renderTaskList();
+}
+
+// Task creation and editing functions
+let currentEditingTask = null;
+
+function openTaskModal(taskId = null, boardId = null, rowId = null, columnKey = null) {
+    if (taskId) {
+        // Edit existing task
+        const board = appData.boards[boardId];
+        const row = board.rows.find(r => r.id === rowId);
+        const card = row.cards[columnKey].find(c => c.id === taskId);
+        
+        if (!card) return;
+        
+        currentEditingTask = { id: taskId, boardId, rowId, columnKey };
+        document.getElementById('taskModalTitle').textContent = 'Edit Task';
+        document.getElementById('taskTitle').value = card.title;
+        document.getElementById('taskDescription').value = card.description;
+        document.getElementById('taskBoard').value = boardId;
+        document.getElementById('taskDueDate').value = card.dueDate || '';
+        document.getElementById('taskPriority').value = card.priority || 'medium';
+        document.getElementById('taskCompleted').checked = card.completed || false;
+        
+        // Update dependent dropdowns
+        updateTaskGroupOptions();
+        document.getElementById('taskGroup').value = row.groupId || '';
+        updateTaskRowOptions();
+        document.getElementById('taskRow').value = rowId;
+        updateTaskColumnOptions();
+        document.getElementById('taskColumn').value = columnKey;
+    } else {
+        // Create new task
+        currentEditingTask = null;
+        document.getElementById('taskModalTitle').textContent = 'Add Task';
+        document.getElementById('taskTitle').value = '';
+        document.getElementById('taskDescription').value = '';
+        document.getElementById('taskBoard').value = appData.currentBoardId;
+        document.getElementById('taskDueDate').value = '';
+        document.getElementById('taskPriority').value = 'medium';
+        document.getElementById('taskCompleted').checked = false;
+        
+        // Update dependent dropdowns
+        updateTaskGroupOptions();
+        document.getElementById('taskGroup').value = '';
+        updateTaskRowOptions();
+        updateTaskColumnOptions();
+    }
+    
+    document.getElementById('taskModal').style.display = 'block';
+    document.getElementById('taskForm').onsubmit = saveTask;
+}
+
+function closeTaskModal() {
+    document.getElementById('taskModal').style.display = 'none';
+    currentEditingTask = null;
+}
+
+function saveTask(event) {
+    event.preventDefault();
+    
+    const title = document.getElementById('taskTitle').value.trim();
+    const description = document.getElementById('taskDescription').value.trim();
+    const boardId = document.getElementById('taskBoard').value;
+    const rowId = parseInt(document.getElementById('taskRow').value);
+    const columnKey = document.getElementById('taskColumn').value;
+    const dueDate = document.getElementById('taskDueDate').value || null;
+    const priority = document.getElementById('taskPriority').value;
+    const completed = document.getElementById('taskCompleted').checked;
+    
+    if (!title || !boardId || !rowId || !columnKey) {
+        alert('Please fill in all required fields.');
+        return;
+    }
+    
+    const board = appData.boards[boardId];
+    const row = board.rows.find(r => r.id === rowId);
+    
+    if (!row) {
+        alert('Selected row not found.');
+        return;
+    }
+    
+    if (!row.cards[columnKey]) {
+        row.cards[columnKey] = [];
+    }
+    
+    if (currentEditingTask) {
+        // Edit existing task
+        const oldBoard = appData.boards[currentEditingTask.boardId];
+        const oldRow = oldBoard.rows.find(r => r.id === currentEditingTask.rowId);
+        const cardIndex = oldRow.cards[currentEditingTask.columnKey].findIndex(c => c.id === currentEditingTask.id);
+        
+        if (cardIndex !== -1) {
+            const card = oldRow.cards[currentEditingTask.columnKey][cardIndex];
+            
+            // If moving to different location, remove from old location
+            if (currentEditingTask.boardId !== boardId || 
+                currentEditingTask.rowId !== rowId || 
+                currentEditingTask.columnKey !== columnKey) {
+                
+                oldRow.cards[currentEditingTask.columnKey].splice(cardIndex, 1);
+                
+                // Update card and add to new location
+                card.title = title;
+                card.description = description;
+                card.completed = completed;
+                card.dueDate = dueDate;
+                card.priority = priority;
+                
+                row.cards[columnKey].push(card);
+            } else {
+                // Just update in place
+                card.title = title;
+                card.description = description;
+                card.completed = completed;
+                card.dueDate = dueDate;
+                card.priority = priority;
+            }
+        }
+    } else {
+        // Create new task
+        const newCard = {
+            id: board.nextCardId++,
+            title: title,
+            description: description,
+            completed: completed,
+            subtasks: [],
+            dueDate: dueDate,
+            priority: priority
+        };
+        
+        row.cards[columnKey].push(newCard);
+    }
+    
+    saveData();
+    closeTaskModal();
+    
+    // Refresh the current view
+    if (document.getElementById('taskContainer').style.display !== 'none') {
+        renderTaskList();
+    } else {
+        renderBoard();
+    }
+    
+    showStatusMessage('Task saved successfully', 'success');
+}
+
+function updateTaskGroupOptions() {
+    const boardId = document.getElementById('taskBoard').value;
+    const taskGroup = document.getElementById('taskGroup');
+    
+    if (!boardId) return;
+    
+    const board = appData.boards[boardId];
+    taskGroup.innerHTML = '<option value="">No Group</option>';
+    
+    board.groups.forEach(group => {
+        const option = document.createElement('option');
+        option.value = group.id;
+        option.textContent = group.name;
+        taskGroup.appendChild(option);
+    });
+}
+
+function updateTaskRowOptions() {
+    const boardId = document.getElementById('taskBoard').value;
+    const groupId = document.getElementById('taskGroup').value;
+    const taskRow = document.getElementById('taskRow');
+    
+    if (!boardId) return;
+    
+    const board = appData.boards[boardId];
+    taskRow.innerHTML = '';
+    
+    board.rows.forEach(row => {
+        // Filter by group if selected
+        if (groupId && row.groupId != groupId) return;
+        if (!groupId && row.groupId) return;
+        
+        const option = document.createElement('option');
+        option.value = row.id;
+        option.textContent = row.name;
+        taskRow.appendChild(option);
+    });
+}
+
+function updateTaskColumnOptions() {
+    const boardId = document.getElementById('taskBoard').value;
+    const taskColumn = document.getElementById('taskColumn');
+    
+    if (!boardId) return;
+    
+    const board = appData.boards[boardId];
+    taskColumn.innerHTML = '';
+    
+    board.columns.forEach(column => {
+        const option = document.createElement('option');
+        option.value = column.key;
+        option.textContent = column.name;
+        taskColumn.appendChild(option);
+    });
+}
+
+function editTaskFromList(taskId, boardId, rowId, columnKey) {
+    openTaskModal(parseInt(taskId), boardId, parseInt(rowId), columnKey);
+}
+
+function deleteTaskFromList(taskId, boardId, rowId, columnKey) {
+    if (!confirm('Are you sure you want to delete this task?')) return;
+    
+    const board = appData.boards[boardId];
+    const row = board.rows.find(r => r.id === parseInt(rowId));
+    
+    if (row && row.cards[columnKey]) {
+        row.cards[columnKey] = row.cards[columnKey].filter(c => c.id !== parseInt(taskId));
+        saveData();
+        renderTaskList();
+        showStatusMessage('Task deleted successfully', 'success');
+    }
 }

@@ -25,6 +25,10 @@
                 </div>
             </div>
             <div class="header-actions">
+                <div class="view-toggle">
+                    <button class="btn btn-secondary active" id="boardViewBtn" onclick="switchToView('board')">📋 Board</button>
+                    <button class="btn btn-secondary" id="taskViewBtn" onclick="switchToView('tasks')">✅ Tasks</button>
+                </div>
                 <button class="btn btn-secondary" onclick="showSettingsModal()">⚙️ Settings</button>
                 <button class="btn btn-secondary" onclick="showExportModal()">📤 Export</button>
                 <button class="btn btn-primary" onclick="addGroup()">+ Add Group</button>
@@ -70,7 +74,7 @@
             </div>
         </div>
 
-        <div class="board-container">
+        <div class="board-container" id="boardContainer">
             <div class="column-headers" id="columnHeaders">
                 <div class="row-label-header">Projects
                     <div class="reorder-hint">💡 Drag to reorder</div>
@@ -80,6 +84,48 @@
             
             <div class="rows-container" id="rowsContainer">
                 <!-- Rows will be dynamically added here -->
+            </div>
+        </div>
+
+        <!-- Task Management Interface -->
+        <div class="task-container" id="taskContainer" style="display: none;">
+            <div class="task-header">
+                <div class="task-controls">
+                    <div class="task-board-selector">
+                        <label for="taskBoardFilter">Board:</label>
+                        <select id="taskBoardFilter" onchange="filterTasksByBoard()">
+                            <option value="all">All Boards</option>
+                            <!-- Board options will be populated dynamically -->
+                        </select>
+                    </div>
+                    <div class="task-filters">
+                        <select id="taskStatusFilter" onchange="filterTasks()">
+                            <option value="all">All Tasks</option>
+                            <option value="pending">Pending</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                        <select id="taskPriorityFilter" onchange="filterTasks()">
+                            <option value="all">All Priorities</option>
+                            <option value="urgent">Urgent</option>
+                            <option value="high">High</option>
+                            <option value="medium">Medium</option>
+                            <option value="low">Low</option>
+                        </select>
+                        <select id="taskSortBy" onchange="sortTasks()">
+                            <option value="priority">Sort by Priority</option>
+                            <option value="dueDate">Sort by Due Date</option>
+                            <option value="title">Sort by Title</option>
+                            <option value="created">Sort by Created</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="openTaskModal()">+ Add Task</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="task-content">
+                <div class="task-list" id="taskList">
+                    <!-- Tasks will be populated here -->
+                </div>
             </div>
         </div>
     </div>
@@ -97,6 +143,19 @@
                 <div class="form-group">
                     <label for="cardDescription">Description:</label>
                     <textarea id="cardDescription" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="cardDueDate">Due Date:</label>
+                    <input type="date" id="cardDueDate">
+                </div>
+                <div class="form-group">
+                    <label for="cardPriority">Priority:</label>
+                    <select id="cardPriority">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                        <option value="urgent">Urgent</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label class="checkbox-label">
@@ -451,6 +510,72 @@
                 <button id="deleteCardFromDetailBtn" class="btn btn-danger">🗑️ Delete Card</button>
                 <button class="btn btn-secondary" onclick="closeCardDetailModal()">Close</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Modal for task management interface -->
+    <div class="modal" id="taskModal">
+        <div class="modal-content">
+            <span class="close" onclick="closeTaskModal()">&times;</span>
+            <h2 id="taskModalTitle">Add Task</h2>
+            <form id="taskForm">
+                <div class="form-group">
+                    <label for="taskTitle">Task Title:</label>
+                    <input type="text" id="taskTitle" required>
+                </div>
+                <div class="form-group">
+                    <label for="taskDescription">Description:</label>
+                    <textarea id="taskDescription" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="taskBoard">Board:</label>
+                    <select id="taskBoard" required>
+                        <!-- Board options will be populated dynamically -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="taskGroup">Group:</label>
+                    <select id="taskGroup" onchange="updateTaskRowOptions()">
+                        <option value="">No Group</option>
+                        <!-- Group options will be populated dynamically -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="taskRow">Row:</label>
+                    <select id="taskRow" required>
+                        <!-- Row options will be populated dynamically -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="taskColumn">Column:</label>
+                    <select id="taskColumn" required>
+                        <!-- Column options will be populated dynamically -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="taskDueDate">Due Date:</label>
+                    <input type="date" id="taskDueDate">
+                </div>
+                <div class="form-group">
+                    <label for="taskPriority">Priority:</label>
+                    <select id="taskPriority">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                        <option value="urgent">Urgent</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="taskCompleted">
+                        Mark as completed
+                    </label>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save Task</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeTaskModal()">Cancel</button>
+                </div>
+            </form>
         </div>
     </div>
     
