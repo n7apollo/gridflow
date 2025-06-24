@@ -91,6 +91,7 @@ function loadData() {
                                 row.cards[columnKey].forEach(card => {
                                     if (card.dueDate === undefined) card.dueDate = null;
                                     if (card.priority === undefined) card.priority = 'medium';
+                                    if (card.subtasks === undefined) card.subtasks = [];
                                 });
                             });
                         }
@@ -2505,20 +2506,31 @@ function getAllTasks() {
     
     boardsToCheck.forEach(boardId => {
         const board = appData.boards[boardId];
-        if (!board) return;
+        if (!board || !board.rows) return;
         
         board.rows.forEach(row => {
+            if (!row || !row.cards) return;
+            
             Object.keys(row.cards).forEach(columnKey => {
+                if (!row.cards[columnKey] || !Array.isArray(row.cards[columnKey])) return;
+                
                 row.cards[columnKey].forEach(card => {
-                    const group = board.groups.find(g => g.id === row.groupId);
-                    const column = board.columns.find(c => c.key === columnKey);
+                    if (!card) return;
+                    
+                    // Ensure card has required properties
+                    if (!card.subtasks) card.subtasks = [];
+                    if (!card.dueDate) card.dueDate = null;
+                    if (!card.priority) card.priority = 'medium';
+                    
+                    const group = board.groups ? board.groups.find(g => g.id === row.groupId) : null;
+                    const column = board.columns ? board.columns.find(c => c.key === columnKey) : null;
                     
                     tasks.push({
                         ...card,
                         boardId: boardId,
-                        boardName: board.name,
+                        boardName: board.name || 'Unnamed Board',
                         rowId: row.id,
-                        rowName: row.name,
+                        rowName: row.name || 'Unnamed Row',
                         columnKey: columnKey,
                         columnName: column ? column.name : columnKey,
                         groupId: row.groupId,
@@ -2599,8 +2611,9 @@ function createTaskElement(task) {
     const dueDate = task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date';
     const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && !task.completed;
     
-    const subtaskProgress = task.subtasks.length > 0 
-        ? `${task.subtasks.filter(st => st.completed).length}/${task.subtasks.length}` 
+    const subtasks = task.subtasks || [];
+    const subtaskProgress = subtasks.length > 0 
+        ? `${subtasks.filter(st => st.completed).length}/${subtasks.length}` 
         : '0';
     
     return `
@@ -2629,14 +2642,14 @@ function createTaskElement(task) {
             
             ${task.description ? `<div class="task-description">${task.description}</div>` : ''}
             
-            ${task.subtasks.length > 0 ? `
+            ${subtasks.length > 0 ? `
                 <div class="task-subtasks-preview">
-                    ${task.subtasks.slice(0, 3).map(subtask => `
+                    ${subtasks.slice(0, 3).map(subtask => `
                         <div class="subtask-preview ${subtask.completed ? 'completed' : ''}">
                             ${subtask.completed ? '✓' : '○'} ${subtask.text}
                         </div>
                     `).join('')}
-                    ${task.subtasks.length > 3 ? `<div class="subtask-more">... and ${task.subtasks.length - 3} more</div>` : ''}
+                    ${subtasks.length > 3 ? `<div class="subtask-more">... and ${subtasks.length - 3} more</div>` : ''}
                 </div>
             ` : ''}
         </div>
