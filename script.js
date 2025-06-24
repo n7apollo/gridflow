@@ -2635,12 +2635,14 @@ function createTaskElement(task) {
             <div class="task-header">
                 <div class="task-title-section">
                     <h3 class="task-title">${title}</h3>
-                    <span class="task-priority priority-${priority}">${priority.charAt(0).toUpperCase() + priority.slice(1)}</span>
-                    ${completed ? '<span class="task-status completed">✓ Completed</span>' : '<span class="task-status pending">⏳ Pending</span>'}
+                    <div class="task-badges">
+                        <span class="task-priority priority-${priority}">${priority.charAt(0).toUpperCase() + priority.slice(1)}</span>
+                        ${completed ? '<span class="task-status completed">✓ Completed</span>' : '<span class="task-status pending">⏳ Pending</span>'}
+                    </div>
                 </div>
                 <div class="task-actions">
-                    <button class="btn btn-small btn-secondary" onclick="editTaskFromList('${task.id}', '${task.boardId}', '${task.rowId}', '${task.columnKey}')">Edit</button>
-                    <button class="btn btn-small btn-danger" onclick="deleteTaskFromList('${task.id}', '${task.boardId}', '${task.rowId}', '${task.columnKey}')">Delete</button>
+                    <button class="btn btn-small btn-secondary" onclick="editTaskFromList('${task.id}', '${task.boardId}', '${task.rowId}', '${task.columnKey}')">✏️</button>
+                    <button class="btn btn-small btn-danger" onclick="deleteTaskFromList('${task.id}', '${task.boardId}', '${task.rowId}', '${task.columnKey}')">🗑️</button>
                 </div>
             </div>
             
@@ -2650,20 +2652,20 @@ function createTaskElement(task) {
                 </div>
                 <div class="task-details">
                     <span class="task-due-date ${isOverdue ? 'overdue' : ''}">${dueDate}</span>
-                    <span class="task-subtasks">📋 ${subtaskProgress} subtasks</span>
+                    ${subtasks.length > 0 ? `<span class="task-subtasks">📋 ${subtaskProgress}</span>` : ''}
                 </div>
             </div>
             
             ${description ? `<div class="task-description">${description}</div>` : ''}
             
-            ${subtasks.length > 0 ? `
+            ${subtasks.length > 2 ? `
                 <div class="task-subtasks-preview">
-                    ${subtasks.slice(0, 3).map(subtask => `
+                    ${subtasks.slice(0, 2).map(subtask => `
                         <div class="subtask-preview ${subtask.completed ? 'completed' : ''}">
                             ${subtask.completed ? '✓' : '○'} ${subtask.text}
                         </div>
                     `).join('')}
-                    ${subtasks.length > 3 ? `<div class="subtask-more">... and ${subtasks.length - 3} more</div>` : ''}
+                    ${subtasks.length > 2 ? `<div class="subtask-more">... +${subtasks.length - 2} more</div>` : ''}
                 </div>
             ` : ''}
         </div>
