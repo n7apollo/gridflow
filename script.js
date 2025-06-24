@@ -2548,11 +2548,17 @@ function renderTaskList() {
     const taskList = document.getElementById('taskList');
     const tasks = getAllTasks();
     
+    console.log('All tasks:', tasks); // Debug log
+    
     // Apply filters
     const filteredTasks = filterTaskList(tasks);
     
+    console.log('Filtered tasks:', filteredTasks); // Debug log
+    
     // Apply sorting
     const sortedTasks = sortTaskList(filteredTasks);
+    
+    console.log('Sorted tasks:', sortedTasks); // Debug log
     
     if (sortedTasks.length === 0) {
         taskList.innerHTML = '<div class="no-tasks">No tasks found matching your criteria.</div>';
@@ -2608,21 +2614,29 @@ function sortTaskList(tasks) {
 }
 
 function createTaskElement(task) {
+    // Ensure task has all required properties
+    if (!task) return '';
+    
     const dueDate = task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date';
     const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && !task.completed;
     
     const subtasks = task.subtasks || [];
+    const priority = task.priority || 'medium';
+    const title = task.title || 'Untitled Task';
+    const completed = task.completed || false;
+    const description = task.description || '';
+    
     const subtaskProgress = subtasks.length > 0 
         ? `${subtasks.filter(st => st.completed).length}/${subtasks.length}` 
         : '0';
     
     return `
-        <div class="task-item ${task.completed ? 'completed' : ''}" data-task-id="${task.id}" data-board-id="${task.boardId}" data-row-id="${task.rowId}" data-column-key="${task.columnKey}">
+        <div class="task-item ${completed ? 'completed' : ''}" data-task-id="${task.id || ''}" data-board-id="${task.boardId || ''}" data-row-id="${task.rowId || ''}" data-column-key="${task.columnKey || ''}">
             <div class="task-header">
                 <div class="task-title-section">
-                    <h3 class="task-title">${task.title}</h3>
-                    <span class="task-priority priority-${task.priority}">${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}</span>
-                    ${task.completed ? '<span class="task-status completed">✓ Completed</span>' : '<span class="task-status pending">⏳ Pending</span>'}
+                    <h3 class="task-title">${title}</h3>
+                    <span class="task-priority priority-${priority}">${priority.charAt(0).toUpperCase() + priority.slice(1)}</span>
+                    ${completed ? '<span class="task-status completed">✓ Completed</span>' : '<span class="task-status pending">⏳ Pending</span>'}
                 </div>
                 <div class="task-actions">
                     <button class="btn btn-small btn-secondary" onclick="editTaskFromList('${task.id}', '${task.boardId}', '${task.rowId}', '${task.columnKey}')">Edit</button>
@@ -2632,7 +2646,7 @@ function createTaskElement(task) {
             
             <div class="task-meta">
                 <div class="task-location">
-                    📍 ${task.boardName} → ${task.groupName} → ${task.rowName} → ${task.columnName}
+                    📍 ${task.boardName || 'Unknown Board'} → ${task.groupName || 'No Group'} → ${task.rowName || 'Unknown Row'} → ${task.columnName || 'Unknown Column'}
                 </div>
                 <div class="task-details">
                     <span class="task-due-date ${isOverdue ? 'overdue' : ''}">${dueDate}</span>
@@ -2640,7 +2654,7 @@ function createTaskElement(task) {
                 </div>
             </div>
             
-            ${task.description ? `<div class="task-description">${task.description}</div>` : ''}
+            ${description ? `<div class="task-description">${description}</div>` : ''}
             
             ${subtasks.length > 0 ? `
                 <div class="task-subtasks-preview">
