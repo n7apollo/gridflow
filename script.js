@@ -2633,12 +2633,16 @@ function createTaskElement(task) {
     return `
         <div class="task-item ${completed ? 'completed' : ''}" data-task-id="${task.id || ''}" data-board-id="${task.boardId || ''}" data-row-id="${task.rowId || ''}" data-column-key="${task.columnKey || ''}">
             <div class="task-header">
+                <div class="task-checkbox">
+                    <input type="checkbox" ${completed ? 'checked' : ''} 
+                           onchange="toggleTaskCompletion('${task.id}', '${task.boardId}', '${task.rowId}', '${task.columnKey}')"
+                           onclick="event.stopPropagation()">
+                </div>
                 <div class="task-title-section">
-                    <h3 class="task-title">${title}</h3>
-                    <div class="task-badges">
-                        <span class="task-priority priority-${priority}">${priority.charAt(0).toUpperCase() + priority.slice(1)}</span>
-                        ${completed ? '<span class="task-status completed">✓ Completed</span>' : '<span class="task-status pending">⏳ Pending</span>'}
-                    </div>
+                    <h3 class="task-title">
+                        ${title}
+                        ${priority !== 'medium' ? `<span class="task-priority-pill priority-${priority}"></span>` : ''}
+                    </h3>
                 </div>
                 <div class="task-actions">
                     <button class="btn btn-small btn-secondary" onclick="editTaskFromList('${task.id}', '${task.boardId}', '${task.rowId}', '${task.columnKey}')">✏️</button>
@@ -2901,5 +2905,24 @@ function deleteTaskFromList(taskId, boardId, rowId, columnKey) {
         saveData();
         renderTaskList();
         showStatusMessage('Task deleted successfully', 'success');
+    }
+}
+
+function toggleTaskCompletion(taskId, boardId, rowId, columnKey) {
+    const board = appData.boards[boardId];
+    const row = board.rows.find(r => r.id === parseInt(rowId));
+    
+    if (row && row.cards[columnKey]) {
+        const card = row.cards[columnKey].find(c => c.id === parseInt(taskId));
+        if (card) {
+            card.completed = !card.completed;
+            saveData();
+            renderTaskList();
+            
+            // Also update the board view if it's visible
+            if (document.getElementById('boardContainer').style.display !== 'none') {
+                renderBoard();
+            }
+        }
     }
 }

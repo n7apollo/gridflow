@@ -1988,17 +1988,27 @@ body {
 
 .task-header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: 12px;
     margin-bottom: 8px;
+}
+
+.task-checkbox {
+    flex-shrink: 0;
+}
+
+.task-checkbox input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #0079bf;
 }
 
 .task-title-section {
     display: flex;
     align-items: center;
-    gap: 12px;
     flex: 1;
-    flex-wrap: wrap;
+    min-width: 0;
 }
 
 .task-title {
@@ -2007,7 +2017,11 @@ body {
     color: #172b4d;
     margin: 0;
     line-height: 1.2;
-    flex-shrink: 0;
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .task-item.completed .task-title {
@@ -2015,21 +2029,33 @@ body {
     color: #5e6c84;
 }
 
-.task-badges {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
+.task-priority-pill {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.task-priority-pill.priority-low {
+    background-color: #61bd4f;
+}
+
+.task-priority-pill.priority-high {
+    background-color: #ff9f1a;
+}
+
+.task-priority-pill.priority-urgent {
+    background-color: #eb5a46;
 }
 
 .task-actions {
     display: flex;
     gap: 6px;
-    margin-left: 12px;
     flex-shrink: 0;
 }
 
-/* Priority and Status Indicators */
+/* Priority Indicators (for filter dropdowns and other uses) */
 .task-priority {
     display: inline-block;
     padding: 4px 8px;
@@ -2058,25 +2084,6 @@ body {
 .task-priority.priority-low {
     background: #61bd4f;
     color: white;
-}
-
-.task-status {
-    display: inline-block;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 600;
-}
-
-.task-status.completed {
-    background: #61bd4f;
-    color: white;
-}
-
-.task-status.pending {
-    background: #f4f5f7;
-    color: #5e6c84;
-    border: 1px solid #ddd;
 }
 
 /* Task Meta Information */
@@ -2248,15 +2255,15 @@ body {
     }
     
     .task-header {
-        flex-direction: column;
+        flex-direction: row;
         gap: 8px;
-        align-items: stretch;
+        align-items: flex-start;
     }
     
     .task-title-section {
         flex-direction: column;
         align-items: flex-start;
-        gap: 8px;
+        gap: 4px;
     }
     
     .task-actions {
