@@ -16,7 +16,9 @@ let appData = {
                 showSubtaskProgress: true
             }
         }
-    }
+    },
+    templates: [],
+    nextTemplateId: 1
 };
 
 // Current board reference for backward compatibility
@@ -81,6 +83,10 @@ function loadData() {
             if (!boardData.settings) boardData.settings = { showCheckboxes: false, showSubtaskProgress: true };
             if (!boardData.nextColumnId) boardData.nextColumnId = 1;
             if (!boardData.nextGroupId) boardData.nextGroupId = 1;
+            
+            // Ensure templates exist
+            if (!appData.templates) appData.templates = [];
+            if (!appData.nextTemplateId) appData.nextTemplateId = 1;
             
             // Migrate existing cards to include new fields
             Object.values(appData.boards).forEach(board => {
@@ -227,7 +233,268 @@ function initializeSampleData() {
                     showSubtaskProgress: true
                 }
             }
-        }
+        },
+        templates: [
+            {
+                id: 1,
+                name: 'Grant Application Workflow',
+                description: 'Complete workflow for preparing and submitting grant applications',
+                category: 'Research',
+                groups: [
+                    { name: 'Preparation', color: '#0079bf' },
+                    { name: 'Writing', color: '#61bd4f' },
+                    { name: 'Review & Submit', color: '#eb5a46' }
+                ],
+                rows: [
+                    {
+                        name: 'Research & Planning',
+                        description: 'Initial research and application planning phase',
+                        groupName: 'Preparation',
+                        cards: {
+                            todo: [
+                                { 
+                                    title: 'Identify funding opportunities', 
+                                    description: 'Research available grants and funding sources',
+                                    priority: 'high',
+                                    subtasks: [
+                                        { text: 'Search grant databases', completed: false },
+                                        { text: 'Review eligibility criteria', completed: false },
+                                        { text: 'Compare funding amounts', completed: false }
+                                    ]
+                                },
+                                {
+                                    title: 'Gather required documents',
+                                    description: 'Collect all necessary supporting documents',
+                                    priority: 'medium',
+                                    subtasks: [
+                                        { text: 'CV/Resume', completed: false },
+                                        { text: 'Budget templates', completed: false },
+                                        { text: 'Letters of support', completed: false }
+                                    ]
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        name: 'Application Writing',
+                        description: 'Write and prepare the grant application',
+                        groupName: 'Writing',
+                        cards: {
+                            todo: [
+                                {
+                                    title: 'Write project narrative',
+                                    description: 'Develop the main project description and objectives',
+                                    priority: 'high',
+                                    subtasks: [
+                                        { text: 'Executive summary', completed: false },
+                                        { text: 'Project goals', completed: false },
+                                        { text: 'Methodology', completed: false },
+                                        { text: 'Expected outcomes', completed: false }
+                                    ]
+                                },
+                                {
+                                    title: 'Prepare budget',
+                                    description: 'Create detailed budget breakdown',
+                                    priority: 'high',
+                                    subtasks: [
+                                        { text: 'Personnel costs', completed: false },
+                                        { text: 'Equipment expenses', completed: false },
+                                        { text: 'Administrative overhead', completed: false }
+                                    ]
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        name: 'Review & Submission',
+                        description: 'Final review and application submission',
+                        groupName: 'Review & Submit',
+                        cards: {
+                            todo: [
+                                {
+                                    title: 'Internal review',
+                                    description: 'Review by colleagues and supervisors',
+                                    priority: 'high',
+                                    subtasks: [
+                                        { text: 'Peer review', completed: false },
+                                        { text: 'Administrative review', completed: false },
+                                        { text: 'Final proofreading', completed: false }
+                                    ]
+                                },
+                                {
+                                    title: 'Submit application',
+                                    description: 'Final submission to funding agency',
+                                    priority: 'urgent',
+                                    subtasks: [
+                                        { text: 'Online submission', completed: false },
+                                        { text: 'Confirmation receipt', completed: false }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
+            {
+                id: 2,
+                name: 'Weekly Team Tasks',
+                description: 'Standard weekly tasks and meetings for team management',
+                category: 'Management',
+                groups: [
+                    { name: 'Planning', color: '#ff9f1a' },
+                    { name: 'Execution', color: '#61bd4f' },
+                    { name: 'Review', color: '#c377e0' }
+                ],
+                rows: [
+                    {
+                        name: 'Weekly Planning',
+                        description: 'Set priorities and goals for the week',
+                        groupName: 'Planning',
+                        cards: {
+                            todo: [
+                                {
+                                    title: 'Team standup meeting',
+                                    description: 'Weekly team sync meeting',
+                                    priority: 'high',
+                                    subtasks: [
+                                        { text: 'Prepare agenda', completed: false },
+                                        { text: 'Review previous week', completed: false },
+                                        { text: 'Set weekly goals', completed: false }
+                                    ]
+                                },
+                                {
+                                    title: 'Priority task assignment',
+                                    description: 'Assign key tasks to team members',
+                                    priority: 'medium',
+                                    subtasks: []
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        name: 'Task Execution',
+                        description: 'Execute planned tasks throughout the week',
+                        groupName: 'Execution',
+                        cards: {
+                            todo: [
+                                {
+                                    title: 'Daily check-ins',
+                                    description: 'Brief daily progress updates',
+                                    priority: 'medium',
+                                    subtasks: [
+                                        { text: 'Monday check-in', completed: false },
+                                        { text: 'Wednesday check-in', completed: false },
+                                        { text: 'Friday check-in', completed: false }
+                                    ]
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        name: 'Weekly Review',
+                        description: 'Review progress and plan for next week',
+                        groupName: 'Review',
+                        cards: {
+                            todo: [
+                                {
+                                    title: 'Week retrospective',
+                                    description: 'Review what worked and what didn\'t',
+                                    priority: 'medium',
+                                    subtasks: [
+                                        { text: 'Collect team feedback', completed: false },
+                                        { text: 'Document lessons learned', completed: false },
+                                        { text: 'Plan improvements', completed: false }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
+            {
+                id: 3,
+                name: 'Project Onboarding',
+                description: 'Standard onboarding process for new projects or team members',
+                category: 'Operations',
+                groups: [
+                    { name: 'Setup', color: '#0079bf' },
+                    { name: 'Training', color: '#61bd4f' },
+                    { name: 'Integration', color: '#eb5a46' }
+                ],
+                rows: [
+                    {
+                        name: 'Initial Setup',
+                        description: 'Set up accounts, access, and basic tools',
+                        groupName: 'Setup',
+                        cards: {
+                            todo: [
+                                {
+                                    title: 'Create accounts',
+                                    description: 'Set up all necessary system accounts',
+                                    priority: 'high',
+                                    subtasks: [
+                                        { text: 'Email account', completed: false },
+                                        { text: 'System access', completed: false },
+                                        { text: 'Tool licenses', completed: false }
+                                    ]
+                                },
+                                {
+                                    title: 'Equipment allocation',
+                                    description: 'Assign necessary equipment and resources',
+                                    priority: 'medium',
+                                    subtasks: []
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        name: 'Training & Documentation',
+                        description: 'Provide training and access to documentation',
+                        groupName: 'Training',
+                        cards: {
+                            todo: [
+                                {
+                                    title: 'Process training',
+                                    description: 'Train on company processes and procedures',
+                                    priority: 'high',
+                                    subtasks: [
+                                        { text: 'Company policies', completed: false },
+                                        { text: 'Project workflows', completed: false },
+                                        { text: 'Communication protocols', completed: false }
+                                    ]
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        name: 'Team Integration',
+                        description: 'Integrate into team and ongoing projects',
+                        groupName: 'Integration',
+                        cards: {
+                            todo: [
+                                {
+                                    title: 'Team introductions',
+                                    description: 'Meet key team members and stakeholders',
+                                    priority: 'medium',
+                                    subtasks: [
+                                        { text: 'Meet direct supervisor', completed: false },
+                                        { text: 'Team member meetings', completed: false },
+                                        { text: 'Key stakeholder intros', completed: false }
+                                    ]
+                                },
+                                {
+                                    title: 'First assignment',
+                                    description: 'Assign initial project or task',
+                                    priority: 'medium',
+                                    subtasks: []
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        ],
+        nextTemplateId: 4
     };
     boardData = appData.boards[appData.currentBoardId];
 }
@@ -1090,6 +1357,9 @@ function updateSettingsUI() {
     if (subtaskCheckbox) {
         subtaskCheckbox.checked = boardData.settings.showSubtaskProgress;
     }
+    
+    // Update templates UI
+    updateTemplatesUI();
 }
 
 function updateModalSettingsUI() {
@@ -2925,4 +3195,355 @@ function toggleTaskCompletion(taskId, boardId, rowId, columnKey) {
             }
         }
     }
+}
+
+// Template Management Functions
+let selectedTemplateId = null;
+
+function showCreateTemplateModal() {
+    document.getElementById('createTemplateModal').style.display = 'block';
+    document.getElementById('createTemplateForm').onsubmit = createTemplate;
+}
+
+function closeCreateTemplateModal() {
+    document.getElementById('createTemplateModal').style.display = 'none';
+    document.getElementById('createTemplateForm').reset();
+}
+
+function createTemplate(event) {
+    event.preventDefault();
+    
+    const name = document.getElementById('templateName').value.trim();
+    const description = document.getElementById('templateDescription').value.trim();
+    const category = document.getElementById('templateCategory').value;
+    const includeCurrentBoard = document.getElementById('includeCurrentBoard').checked;
+    
+    if (!name) return;
+    
+    let templateData = {
+        id: appData.nextTemplateId++,
+        name: name,
+        description: description,
+        category: category,
+        groups: [],
+        rows: []
+    };
+    
+    if (includeCurrentBoard) {
+        // Extract structure from current board
+        templateData.groups = boardData.groups.map(group => ({
+            name: group.name,
+            color: group.color
+        }));
+        
+        templateData.rows = boardData.rows.map(row => {
+            const group = boardData.groups.find(g => g.id === row.groupId);
+            return {
+                name: row.name,
+                description: row.description,
+                groupName: group ? group.name : null,
+                cards: Object.keys(row.cards).reduce((cards, columnKey) => {
+                    cards[columnKey] = row.cards[columnKey].map(card => ({
+                        title: card.title,
+                        description: card.description,
+                        priority: card.priority || 'medium',
+                        subtasks: card.subtasks ? card.subtasks.map(st => ({
+                            text: st.text,
+                            completed: false
+                        })) : []
+                    }));
+                    return cards;
+                }, {})
+            };
+        });
+    }
+    
+    appData.templates.push(templateData);
+    saveData();
+    closeCreateTemplateModal();
+    updateTemplatesUI();
+    showStatusMessage('Template created successfully', 'success');
+}
+
+function showApplyTemplateModal() {
+    document.getElementById('applyTemplateModal').style.display = 'block';
+    populateTemplateCategories();
+    populateTemplateList();
+    
+    // Handle radio button changes
+    const radioButtons = document.querySelectorAll('input[name="applyMode"]');
+    radioButtons.forEach(radio => {
+        radio.addEventListener('change', function() {
+            const newBoardNameGroup = document.getElementById('newBoardNameGroup');
+            if (this.value === 'new') {
+                newBoardNameGroup.style.display = 'block';
+                document.getElementById('newBoardName').required = true;
+            } else {
+                newBoardNameGroup.style.display = 'none';
+                document.getElementById('newBoardName').required = false;
+            }
+        });
+    });
+}
+
+function closeApplyTemplateModal() {
+    document.getElementById('applyTemplateModal').style.display = 'none';
+    selectedTemplateId = null;
+}
+
+function populateTemplateCategories() {
+    const categoriesContainer = document.getElementById('templateCategories');
+    const categories = [...new Set(appData.templates.map(t => t.category))];
+    
+    categoriesContainer.innerHTML = `
+        <button class="btn btn-small btn-secondary active" onclick="filterTemplatesByCategory('all')">All</button>
+        ${categories.map(cat => `
+            <button class="btn btn-small btn-secondary" onclick="filterTemplatesByCategory('${cat}')">${cat}</button>
+        `).join('')}
+    `;
+}
+
+function filterTemplatesByCategory(category) {
+    // Update active button
+    document.querySelectorAll('#templateCategories .btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    
+    populateTemplateList(category);
+}
+
+function populateTemplateList(filterCategory = 'all') {
+    const templateListContainer = document.getElementById('templateApplyList');
+    const templates = filterCategory === 'all' 
+        ? appData.templates 
+        : appData.templates.filter(t => t.category === filterCategory);
+    
+    if (templates.length === 0) {
+        templateListContainer.innerHTML = '<div class="no-templates">No templates found in this category.</div>';
+        return;
+    }
+    
+    templateListContainer.innerHTML = templates.map(template => `
+        <div class="template-item ${selectedTemplateId === template.id ? 'selected' : ''}" 
+             onclick="selectTemplate(${template.id})">
+            <div class="template-header">
+                <h4 class="template-name">${template.name}</h4>
+                <span class="template-category">${template.category}</span>
+            </div>
+            <div class="template-description">${template.description}</div>
+            <div class="template-stats">
+                ${template.groups.length} groups, ${template.rows.length} rows
+            </div>
+        </div>
+    `).join('');
+}
+
+function selectTemplate(templateId) {
+    selectedTemplateId = templateId;
+    populateTemplateList(document.querySelector('#templateCategories .btn.active').textContent === 'All' ? 'all' : document.querySelector('#templateCategories .btn.active').textContent);
+}
+
+function applySelectedTemplate() {
+    if (!selectedTemplateId) {
+        alert('Please select a template to apply.');
+        return;
+    }
+    
+    const template = appData.templates.find(t => t.id === selectedTemplateId);
+    if (!template) {
+        alert('Template not found.');
+        return;
+    }
+    
+    const applyMode = document.querySelector('input[name="applyMode"]:checked').value;
+    
+    if (applyMode === 'new') {
+        const newBoardName = document.getElementById('newBoardName').value.trim();
+        if (!newBoardName) {
+            alert('Please enter a name for the new board.');
+            return;
+        }
+        
+        createBoardFromTemplate(template, newBoardName);
+    } else {
+        addTemplateToCurrentBoard(template);
+    }
+    
+    closeApplyTemplateModal();
+}
+
+function createBoardFromTemplate(template, boardName) {
+    const newBoardId = 'board_' + Date.now();
+    
+    // Create groups with new IDs
+    const groupIdMap = new Map();
+    const newGroups = template.groups.map((group, index) => {
+        const newGroupId = index + 1;
+        groupIdMap.set(group.name, newGroupId);
+        return {
+            id: newGroupId,
+            name: group.name,
+            color: group.color,
+            collapsed: false
+        };
+    });
+    
+    // Create rows with new IDs and group mappings
+    const newRows = template.rows.map((row, index) => {
+        const newRowId = index + 1;
+        const groupId = row.groupName ? groupIdMap.get(row.groupName) : null;
+        
+        // Create cards with new IDs
+        const newCards = {};
+        Object.keys(row.cards).forEach(columnKey => {
+            newCards[columnKey] = row.cards[columnKey].map((card, cardIndex) => ({
+                id: cardIndex + 1,
+                title: card.title,
+                description: card.description,
+                completed: false,
+                priority: card.priority || 'medium',
+                dueDate: null,
+                subtasks: card.subtasks || []
+            }));
+        });
+        
+        return {
+            id: newRowId,
+            name: row.name,
+            description: row.description,
+            groupId: groupId,
+            cards: newCards
+        };
+    });
+    
+    // Use existing columns from current board
+    const newBoard = {
+        name: boardName,
+        groups: newGroups,
+        rows: newRows,
+        columns: [...boardData.columns],
+        nextRowId: newRows.length + 1,
+        nextCardId: Math.max(...newRows.flatMap(row => 
+            Object.values(row.cards).flat().map(card => card.id)
+        )) + 1,
+        nextColumnId: boardData.nextColumnId,
+        nextGroupId: newGroups.length + 1,
+        settings: {
+            showCheckboxes: false,
+            showSubtaskProgress: true
+        }
+    };
+    
+    appData.boards[newBoardId] = newBoard;
+    appData.currentBoardId = newBoardId;
+    boardData = newBoard;
+    
+    saveData();
+    updateBoardTitle();
+    renderBoard();
+    updateSettingsUI();
+    showStatusMessage('Board created from template successfully', 'success');
+}
+
+function addTemplateToCurrentBoard(template) {
+    // Add groups that don't exist
+    const existingGroupNames = boardData.groups.map(g => g.name);
+    template.groups.forEach(templateGroup => {
+        if (!existingGroupNames.includes(templateGroup.name)) {
+            boardData.groups.push({
+                id: boardData.nextGroupId++,
+                name: templateGroup.name,
+                color: templateGroup.color,
+                collapsed: false
+            });
+        }
+    });
+    
+    // Create group ID mapping
+    const groupIdMap = new Map();
+    boardData.groups.forEach(group => {
+        groupIdMap.set(group.name, group.id);
+    });
+    
+    // Add rows
+    template.rows.forEach(templateRow => {
+        const groupId = templateRow.groupName ? groupIdMap.get(templateRow.groupName) : null;
+        
+        // Create cards with new IDs
+        const newCards = {};
+        Object.keys(templateRow.cards).forEach(columnKey => {
+            if (!boardData.columns.some(col => col.key === columnKey)) {
+                // Create column if it doesn't exist
+                boardData.columns.push({
+                    id: boardData.nextColumnId++,
+                    name: columnKey.charAt(0).toUpperCase() + columnKey.slice(1),
+                    key: columnKey
+                });
+            }
+            
+            newCards[columnKey] = templateRow.cards[columnKey].map(card => ({
+                id: boardData.nextCardId++,
+                title: card.title,
+                description: card.description,
+                completed: false,
+                priority: card.priority || 'medium',
+                dueDate: null,
+                subtasks: card.subtasks || []
+            }));
+        });
+        
+        boardData.rows.push({
+            id: boardData.nextRowId++,
+            name: templateRow.name,
+            description: templateRow.description,
+            groupId: groupId,
+            cards: newCards
+        });
+    });
+    
+    saveData();
+    renderBoard();
+    updateSettingsUI();
+    showStatusMessage('Template added to current board successfully', 'success');
+}
+
+function updateTemplatesUI() {
+    const templatesList = document.getElementById('templatesList');
+    
+    if (appData.templates.length === 0) {
+        templatesList.innerHTML = '<div class="no-templates">No templates created yet.</div>';
+        return;
+    }
+    
+    templatesList.innerHTML = appData.templates.map(template => `
+        <div class="template-item">
+            <div class="template-info">
+                <div class="template-name">${template.name}</div>
+                <div class="template-description">${template.description}</div>
+                <div class="template-meta">
+                    <span class="template-category">${template.category}</span>
+                    <span class="template-stats">${template.groups.length} groups, ${template.rows.length} rows</span>
+                </div>
+            </div>
+            <div class="template-actions">
+                <button class="btn btn-small btn-secondary" onclick="applyTemplateQuick(${template.id})">Apply</button>
+                <button class="btn btn-small btn-danger" onclick="deleteTemplate(${template.id})">Delete</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function applyTemplateQuick(templateId) {
+    selectedTemplateId = templateId;
+    showApplyTemplateModal();
+}
+
+function deleteTemplate(templateId) {
+    if (!confirm('Are you sure you want to delete this template?')) return;
+    
+    appData.templates = appData.templates.filter(t => t.id !== templateId);
+    saveData();
+    updateTemplatesUI();
+    showStatusMessage('Template deleted successfully', 'success');
 }

@@ -29,6 +29,7 @@
                     <button class="btn btn-secondary active" id="boardViewBtn" onclick="switchToView('board')">📋 Board</button>
                     <button class="btn btn-secondary" id="taskViewBtn" onclick="switchToView('tasks')">✅ Tasks</button>
                 </div>
+                <button class="btn btn-secondary" onclick="showApplyTemplateModal()">📋 Templates</button>
                 <button class="btn btn-secondary" onclick="showSettingsModal()">⚙️ Settings</button>
                 <button class="btn btn-secondary" onclick="showExportModal()">📤 Export</button>
                 <button class="btn btn-primary" onclick="addGroup()">+ Add Group</button>
@@ -56,6 +57,16 @@
                         <!-- Groups will be listed here -->
                     </div>
                     <button class="btn btn-small btn-primary" onclick="addGroup()">+ Add Group</button>
+                </div>
+                <div class="settings-section">
+                    <h4>Templates</h4>
+                    <div class="templates-list" id="templatesList">
+                        <!-- Templates will be listed here -->
+                    </div>
+                    <div class="template-actions">
+                        <button class="btn btn-small btn-primary" onclick="showCreateTemplateModal()">+ Create Template</button>
+                        <button class="btn btn-small btn-secondary" onclick="showApplyTemplateModal()">Apply Template</button>
+                    </div>
                 </div>
                 <div class="settings-section">
                     <h4>Display Options</h4>
@@ -509,6 +520,83 @@
                 <button id="editCardFromDetailBtn" class="btn btn-primary">✏️ Edit Card</button>
                 <button id="deleteCardFromDetailBtn" class="btn btn-danger">🗑️ Delete Card</button>
                 <button class="btn btn-secondary" onclick="closeCardDetailModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for creating templates -->
+    <div class="modal" id="createTemplateModal">
+        <div class="modal-content">
+            <span class="close" onclick="closeCreateTemplateModal()">&times;</span>
+            <h2>Create Template</h2>
+            <form id="createTemplateForm">
+                <div class="form-group">
+                    <label for="templateName">Template Name:</label>
+                    <input type="text" id="templateName" required>
+                </div>
+                <div class="form-group">
+                    <label for="templateDescription">Description:</label>
+                    <textarea id="templateDescription" rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="templateCategory">Category:</label>
+                    <select id="templateCategory">
+                        <option value="Research">Research</option>
+                        <option value="Management">Management</option>
+                        <option value="Operations">Operations</option>
+                        <option value="Development">Development</option>
+                        <option value="Marketing">Marketing</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="includeCurrentBoard" checked>
+                        Create template from current board structure
+                    </label>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Create Template</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeCreateTemplateModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for applying templates -->
+    <div class="modal" id="applyTemplateModal">
+        <div class="modal-content">
+            <span class="close" onclick="closeApplyTemplateModal()">&times;</span>
+            <h2>Apply Template</h2>
+            <div class="template-selection">
+                <div class="template-categories" id="templateCategories">
+                    <!-- Template categories will be listed here -->
+                </div>
+                <div class="template-list" id="templateApplyList">
+                    <!-- Templates will be listed here -->
+                </div>
+            </div>
+            <div class="apply-options">
+                <div class="form-group">
+                    <label>
+                        <input type="radio" name="applyMode" value="new" checked>
+                        Create as new board
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="radio" name="applyMode" value="current">
+                        Add to current board
+                    </label>
+                </div>
+                <div class="form-group" id="newBoardNameGroup">
+                    <label for="newBoardName">New Board Name:</label>
+                    <input type="text" id="newBoardName" placeholder="Enter board name">
+                </div>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-primary" onclick="applySelectedTemplate()">Apply Template</button>
+                <button class="btn btn-secondary" onclick="closeApplyTemplateModal()">Cancel</button>
             </div>
         </div>
     </div>
