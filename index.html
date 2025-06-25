@@ -29,7 +29,8 @@
                     <button class="btn btn-secondary active" id="boardViewBtn" onclick="switchToView('board')">📋 Board</button>
                     <button class="btn btn-secondary" id="taskViewBtn" onclick="switchToView('tasks')">✅ Tasks</button>
                 </div>
-                <button class="btn btn-secondary" onclick="showApplyTemplateModal()">📋 Templates</button>
+                <button class="btn btn-secondary" onclick="showApplyTemplateModal()">📋 Use Template</button>
+                <button class="btn btn-secondary" onclick="showSaveAsTemplateModal()">💾 Save as Template</button>
                 <button class="btn btn-secondary" onclick="showSettingsModal()">⚙️ Settings</button>
                 <button class="btn btn-secondary" onclick="showExportModal()">📤 Export</button>
                 <button class="btn btn-primary" onclick="addGroup()">+ Add Group</button>
@@ -524,7 +525,47 @@
         </div>
     </div>
 
-    <!-- Modal for creating templates -->
+    <!-- Modal for saving current board as template -->
+    <div class="modal" id="saveAsTemplateModal">
+        <div class="modal-content">
+            <span class="close" onclick="closeSaveAsTemplateModal()">&times;</span>
+            <h2>Save Current Board as Template</h2>
+            <p class="template-explanation">Save your current board structure as a reusable template. This includes all groups, rows, and task layouts (but not the actual data).</p>
+            <form id="saveAsTemplateForm">
+                <div class="form-group">
+                    <label for="saveTemplateName">Template Name:</label>
+                    <input type="text" id="saveTemplateName" required placeholder="e.g., 'Project Launch Workflow'">
+                </div>
+                <div class="form-group">
+                    <label for="saveTemplateDescription">Description:</label>
+                    <textarea id="saveTemplateDescription" rows="2" placeholder="Describe what this template is used for..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="saveTemplateCategory">Category:</label>
+                    <select id="saveTemplateCategory">
+                        <option value="Management">Management</option>
+                        <option value="Operations">Operations</option>
+                        <option value="Development">Development</option>
+                        <option value="Research">Research</option>
+                        <option value="Marketing">Marketing</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="template-preview">
+                    <h4>What will be saved:</h4>
+                    <div id="templatePreview">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save as Template</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeSaveAsTemplateModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for creating templates (legacy) -->
     <div class="modal" id="createTemplateModal">
         <div class="modal-content">
             <span class="close" onclick="closeCreateTemplateModal()">&times;</span>

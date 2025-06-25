@@ -2532,6 +2532,86 @@ body {
     }
 }
 
+/* Save as Template Modal Styles */
+.template-explanation {
+    background: #f0f8ff;
+    border: 1px solid #b3d9ff;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 20px;
+    color: #0066cc;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.template-preview {
+    background: #f4f5f7;
+    border: 1px solid #e4e6ea;
+    border-radius: 6px;
+    padding: 16px;
+    margin: 16px 0;
+}
+
+.template-preview h4 {
+    margin: 0 0 12px 0;
+    color: #172b4d;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.preview-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.preview-item {
+    font-size: 13px;
+    color: #5e6c84;
+    padding: 6px 0;
+    border-bottom: 1px solid #e4e6ea;
+}
+
+.preview-item:last-child {
+    border-bottom: none;
+}
+
+.preview-item strong {
+    color: #172b4d;
+    font-weight: 600;
+}
+
+/* Improved Template Modal */
+#saveAsTemplateModal .modal-content {
+    max-width: 500px;
+}
+
+#saveAsTemplateModal .form-group label {
+    font-weight: 600;
+    color: #172b4d;
+    margin-bottom: 6px;
+    display: block;
+}
+
+#saveAsTemplateModal input,
+#saveAsTemplateModal textarea,
+#saveAsTemplateModal select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+}
+
+#saveAsTemplateModal input:focus,
+#saveAsTemplateModal textarea:focus,
+#saveAsTemplateModal select:focus {
+    outline: none;
+    border-color: #0079bf;
+    box-shadow: 0 0 0 2px rgba(0, 121, 191, 0.2);
+}
+
 /* Card Due Date and Priority Styles */
 .card-due-date {
     font-size: 12px;

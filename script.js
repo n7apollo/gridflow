@@ -89,8 +89,11 @@ function loadData() {
             if (!appData.nextTemplateId) appData.nextTemplateId = 1;
             
             // Populate pre-built templates if none exist
+            console.log('Templates check:', appData.templates ? appData.templates.length : 'undefined');
             if (appData.templates.length === 0) {
+                console.log('Populating default templates...');
                 populateDefaultTemplates();
+                console.log('Templates after population:', appData.templates.length);
             }
             
             // Migrate existing cards to include new fields
@@ -3205,6 +3208,88 @@ function toggleTaskCompletion(taskId, boardId, rowId, columnKey) {
 // Template Management Functions
 let selectedTemplateId = null;
 
+function showSaveAsTemplateModal() {
+    document.getElementById('saveAsTemplateModal').style.display = 'block';
+    updateTemplatePreview();
+    document.getElementById('saveAsTemplateForm').onsubmit = saveAsTemplate;
+}
+
+function closeSaveAsTemplateModal() {
+    document.getElementById('saveAsTemplateModal').style.display = 'none';
+    document.getElementById('saveAsTemplateForm').reset();
+}
+
+function updateTemplatePreview() {
+    const preview = document.getElementById('templatePreview');
+    const groupCount = boardData.groups.length;
+    const rowCount = boardData.rows.length;
+    const cardCount = boardData.rows.reduce((total, row) => {
+        return total + Object.values(row.cards).reduce((rowTotal, cards) => rowTotal + cards.length, 0);
+    }, 0);
+    
+    preview.innerHTML = `
+        <div class="preview-stats">
+            <div class="preview-item">
+                <strong>${groupCount}</strong> groups: ${boardData.groups.map(g => g.name).join(', ') || 'None'}
+            </div>
+            <div class="preview-item">
+                <strong>${rowCount}</strong> rows: ${boardData.rows.map(r => r.name).slice(0, 3).join(', ')}${rowCount > 3 ? '...' : ''}
+            </div>
+            <div class="preview-item">
+                <strong>${cardCount}</strong> tasks will be included as template structure
+            </div>
+        </div>
+    `;
+}
+
+function saveAsTemplate(event) {
+    event.preventDefault();
+    
+    const name = document.getElementById('saveTemplateName').value.trim();
+    const description = document.getElementById('saveTemplateDescription').value.trim();
+    const category = document.getElementById('saveTemplateCategory').value;
+    
+    if (!name) return;
+    
+    // Create template from current board
+    let templateData = {
+        id: appData.nextTemplateId++,
+        name: name,
+        description: description,
+        category: category,
+        groups: boardData.groups.map(group => ({
+            name: group.name,
+            color: group.color
+        })),
+        rows: boardData.rows.map(row => {
+            const group = boardData.groups.find(g => g.id === row.groupId);
+            return {
+                name: row.name,
+                description: row.description,
+                groupName: group ? group.name : null,
+                cards: Object.keys(row.cards).reduce((cards, columnKey) => {
+                    cards[columnKey] = row.cards[columnKey].map(card => ({
+                        title: card.title,
+                        description: card.description,
+                        priority: card.priority || 'medium',
+                        subtasks: card.subtasks ? card.subtasks.map(st => ({
+                            text: st.text,
+                            completed: false
+                        })) : []
+                    }));
+                    return cards;
+                }, {})
+            };
+        })
+    };
+    
+    appData.templates.push(templateData);
+    saveData();
+    closeSaveAsTemplateModal();
+    updateTemplatesUI();
+    showStatusMessage(`Template "${name}" saved successfully!`, 'success');
+}
+
 function showCreateTemplateModal() {
     document.getElementById('createTemplateModal').style.display = 'block';
     document.getElementById('createTemplateForm').onsubmit = createTemplate;
@@ -3271,6 +3356,8 @@ function createTemplate(event) {
 }
 
 function showApplyTemplateModal() {
+    console.log('Opening apply template modal...');
+    console.log('Available templates:', appData.templates);
     document.getElementById('applyTemplateModal').style.display = 'block';
     populateTemplateCategories();
     populateTemplateList();
