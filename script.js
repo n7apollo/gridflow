@@ -3729,20 +3729,20 @@ function createTaskElement(task) {
                 </div>
                 <div class="task-details">
                     <span class="task-due-date ${isOverdue ? 'overdue' : ''}">${dueDate}</span>
-                    ${subtasks.length > 0 ? `<span class="task-subtasks">📋 ${subtaskProgress}</span>` : ''}
+                    ${tasks.length > 0 ? `<span class="task-subtasks">📋 ${subtaskProgress}</span>` : ''}
                 </div>
             </div>
             
             ${description ? `<div class="task-description">${description}</div>` : ''}
             
-            ${subtasks.length > 2 ? `
+            ${tasks.length > 2 ? `
                 <div class="task-subtasks-preview">
-                    ${subtasks.slice(0, 2).map(subtask => `
+                    ${tasks.slice(0, 2).map(subtask => `
                         <div class="subtask-preview ${subtask.completed ? 'completed' : ''}">
                             ${subtask.completed ? '✓' : '○'} ${subtask.text}
                         </div>
                     `).join('')}
-                    ${subtasks.length > 2 ? `<div class="subtask-more">... +${subtasks.length - 2} more</div>` : ''}
+                    ${tasks.length > 2 ? `<div class="subtask-more">... +${tasks.length - 2} more</div>` : ''}
                 </div>
             ` : ''}
         </div>
