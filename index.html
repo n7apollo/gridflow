@@ -17,24 +17,139 @@
         <header class="app-header">
             <div class="header-left">
                 <h1>GridFlow</h1>
-                <div class="board-selector">
-                    <select id="boardSelect" onchange="switchBoard(this.value)">
-                        <!-- Boards will be populated here -->
-                    </select>
-                    <button class="btn btn-small btn-secondary" onclick="showBoardModal()" title="Manage boards">⚙️</button>
+                <div class="board-navigation">
+                    <div class="board-selector-enhanced">
+                        <button class="current-board-btn" onclick="toggleBoardDropdown()" id="currentBoardBtn">
+                            <span class="board-name" id="currentBoardName">My Board</span>
+                            <span class="board-chevron">▼</span>
+                        </button>
+                        <div class="board-dropdown" id="boardDropdown">
+                            <div class="board-search">
+                                <input type="text" placeholder="Search boards..." id="boardSearchInput" oninput="filterBoards()">
+                            </div>
+                            <div class="recent-boards">
+                                <div class="board-section-header">Recent Boards</div>
+                                <div id="recentBoardsList"></div>
+                            </div>
+                            <div class="all-boards">
+                                <div class="board-section-header">All Boards</div>
+                                <div id="allBoardsList"></div>
+                            </div>
+                            <div class="board-actions">
+                                <button class="board-action-btn" onclick="createNewBoard()">
+                                    <span class="action-icon">+</span>
+                                    <span class="action-text">New Board</span>
+                                </button>
+                                <button class="board-action-btn" onclick="showBoardModal()">
+                                    <span class="action-icon">⚙️</span>
+                                    <span class="action-text">Manage</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
+            
             <div class="header-actions">
-                <div class="view-toggle">
-                    <button class="btn btn-secondary active" id="boardViewBtn" onclick="switchToView('board')">📋 Board</button>
-                    <button class="btn btn-secondary" id="taskViewBtn" onclick="switchToView('tasks')">✅ Tasks</button>
+                <!-- Primary Actions (always visible) -->
+                <div class="action-group primary-actions">
+                    <div class="view-toggle">
+                        <button class="btn btn-toggle active" id="boardViewBtn" onclick="switchToView('board')" title="Board View">📋</button>
+                        <button class="btn btn-toggle" id="taskViewBtn" onclick="switchToView('tasks')" title="Task View">✅</button>
+                    </div>
+                    <button class="btn btn-primary" onclick="addRow()">+ Add Row</button>
                 </div>
-                <button class="btn btn-secondary" onclick="showApplyTemplateModal()">📋 Use Template</button>
-                <button class="btn btn-secondary" onclick="showSaveAsTemplateModal()">💾 Save as Template</button>
-                <button class="btn btn-secondary" onclick="showSettingsModal()">⚙️ Settings</button>
-                <button class="btn btn-secondary" onclick="showExportModal()">📤 Export</button>
-                <button class="btn btn-primary" onclick="addGroup()">+ Add Group</button>
-                <button class="btn btn-primary" onclick="addRow()">+ Add Row</button>
+                
+                <!-- Secondary Actions (desktop visible, mobile collapsed) -->
+                <div class="action-group secondary-actions" id="secondaryActions">
+                    <div class="templates-menu">
+                        <button class="btn btn-secondary dropdown-trigger" onclick="toggleTemplatesMenu()" id="templatesBtn">
+                            <span class="btn-icon">📋</span>
+                            <span class="btn-text">Templates</span>
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div class="dropdown-menu" id="templatesDropdown">
+                            <button class="dropdown-item" onclick="showApplyTemplateModal()">
+                                <span class="item-icon">📋</span>
+                                <span class="item-text">Use Template</span>
+                            </button>
+                            <button class="dropdown-item" onclick="showSaveAsTemplateModal()">
+                                <span class="item-icon">💾</span>
+                                <span class="item-text">Save as Template</span>
+                            </button>
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary" onclick="addGroup()">+ Group</button>
+                </div>
+                
+                <!-- Tertiary Actions (settings, export) -->
+                <div class="action-group tertiary-actions" id="tertiaryActions">
+                    <div class="more-menu">
+                        <button class="btn btn-secondary dropdown-trigger" onclick="toggleMoreMenu()" id="moreBtn">
+                            <span class="btn-icon">⋯</span>
+                            <span class="btn-text desktop-only">More</span>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-right" id="moreDropdown">
+                            <button class="dropdown-item" onclick="showSettingsModal()">
+                                <span class="item-icon">⚙️</span>
+                                <span class="item-text">Settings</span>
+                            </button>
+                            <button class="dropdown-item" onclick="showExportModal()">
+                                <span class="item-icon">📤</span>
+                                <span class="item-text">Export</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Mobile Menu Toggle -->
+                <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" id="mobileMenuBtn">
+                    <span class="hamburger"></span>
+                </button>
+            </div>
+            
+            <!-- Mobile Menu Overlay -->
+            <div class="mobile-menu-overlay" id="mobileMenuOverlay" onclick="closeMobileMenu()"></div>
+            <div class="mobile-menu" id="mobileMenu">
+                <div class="mobile-menu-header">
+                    <span class="mobile-menu-title">Actions</span>
+                    <button class="mobile-menu-close" onclick="closeMobileMenu()">×</button>
+                </div>
+                <div class="mobile-menu-content">
+                    <div class="mobile-menu-section">
+                        <div class="mobile-menu-section-title">Add Content</div>
+                        <button class="mobile-menu-item" onclick="addRow(); closeMobileMenu();">
+                            <span class="mobile-item-icon">📄</span>
+                            <span class="mobile-item-text">Add Row</span>
+                        </button>
+                        <button class="mobile-menu-item" onclick="addGroup(); closeMobileMenu();">
+                            <span class="mobile-item-icon">📁</span>
+                            <span class="mobile-item-text">Add Group</span>
+                        </button>
+                    </div>
+                    <div class="mobile-menu-section">
+                        <div class="mobile-menu-section-title">Templates</div>
+                        <button class="mobile-menu-item" onclick="showApplyTemplateModal(); closeMobileMenu();">
+                            <span class="mobile-item-icon">📋</span>
+                            <span class="mobile-item-text">Use Template</span>
+                        </button>
+                        <button class="mobile-menu-item" onclick="showSaveAsTemplateModal(); closeMobileMenu();">
+                            <span class="mobile-item-icon">💾</span>
+                            <span class="mobile-item-text">Save as Template</span>
+                        </button>
+                    </div>
+                    <div class="mobile-menu-section">
+                        <div class="mobile-menu-section-title">Settings</div>
+                        <button class="mobile-menu-item" onclick="showSettingsModal(); closeMobileMenu();">
+                            <span class="mobile-item-icon">⚙️</span>
+                            <span class="mobile-item-text">Board Settings</span>
+                        </button>
+                        <button class="mobile-menu-item" onclick="showExportModal(); closeMobileMenu();">
+                            <span class="mobile-item-icon">📤</span>
+                            <span class="mobile-item-text">Export & Sync</span>
+                        </button>
+                    </div>
+                </div>
             </div>
         </header>
         

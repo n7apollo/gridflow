@@ -3905,3 +3905,281 @@ function populateDefaultTemplates() {
     appData.templates = defaultTemplates;
     appData.nextTemplateId = 4;
 }
+
+// ============================================
+// ENHANCED NAVIGATION SYSTEM
+// ============================================
+
+// Enhanced Board Selector Functions
+function toggleBoardDropdown() {
+    const dropdown = document.getElementById('boardDropdown');
+    const button = document.getElementById('currentBoardBtn');
+    
+    if (dropdown.classList.contains('active')) {
+        closeBoardDropdown();
+    } else {
+        // Close other open dropdowns
+        closeAllDropdowns();
+        
+        // Open board dropdown
+        dropdown.classList.add('active');
+        button.classList.add('active');
+        
+        // Populate boards
+        populateBoardDropdown();
+        
+        // Focus search input
+        const searchInput = document.getElementById('boardSearchInput');
+        setTimeout(() => searchInput.focus(), 100);
+    }
+}
+
+function closeBoardDropdown() {
+    const dropdown = document.getElementById('boardDropdown');
+    const button = document.getElementById('currentBoardBtn');
+    
+    dropdown.classList.remove('active');
+    button.classList.remove('active');
+    
+    // Clear search
+    const searchInput = document.getElementById('boardSearchInput');
+    searchInput.value = '';
+}
+
+function populateBoardDropdown() {
+    const recentBoardsList = document.getElementById('recentBoardsList');
+    const allBoardsList = document.getElementById('allBoardsList');
+    
+    // Clear existing boards
+    recentBoardsList.innerHTML = '';
+    allBoardsList.innerHTML = '';
+    
+    // Get recent boards (last 3 accessed)
+    const recentBoards = getRecentBoards();
+    const allBoards = Object.keys(appData.boards);
+    
+    // Populate recent boards
+    recentBoards.forEach(boardId => {
+        if (appData.boards[boardId]) {
+            const boardItem = createBoardItem(boardId, appData.boards[boardId]);
+            recentBoardsList.appendChild(boardItem);
+        }
+    });
+    
+    // Populate all boards
+    allBoards.forEach(boardId => {
+        const boardItem = createBoardItem(boardId, appData.boards[boardId]);
+        allBoardsList.appendChild(boardItem);
+    });
+}
+
+function createBoardItem(boardId, board) {
+    const item = document.createElement('button');
+    item.className = 'board-item';
+    item.textContent = board.name;
+    
+    if (boardId === appData.currentBoardId) {
+        item.classList.add('current');
+    }
+    
+    item.onclick = () => {
+        switchBoard(boardId);
+        closeBoardDropdown();
+    };
+    
+    return item;
+}
+
+function getRecentBoards() {
+    // Get recent boards from localStorage or return current + last 2
+    const recent = localStorage.getItem('gridflow_recent_boards');
+    if (recent) {
+        try {
+            return JSON.parse(recent).slice(0, 3);
+        } catch (e) {
+            return [appData.currentBoardId];
+        }
+    }
+    return [appData.currentBoardId];
+}
+
+function addToRecentBoards(boardId) {
+    let recent = getRecentBoards();
+    recent = recent.filter(id => id !== boardId); // Remove if already exists
+    recent.unshift(boardId); // Add to beginning
+    recent = recent.slice(0, 5); // Keep only last 5
+    
+    localStorage.setItem('gridflow_recent_boards', JSON.stringify(recent));
+}
+
+function filterBoards() {
+    const searchInput = document.getElementById('boardSearchInput');
+    const query = searchInput.value.toLowerCase();
+    
+    const allItems = document.querySelectorAll('.board-item');
+    
+    allItems.forEach(item => {
+        const boardName = item.textContent.toLowerCase();
+        if (boardName.includes(query)) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+// Dropdown Menu Functions
+function toggleTemplatesMenu() {
+    const dropdown = document.getElementById('templatesDropdown');
+    const button = document.getElementById('templatesBtn');
+    
+    if (dropdown.classList.contains('active')) {
+        closeTemplatesMenu();
+    } else {
+        closeAllDropdowns();
+        dropdown.classList.add('active');
+        button.classList.add('active');
+    }
+}
+
+function closeTemplatesMenu() {
+    const dropdown = document.getElementById('templatesDropdown');
+    const button = document.getElementById('templatesBtn');
+    
+    dropdown.classList.remove('active');
+    button.classList.remove('active');
+}
+
+function toggleMoreMenu() {
+    const dropdown = document.getElementById('moreDropdown');
+    const button = document.getElementById('moreBtn');
+    
+    if (dropdown.classList.contains('active')) {
+        closeMoreMenu();
+    } else {
+        closeAllDropdowns();
+        dropdown.classList.add('active');
+        button.classList.add('active');
+    }
+}
+
+function closeMoreMenu() {
+    const dropdown = document.getElementById('moreDropdown');
+    const button = document.getElementById('moreBtn');
+    
+    dropdown.classList.remove('active');
+    button.classList.remove('active');
+}
+
+function closeAllDropdowns() {
+    closeBoardDropdown();
+    closeTemplatesMenu();
+    closeMoreMenu();
+}
+
+// Mobile Menu Functions
+function toggleMobileMenu() {
+    const overlay = document.getElementById('mobileMenuOverlay');
+    const menu = document.getElementById('mobileMenu');
+    const button = document.getElementById('mobileMenuBtn');
+    
+    if (menu.classList.contains('active')) {
+        closeMobileMenu();
+    } else {
+        overlay.classList.add('active');
+        menu.classList.add('active');
+        button.classList.add('active');
+        
+        // Prevent body scroll
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+function closeMobileMenu() {
+    const overlay = document.getElementById('mobileMenuOverlay');
+    const menu = document.getElementById('mobileMenu');
+    const button = document.getElementById('mobileMenuBtn');
+    
+    overlay.classList.remove('active');
+    menu.classList.remove('active');
+    button.classList.remove('active');
+    
+    // Restore body scroll
+    document.body.style.overflow = '';
+}
+
+// Enhanced Board Management
+function updateCurrentBoardDisplay() {
+    const boardNameElement = document.getElementById('currentBoardName');
+    if (boardNameElement && appData.boards[appData.currentBoardId]) {
+        boardNameElement.textContent = appData.boards[appData.currentBoardId].name;
+    }
+}
+
+// Override existing switchBoard function to work with new UI
+function switchBoard(boardId) {
+    if (appData.boards[boardId]) {
+        appData.currentBoardId = boardId;
+        boardData = appData.boards[boardId];
+        
+        // Add to recent boards
+        addToRecentBoards(boardId);
+        
+        // Update UI
+        updateCurrentBoardDisplay();
+        updateBoardSelector();
+        renderBoard();
+        saveData();
+        
+        showStatusMessage(`Switched to "${boardData.name}"`, 'success');
+    }
+}
+
+// Initialize enhanced navigation
+function initializeEnhancedNavigation() {
+    // Update current board display
+    updateCurrentBoardDisplay();
+    
+    // Add click outside listeners to close dropdowns
+    document.addEventListener('click', function(event) {
+        const boardSelector = document.querySelector('.board-selector-enhanced');
+        const templatesMenu = document.querySelector('.templates-menu');
+        const moreMenu = document.querySelector('.more-menu');
+        
+        // Close board dropdown if clicked outside
+        if (!boardSelector.contains(event.target)) {
+            closeBoardDropdown();
+        }
+        
+        // Close templates dropdown if clicked outside
+        if (!templatesMenu.contains(event.target)) {
+            closeTemplatesMenu();
+        }
+        
+        // Close more dropdown if clicked outside
+        if (!moreMenu.contains(event.target)) {
+            closeMoreMenu();
+        }
+    });
+    
+    // Add keyboard navigation
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeAllDropdowns();
+            closeMobileMenu();
+        }
+    });
+    
+    // Ensure mobile menu closes on window resize
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 768) {
+            closeMobileMenu();
+        }
+    });
+}
+
+// Call initialization when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    // Add a small delay to ensure other initialization is complete
+    setTimeout(initializeEnhancedNavigation, 100);
+});
