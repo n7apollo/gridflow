@@ -88,6 +88,11 @@ function loadData() {
             if (!appData.templates) appData.templates = [];
             if (!appData.nextTemplateId) appData.nextTemplateId = 1;
             
+            // Populate pre-built templates if none exist
+            if (appData.templates.length === 0) {
+                populateDefaultTemplates();
+            }
+            
             // Migrate existing cards to include new fields
             Object.values(appData.boards).forEach(board => {
                 if (board.rows) {
@@ -3546,4 +3551,270 @@ function deleteTemplate(templateId) {
     saveData();
     updateTemplatesUI();
     showStatusMessage('Template deleted successfully', 'success');
+}
+
+function populateDefaultTemplates() {
+    const defaultTemplates = [
+        {
+            id: 1,
+            name: 'Grant Application Workflow',
+            description: 'Complete workflow for preparing and submitting grant applications',
+            category: 'Research',
+            groups: [
+                { name: 'Preparation', color: '#0079bf' },
+                { name: 'Writing', color: '#61bd4f' },
+                { name: 'Review & Submit', color: '#eb5a46' }
+            ],
+            rows: [
+                {
+                    name: 'Research & Planning',
+                    description: 'Initial research and application planning phase',
+                    groupName: 'Preparation',
+                    cards: {
+                        todo: [
+                            { 
+                                title: 'Identify funding opportunities', 
+                                description: 'Research available grants and funding sources',
+                                priority: 'high',
+                                subtasks: [
+                                    { text: 'Search grant databases', completed: false },
+                                    { text: 'Review eligibility criteria', completed: false },
+                                    { text: 'Compare funding amounts', completed: false }
+                                ]
+                            },
+                            {
+                                title: 'Gather required documents',
+                                description: 'Collect all necessary supporting documents',
+                                priority: 'medium',
+                                subtasks: [
+                                    { text: 'CV/Resume', completed: false },
+                                    { text: 'Budget templates', completed: false },
+                                    { text: 'Letters of support', completed: false }
+                                ]
+                            }
+                        ]
+                    }
+                },
+                {
+                    name: 'Application Writing',
+                    description: 'Write and prepare the grant application',
+                    groupName: 'Writing',
+                    cards: {
+                        todo: [
+                            {
+                                title: 'Write project narrative',
+                                description: 'Develop the main project description and objectives',
+                                priority: 'high',
+                                subtasks: [
+                                    { text: 'Executive summary', completed: false },
+                                    { text: 'Project goals', completed: false },
+                                    { text: 'Methodology', completed: false },
+                                    { text: 'Expected outcomes', completed: false }
+                                ]
+                            },
+                            {
+                                title: 'Prepare budget',
+                                description: 'Create detailed budget breakdown',
+                                priority: 'high',
+                                subtasks: [
+                                    { text: 'Personnel costs', completed: false },
+                                    { text: 'Equipment expenses', completed: false },
+                                    { text: 'Administrative overhead', completed: false }
+                                ]
+                            }
+                        ]
+                    }
+                },
+                {
+                    name: 'Review & Submission',
+                    description: 'Final review and application submission',
+                    groupName: 'Review & Submit',
+                    cards: {
+                        todo: [
+                            {
+                                title: 'Internal review',
+                                description: 'Review by colleagues and supervisors',
+                                priority: 'high',
+                                subtasks: [
+                                    { text: 'Peer review', completed: false },
+                                    { text: 'Administrative review', completed: false },
+                                    { text: 'Final proofreading', completed: false }
+                                ]
+                            },
+                            {
+                                title: 'Submit application',
+                                description: 'Final submission to funding agency',
+                                priority: 'urgent',
+                                subtasks: [
+                                    { text: 'Online submission', completed: false },
+                                    { text: 'Confirmation receipt', completed: false }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            id: 2,
+            name: 'Weekly Team Tasks',
+            description: 'Standard weekly tasks and meetings for team management',
+            category: 'Management',
+            groups: [
+                { name: 'Planning', color: '#ff9f1a' },
+                { name: 'Execution', color: '#61bd4f' },
+                { name: 'Review', color: '#c377e0' }
+            ],
+            rows: [
+                {
+                    name: 'Weekly Planning',
+                    description: 'Set priorities and goals for the week',
+                    groupName: 'Planning',
+                    cards: {
+                        todo: [
+                            {
+                                title: 'Team standup meeting',
+                                description: 'Weekly team sync meeting',
+                                priority: 'high',
+                                subtasks: [
+                                    { text: 'Prepare agenda', completed: false },
+                                    { text: 'Review previous week', completed: false },
+                                    { text: 'Set weekly goals', completed: false }
+                                ]
+                            },
+                            {
+                                title: 'Priority task assignment',
+                                description: 'Assign key tasks to team members',
+                                priority: 'medium',
+                                subtasks: []
+                            }
+                        ]
+                    }
+                },
+                {
+                    name: 'Task Execution',
+                    description: 'Execute planned tasks throughout the week',
+                    groupName: 'Execution',
+                    cards: {
+                        todo: [
+                            {
+                                title: 'Daily check-ins',
+                                description: 'Brief daily progress updates',
+                                priority: 'medium',
+                                subtasks: [
+                                    { text: 'Monday check-in', completed: false },
+                                    { text: 'Wednesday check-in', completed: false },
+                                    { text: 'Friday check-in', completed: false }
+                                ]
+                            }
+                        ]
+                    }
+                },
+                {
+                    name: 'Weekly Review',
+                    description: 'Review progress and plan for next week',
+                    groupName: 'Review',
+                    cards: {
+                        todo: [
+                            {
+                                title: 'Week retrospective',
+                                description: 'Review what worked and what didn\'t',
+                                priority: 'medium',
+                                subtasks: [
+                                    { text: 'Collect team feedback', completed: false },
+                                    { text: 'Document lessons learned', completed: false },
+                                    { text: 'Plan improvements', completed: false }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            id: 3,
+            name: 'Project Onboarding',
+            description: 'Standard onboarding process for new projects or team members',
+            category: 'Operations',
+            groups: [
+                { name: 'Setup', color: '#0079bf' },
+                { name: 'Training', color: '#61bd4f' },
+                { name: 'Integration', color: '#eb5a46' }
+            ],
+            rows: [
+                {
+                    name: 'Initial Setup',
+                    description: 'Set up accounts, access, and basic tools',
+                    groupName: 'Setup',
+                    cards: {
+                        todo: [
+                            {
+                                title: 'Create accounts',
+                                description: 'Set up all necessary system accounts',
+                                priority: 'high',
+                                subtasks: [
+                                    { text: 'Email account', completed: false },
+                                    { text: 'System access', completed: false },
+                                    { text: 'Tool licenses', completed: false }
+                                ]
+                            },
+                            {
+                                title: 'Equipment allocation',
+                                description: 'Assign necessary equipment and resources',
+                                priority: 'medium',
+                                subtasks: []
+                            }
+                        ]
+                    }
+                },
+                {
+                    name: 'Training & Documentation',
+                    description: 'Provide training and access to documentation',
+                    groupName: 'Training',
+                    cards: {
+                        todo: [
+                            {
+                                title: 'Process training',
+                                description: 'Train on company processes and procedures',
+                                priority: 'high',
+                                subtasks: [
+                                    { text: 'Company policies', completed: false },
+                                    { text: 'Project workflows', completed: false },
+                                    { text: 'Communication protocols', completed: false }
+                                ]
+                            }
+                        ]
+                    }
+                },
+                {
+                    name: 'Team Integration',
+                    description: 'Integrate into team and ongoing projects',
+                    groupName: 'Integration',
+                    cards: {
+                        todo: [
+                            {
+                                title: 'Team introductions',
+                                description: 'Meet key team members and stakeholders',
+                                priority: 'medium',
+                                subtasks: [
+                                    { text: 'Meet direct supervisor', completed: false },
+                                    { text: 'Team member meetings', completed: false },
+                                    { text: 'Key stakeholder intros', completed: false }
+                                ]
+                            },
+                            {
+                                title: 'First assignment',
+                                description: 'Assign initial project or task',
+                                priority: 'medium',
+                                subtasks: []
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    ];
+    
+    appData.templates = defaultTemplates;
+    appData.nextTemplateId = 4;
 }
