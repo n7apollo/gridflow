@@ -21,7 +21,29 @@ let appData = {
     nextTemplateId: 1,
     weeklyPlans: {},
     nextWeeklyItemId: 1,
-    version: '3.0' // Current version for migration tracking
+    
+    // Phase 1: Unified entity system
+    entities: {
+        tasks: {},      // Unified tasks (subtasks, checklist items, weekly tasks)
+        notes: {},      // Centralized notes system  
+        checklists: {}  // Reusable checklists
+    },
+    
+    // Entity ID counters
+    nextTaskId: 1,
+    nextNoteId: 1,
+    nextChecklistId: 1,
+    
+    // Relationship tracking for bidirectional sync
+    relationships: {
+        cardToWeeklyPlans: {},    // cardId -> [weekKeys]
+        weeklyPlanToCards: {},    // weekKey -> [cardIds]
+        entityNotes: {},          // entityId -> [noteIds]
+        entityChecklists: {},     // entityId -> [checklistIds]
+        entityTasks: {}           // entityId -> [taskIds]
+    },
+    
+    version: '4.0' // Phase 1 unified entity model
 };
 
 // Current board reference for backward compatibility
@@ -84,7 +106,7 @@ function loadData() {
 // Comprehensive data migration system
 function migrateData(data) {
     console.log('Starting data migration...');
-    const currentVersion = '3.0';
+    const currentVersion = '4.0';
     const dataVersion = data.version || detectVersion(data);
     
     console.log(`Migrating from version ${dataVersion} to ${currentVersion}`);
@@ -100,6 +122,9 @@ function migrateData(data) {
     }
     if (compareVersions(dataVersion, '2.5') <= 0) {
         migratedData = migrateToV3(migratedData);
+    }
+    if (compareVersions(dataVersion, '3.0') <= 0) {
+        migratedData = migrateToV4(migratedData);
     }
     
     // Final validation and cleanup
@@ -121,8 +146,10 @@ function detectVersion(data) {
         return '2.0'; // Multi-board format without templates
     } else if (data.boards && data.templates && !data.weeklyPlans) {
         return '2.5'; // Has templates but no weekly planning
+    } else if (data.boards && data.templates && data.weeklyPlans && !data.entities) {
+        return '3.0'; // Has weekly planning but no unified entities
     } else {
-        return '3.0'; // Current format
+        return '4.0'; // Current unified entity format
     }
 }
 
@@ -198,6 +225,224 @@ function migrateToV3(data) {
     return data;
 }
 
+// Migration to v4.0 (unified entity system)
+function migrateToV4(data) {
+    console.log('Migrating to v4.0: Implementing unified entity system');
+    
+    // Initialize entity structures
+    if (!data.entities) {
+        data.entities = {
+            tasks: {},
+            notes: {},
+            checklists: {}
+        };
+    }
+    
+    if (!data.nextTaskId) data.nextTaskId = 1;
+    if (!data.nextNoteId) data.nextNoteId = 1;
+    if (!data.nextChecklistId) data.nextChecklistId = 1;
+    
+    if (!data.relationships) {
+        data.relationships = {
+            cardToWeeklyPlans: {},
+            weeklyPlanToCards: {},
+            entityNotes: {},
+            entityChecklists: {},
+            entityTasks: {}
+        };
+    }
+    
+    console.log('Phase 1a: Converting card subtasks to unified tasks...');
+    migrateCardSubtasksToEntities(data);
+    
+    console.log('Phase 1b: Converting weekly plan items to entities...');
+    migrateWeeklyPlanItemsToEntities(data);
+    
+    console.log('Phase 1c: Building relationship mappings...');
+    buildRelationshipMappings(data);
+    
+    data.version = '4.0';
+    return data;
+}
+
+// Convert card subtasks to unified task entities
+function migrateCardSubtasksToEntities(data) {
+    Object.values(data.boards).forEach(board => {
+        if (!board.rows) return;
+        
+        board.rows.forEach(row => {
+            if (!row.cards) return;
+            
+            Object.keys(row.cards).forEach(columnKey => {
+                row.cards[columnKey].forEach(card => {
+                    if (card.subtasks && card.subtasks.length > 0) {
+                        // Convert subtasks to unified tasks
+                        const taskIds = [];
+                        
+                        card.subtasks.forEach(subtask => {
+                            const taskId = `task_${data.nextTaskId++}`;
+                            
+                            data.entities.tasks[taskId] = {
+                                id: taskId,
+                                text: subtask.text,
+                                completed: subtask.completed || false,
+                                dueDate: null,
+                                priority: 'medium',
+                                parentType: 'card',
+                                parentId: card.id.toString(),
+                                tags: [],
+                                createdAt: new Date().toISOString(),
+                                updatedAt: new Date().toISOString()
+                            };
+                            
+                            taskIds.push(taskId);
+                        });
+                        
+                        // Update card to reference tasks instead of embedding them
+                        card.taskIds = taskIds;
+                        
+                        // Add to relationship mapping
+                        data.relationships.entityTasks[card.id.toString()] = taskIds;
+                    }
+                    
+                    // Keep subtasks for backward compatibility during transition
+                    // They will be deprecated later
+                });
+            });
+        });
+    });
+}
+
+// Convert weekly plan items to entities
+function migrateWeeklyPlanItemsToEntities(data) {
+    Object.keys(data.weeklyPlans).forEach(weekKey => {
+        const weekPlan = data.weeklyPlans[weekKey];
+        if (!weekPlan.items) return;
+        
+        const newItems = [];
+        
+        weekPlan.items.forEach(item => {
+            // Handle different item types
+            if (item.type === 'checklist' && item.checklist) {
+                // Convert checklist items to unified tasks and checklist entity
+                const checklistId = `checklist_${data.nextChecklistId++}`;
+                const taskIds = [];
+                
+                item.checklist.forEach(checkItem => {
+                    const taskId = `task_${data.nextTaskId++}`;
+                    
+                    data.entities.tasks[taskId] = {
+                        id: taskId,
+                        text: checkItem.text,
+                        completed: checkItem.completed || false,
+                        dueDate: null,
+                        priority: 'medium',
+                        parentType: 'checklist',
+                        parentId: checklistId,
+                        tags: [],
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString()
+                    };
+                    
+                    taskIds.push(taskId);
+                });
+                
+                data.entities.checklists[checklistId] = {
+                    id: checklistId,
+                    title: item.title || 'Checklist',
+                    description: '',
+                    tasks: taskIds,
+                    attachedTo: { type: 'weekly', id: weekKey },
+                    isTemplate: false,
+                    tags: [],
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+                
+                // Add to relationship mapping
+                data.relationships.entityTasks[checklistId] = taskIds;
+                
+                // Update weekly plan item to reference entity
+                newItems.push({
+                    id: item.id,
+                    type: 'checklist',
+                    entityId: checklistId,
+                    day: item.day,
+                    completed: item.completed || false,
+                    addedAt: item.createdAt || new Date().toISOString()
+                });
+                
+            } else if (item.type === 'note') {
+                // Convert note to note entity
+                const noteId = `note_${data.nextNoteId++}`;
+                
+                data.entities.notes[noteId] = {
+                    id: noteId,
+                    title: item.title || 'Note',
+                    content: item.content || item.description || '',
+                    attachedTo: { type: 'weekly', id: weekKey },
+                    tags: [],
+                    createdAt: item.createdAt || new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+                
+                // Update weekly plan item to reference entity
+                newItems.push({
+                    id: item.id,
+                    type: 'note',
+                    entityId: noteId,
+                    day: item.day,
+                    completed: item.completed || false,
+                    addedAt: item.createdAt || new Date().toISOString()
+                });
+                
+            } else {
+                // Keep existing items (cards, etc.) as-is for now
+                newItems.push({
+                    id: item.id,
+                    type: item.type,
+                    entityId: item.cardId || item.entityId,
+                    day: item.day,
+                    completed: item.completed || false,
+                    addedAt: item.createdAt || new Date().toISOString()
+                });
+            }
+        });
+        
+        // Update weekly plan with new item structure
+        weekPlan.items = newItems;
+    });
+}
+
+// Build relationship mappings between entities
+function buildRelationshipMappings(data) {
+    // Build card to weekly plans mapping
+    Object.keys(data.weeklyPlans).forEach(weekKey => {
+        const weekPlan = data.weeklyPlans[weekKey];
+        if (!weekPlan.items) return;
+        
+        const cardIds = [];
+        
+        weekPlan.items.forEach(item => {
+            if (item.type === 'card' && item.entityId) {
+                const cardId = item.entityId.toString();
+                cardIds.push(cardId);
+                
+                // Add to cardToWeeklyPlans mapping
+                if (!data.relationships.cardToWeeklyPlans[cardId]) {
+                    data.relationships.cardToWeeklyPlans[cardId] = [];
+                }
+                if (!data.relationships.cardToWeeklyPlans[cardId].includes(weekKey)) {
+                    data.relationships.cardToWeeklyPlans[cardId].push(weekKey);
+                }
+            }
+        });
+        
+        // Add to weeklyPlanToCards mapping
+        data.relationships.weeklyPlanToCards[weekKey] = cardIds;
+    });
+}
+
 // Validate and ensure all required fields exist
 function validateAndCleanData(data) {
     console.log('Validating and cleaning data...');
@@ -209,6 +454,32 @@ function validateAndCleanData(data) {
     if (!data.nextTemplateId) data.nextTemplateId = 1;
     if (!data.weeklyPlans) data.weeklyPlans = {};
     if (!data.nextWeeklyItemId) data.nextWeeklyItemId = 1;
+    
+    // Ensure v4.0 entity structure
+    if (!data.entities) {
+        data.entities = {
+            tasks: {},
+            notes: {},
+            checklists: {}
+        };
+    }
+    if (!data.entities.tasks) data.entities.tasks = {};
+    if (!data.entities.notes) data.entities.notes = {};
+    if (!data.entities.checklists) data.entities.checklists = {};
+    
+    if (!data.nextTaskId) data.nextTaskId = 1;
+    if (!data.nextNoteId) data.nextNoteId = 1;
+    if (!data.nextChecklistId) data.nextChecklistId = 1;
+    
+    if (!data.relationships) {
+        data.relationships = {
+            cardToWeeklyPlans: {},
+            weeklyPlanToCards: {},
+            entityNotes: {},
+            entityChecklists: {},
+            entityTasks: {}
+        };
+    }
     
     // Ensure default board exists
     if (!data.boards[data.currentBoardId] && Object.keys(data.boards).length === 0) {
@@ -254,7 +525,7 @@ function validateAndCleanData(data) {
                 row.cards[column.key].forEach(card => {
                     if (card.dueDate === undefined) card.dueDate = null;
                     if (card.priority === undefined) card.priority = 'medium';
-                    if (card.subtasks === undefined) card.subtasks = [];
+                    if (card.taskIds === undefined) card.taskIds = [];
                     if (card.completed === undefined) card.completed = false;
                     if (!card.title) card.title = 'Untitled Card';
                     if (card.description === undefined) card.description = '';
@@ -964,21 +1235,24 @@ function createCardElement(card, rowId, columnKey) {
         </div>
     ` : '';
     
-    // Generate subtask progress
+    // Generate subtask progress using unified entity system
     let progressHtml = '';
-    if (boardData.settings.showSubtaskProgress && card.subtasks && card.subtasks.length > 0) {
-        const completed = card.subtasks.filter(st => st.completed).length;
-        const total = card.subtasks.length;
-        const percentage = Math.round((completed / total) * 100);
-        
-        progressHtml = `
-            <div class="card-progress">
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: ${percentage}%"></div>
+    if (boardData.settings.showSubtaskProgress && card.taskIds && card.taskIds.length > 0) {
+        const tasks = card.taskIds.map(taskId => appData.entities.tasks[taskId]).filter(Boolean);
+        if (tasks.length > 0) {
+            const completed = tasks.filter(task => task.completed).length;
+            const total = tasks.length;
+            const percentage = Math.round((completed / total) * 100);
+            
+            progressHtml = `
+                <div class="card-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${percentage}%"></div>
+                    </div>
+                    <span class="progress-text">${completed}/${total} subtasks</span>
                 </div>
-                <span class="progress-text">${completed}/${total} subtasks</span>
-            </div>
-        `;
+            `;
+        }
     }
     
     // Generate due date display
@@ -1877,8 +2151,60 @@ function deleteCard(cardId, rowId, columnKey) {
     if (confirm('Are you sure you want to delete this card?')) {
         const row = boardData.rows.find(r => r.id === rowId);
         if (row) {
+            const card = row.cards[columnKey].find(c => c.id === cardId);
+            
+            // Clean up task entities associated with this card
+            if (card && card.taskIds) {
+                card.taskIds.forEach(taskId => {
+                    delete appData.entities.tasks[taskId];
+                });
+                
+                // Clean up task relationships
+                const cardKey = cardId.toString();
+                delete appData.relationships.entityTasks[cardKey];
+            }
+            
+            // Clean up notes attached to this card
+            const cardNotes = getNotesForEntity('card', cardId);
+            cardNotes.forEach(note => {
+                deleteNote(note.id);
+            });
+            
+            // Clean up weekly plan relationships
+            const cardKey = `${appData.currentBoardId}:${cardId}`;
+            if (appData.relationships.cardToWeeklyPlans[cardKey]) {
+                const weeklyPlans = [...appData.relationships.cardToWeeklyPlans[cardKey]];
+                
+                // Remove card from all weekly plans
+                weeklyPlans.forEach(weekKey => {
+                    if (appData.weeklyPlans[weekKey] && appData.weeklyPlans[weekKey].items) {
+                        appData.weeklyPlans[weekKey].items = appData.weeklyPlans[weekKey].items.filter(
+                            item => !(item.type === 'card' && item.cardId == cardId && 
+                                    item.boardId === appData.currentBoardId)
+                        );
+                    }
+                    
+                    // Clean up reverse relationship
+                    if (appData.relationships.weeklyPlanToCards[weekKey]) {
+                        appData.relationships.weeklyPlanToCards[weekKey] = 
+                            appData.relationships.weeklyPlanToCards[weekKey].filter(key => key !== cardKey);
+                        
+                        if (appData.relationships.weeklyPlanToCards[weekKey].length === 0) {
+                            delete appData.relationships.weeklyPlanToCards[weekKey];
+                        }
+                    }
+                });
+                
+                delete appData.relationships.cardToWeeklyPlans[cardKey];
+            }
+            
+            // Remove card from board
             row.cards[columnKey] = row.cards[columnKey].filter(c => c.id !== cardId);
+            
+            saveData();
             renderBoard();
+            
+            showStatusMessage('Card and all associated data deleted', 'success');
         }
     }
 }
@@ -1913,9 +2239,9 @@ function saveCard(event) {
             title: title,
             description: description,
             completed: completed,
-            subtasks: [],
-            dueDate: null,
-            priority: 'medium'
+            taskIds: [],
+            dueDate: dueDate,
+            priority: priority
         };
         row.cards[currentEditingCard.columnKey].push(newCard);
     }
@@ -1943,8 +2269,15 @@ function showCardDetailModal(cardId, rowId, columnKey) {
     // Store current card reference
     currentDetailCard = { card, rowId, columnKey };
     
-    // Ensure subtasks array exists
-    if (!card.subtasks) card.subtasks = [];
+    // Ensure taskIds array exists for new entity system
+    if (!card.taskIds) card.taskIds = [];
+    
+    // Backward compatibility: if old subtasks exist, convert them
+    if (card.subtasks && card.subtasks.length > 0 && card.taskIds.length === 0) {
+        migrateCardSubtasksToEntities({ boards: { [appData.currentBoardId]: boardData } });
+        boardData = appData.boards[appData.currentBoardId]; // refresh reference
+        saveData(); // persist migration
+    }
     
     // Find group information
     const group = row.groupId ? boardData.groups.find(g => g.id === row.groupId) : null;
@@ -2017,44 +2350,46 @@ function closeCardDetailModal() {
     currentDetailCard = null;
 }
 
-// Subtask functions
+// Subtask functions - updated for unified entity system
 function renderSubtasks() {
     if (!currentDetailCard) return;
     
     const subtasksList = document.getElementById('subtasksList');
     subtasksList.innerHTML = '';
     
-    const subtasks = currentDetailCard.card.subtasks || [];
+    const taskIds = currentDetailCard.card.taskIds || [];
+    const tasks = taskIds.map(taskId => appData.entities.tasks[taskId]).filter(Boolean);
     
-    if (subtasks.length === 0) {
+    if (tasks.length === 0) {
         subtasksList.innerHTML = '<div class="no-subtasks">No subtasks yet. Click "Add Subtask" to get started.</div>';
         return;
     }
     
-    subtasks.forEach((subtask, index) => {
+    tasks.forEach((task, index) => {
         const subtaskElement = document.createElement('div');
-        subtaskElement.className = `subtask-item ${subtask.completed ? 'completed' : ''}`;
+        subtaskElement.className = `subtask-item ${task.completed ? 'completed' : ''}`;
+        subtaskElement.dataset.taskId = task.id;
         subtaskElement.dataset.index = index;
         
         subtaskElement.innerHTML = `
             <div class="subtask-content">
-                <input type="checkbox" ${subtask.completed ? 'checked' : ''} 
-                       onchange="toggleSubtask(${index})" class="subtask-checkbox">
-                <span class="subtask-text ${subtask.completed ? 'completed' : ''}" 
-                      onclick="startEditSubtask(${index})">${subtask.text}</span>
+                <input type="checkbox" ${task.completed ? 'checked' : ''} 
+                       onchange="toggleSubtask('${task.id}')" class="subtask-checkbox">
+                <span class="subtask-text ${task.completed ? 'completed' : ''}" 
+                      onclick="startEditSubtask('${task.id}')">${task.text}</span>
             </div>
             <div class="subtask-edit-form" style="display: none;">
                 <div class="subtask-input-group">
-                    <input type="text" class="subtask-edit-input" value="${subtask.text}">
+                    <input type="text" class="subtask-edit-input" value="${task.text}">
                     <div class="subtask-input-actions">
-                        <button onclick="saveEditSubtask(${index})" class="btn btn-small btn-primary">Save</button>
-                        <button onclick="cancelEditSubtask(${index})" class="btn btn-small btn-secondary">Cancel</button>
+                        <button onclick="saveEditSubtask('${task.id}')" class="btn btn-small btn-primary">Save</button>
+                        <button onclick="cancelEditSubtask('${task.id}')" class="btn btn-small btn-secondary">Cancel</button>
                     </div>
                 </div>
             </div>
             <div class="subtask-actions">
-                <button onclick="startEditSubtask(${index})" title="Edit subtask">✏️</button>
-                <button onclick="deleteSubtask(${index})" title="Delete subtask">🗑️</button>
+                <button onclick="startEditSubtask('${task.id}')" title="Edit subtask">✏️</button>
+                <button onclick="deleteSubtask('${task.id}')" title="Delete subtask">🗑️</button>
             </div>
         `;
         subtasksList.appendChild(subtaskElement);
@@ -2092,14 +2427,33 @@ function saveNewSubtask() {
         return;
     }
     
-    if (!currentDetailCard.card.subtasks) {
-        currentDetailCard.card.subtasks = [];
-    }
-    
-    currentDetailCard.card.subtasks.push({
+    // Create new task entity
+    const taskId = `task_${appData.nextTaskId++}`;
+    appData.entities.tasks[taskId] = {
+        id: taskId,
         text: text,
-        completed: false
-    });
+        completed: false,
+        dueDate: null,
+        priority: 'medium',
+        parentType: 'card',
+        parentId: currentDetailCard.card.id.toString(),
+        tags: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    };
+    
+    // Add task to card's taskIds
+    if (!currentDetailCard.card.taskIds) {
+        currentDetailCard.card.taskIds = [];
+    }
+    currentDetailCard.card.taskIds.push(taskId);
+    
+    // Update relationship mapping
+    const cardId = currentDetailCard.card.id.toString();
+    if (!appData.relationships.entityTasks[cardId]) {
+        appData.relationships.entityTasks[cardId] = [];
+    }
+    appData.relationships.entityTasks[cardId].push(taskId);
     
     saveData();
     hideAddSubtaskForm();
@@ -2108,8 +2462,8 @@ function saveNewSubtask() {
 }
 
 // Edit subtask inline functions
-function startEditSubtask(index) {
-    const subtaskItem = document.querySelector(`[data-index="${index}"]`);
+function startEditSubtask(taskId) {
+    const subtaskItem = document.querySelector(`[data-task-id="${taskId}"]`);
     if (!subtaskItem) return;
     
     const content = subtaskItem.querySelector('.subtask-content');
@@ -2127,18 +2481,18 @@ function startEditSubtask(index) {
     editInput.onkeydown = (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            saveEditSubtask(index);
+            saveEditSubtask(taskId);
         } else if (e.key === 'Escape') {
             e.preventDefault();
-            cancelEditSubtask(index);
+            cancelEditSubtask(taskId);
         }
     };
 }
 
-function saveEditSubtask(index) {
-    if (!currentDetailCard || !currentDetailCard.card.subtasks[index]) return;
+function saveEditSubtask(taskId) {
+    if (!currentDetailCard || !appData.entities.tasks[taskId]) return;
     
-    const subtaskItem = document.querySelector(`[data-index="${index}"]`);
+    const subtaskItem = document.querySelector(`[data-task-id="${taskId}"]`);
     const editInput = subtaskItem.querySelector('.subtask-edit-input');
     const newText = editInput.value.trim();
     
@@ -2147,14 +2501,16 @@ function saveEditSubtask(index) {
         return;
     }
     
-    currentDetailCard.card.subtasks[index].text = newText;
+    appData.entities.tasks[taskId].text = newText;
+    appData.entities.tasks[taskId].updatedAt = new Date().toISOString();
+    
     saveData();
     renderSubtasks();
     renderBoard(); // Update progress on cards
 }
 
-function cancelEditSubtask(index) {
-    const subtaskItem = document.querySelector(`[data-index="${index}"]`);
+function cancelEditSubtask(taskId) {
+    const subtaskItem = document.querySelector(`[data-task-id="${taskId}"]`);
     if (!subtaskItem) return;
     
     const content = subtaskItem.querySelector('.subtask-content');
@@ -2166,24 +2522,195 @@ function cancelEditSubtask(index) {
     actions.style.display = 'flex';
 }
 
-function deleteSubtask(index) {
-    if (!currentDetailCard || !currentDetailCard.card.subtasks[index]) return;
+function deleteSubtask(taskId) {
+    if (!currentDetailCard || !appData.entities.tasks[taskId]) return;
     
     if (confirm('Are you sure you want to delete this subtask?')) {
-        currentDetailCard.card.subtasks.splice(index, 1);
+        // Remove from task entities
+        delete appData.entities.tasks[taskId];
+        
+        // Remove from card's taskIds
+        const taskIds = currentDetailCard.card.taskIds || [];
+        const index = taskIds.indexOf(taskId);
+        if (index > -1) {
+            taskIds.splice(index, 1);
+        }
+        
+        // Remove from relationship mapping
+        const cardId = currentDetailCard.card.id.toString();
+        if (appData.relationships.entityTasks[cardId]) {
+            const relIndex = appData.relationships.entityTasks[cardId].indexOf(taskId);
+            if (relIndex > -1) {
+                appData.relationships.entityTasks[cardId].splice(relIndex, 1);
+            }
+        }
+        
         saveData();
         renderSubtasks();
         renderBoard(); // Update progress on cards
     }
 }
 
-function toggleSubtask(index) {
-    if (!currentDetailCard || !currentDetailCard.card.subtasks[index]) return;
+function toggleSubtask(taskId) {
+    if (!currentDetailCard || !appData.entities.tasks[taskId]) return;
     
-    currentDetailCard.card.subtasks[index].completed = !currentDetailCard.card.subtasks[index].completed;
+    appData.entities.tasks[taskId].completed = !appData.entities.tasks[taskId].completed;
+    appData.entities.tasks[taskId].updatedAt = new Date().toISOString();
+    
     saveData();
     renderSubtasks();
     renderBoard(); // Update progress on cards
+}
+
+// Centralized Notes System - for any entity attachment
+function createNote(title, content, attachedToType, attachedToId, tags = []) {
+    const noteId = `note_${appData.nextNoteId++}`;
+    
+    // Create note entity
+    appData.entities.notes[noteId] = {
+        id: noteId,
+        title: title,
+        content: content,
+        attachedTo: { type: attachedToType, id: attachedToId },
+        tags: tags,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    };
+    
+    // Update relationship mapping
+    const entityKey = `${attachedToType}:${attachedToId}`;
+    if (!appData.relationships.entityNotes[entityKey]) {
+        appData.relationships.entityNotes[entityKey] = [];
+    }
+    appData.relationships.entityNotes[entityKey].push(noteId);
+    
+    saveData();
+    return noteId;
+}
+
+function getNotesForEntity(entityType, entityId) {
+    const entityKey = `${entityType}:${entityId}`;
+    const noteIds = appData.relationships.entityNotes[entityKey] || [];
+    return noteIds.map(noteId => appData.entities.notes[noteId]).filter(Boolean);
+}
+
+function updateNote(noteId, title, content, tags = []) {
+    if (!appData.entities.notes[noteId]) return false;
+    
+    appData.entities.notes[noteId].title = title;
+    appData.entities.notes[noteId].content = content;
+    appData.entities.notes[noteId].tags = tags;
+    appData.entities.notes[noteId].updatedAt = new Date().toISOString();
+    
+    saveData();
+    return true;
+}
+
+function deleteNote(noteId) {
+    const note = appData.entities.notes[noteId];
+    if (!note) return false;
+    
+    // Remove from relationship mapping
+    const entityKey = `${note.attachedTo.type}:${note.attachedTo.id}`;
+    if (appData.relationships.entityNotes[entityKey]) {
+        appData.relationships.entityNotes[entityKey] = 
+            appData.relationships.entityNotes[entityKey].filter(id => id !== noteId);
+        
+        // Clean up empty arrays
+        if (appData.relationships.entityNotes[entityKey].length === 0) {
+            delete appData.relationships.entityNotes[entityKey];
+        }
+    }
+    
+    // Remove note entity
+    delete appData.entities.notes[noteId];
+    
+    saveData();
+    return true;
+}
+
+function renderNotesForCard(cardId, containerId) {
+    const notes = getNotesForEntity('card', cardId);
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (notes.length === 0) {
+        container.innerHTML = '<div class="no-notes">No notes yet.</div>';
+        return;
+    }
+    
+    notes.forEach(note => {
+        const noteElement = document.createElement('div');
+        noteElement.className = 'note-item';
+        noteElement.innerHTML = `
+            <div class="note-header">
+                <h4 class="note-title">${note.title}</h4>
+                <div class="note-actions">
+                    <button onclick="editNote('${note.id}')" title="Edit note">✏️</button>
+                    <button onclick="deleteNoteConfirm('${note.id}')" title="Delete note">🗑️</button>
+                </div>
+            </div>
+            <div class="note-content">${note.content}</div>
+            <div class="note-meta">
+                <span class="note-date">Updated: ${new Date(note.updatedAt).toLocaleDateString()}</span>
+                ${note.tags.length > 0 ? `<div class="note-tags">${note.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}</div>` : ''}
+            </div>
+        `;
+        container.appendChild(noteElement);
+    });
+}
+
+function addNoteToCard(cardId) {
+    const title = prompt('Note title:');
+    if (!title) return;
+    
+    const content = prompt('Note content:');
+    if (!content) return;
+    
+    createNote(title, content, 'card', cardId);
+    renderNotesForCard(cardId, 'cardNotesList');
+    showStatusMessage('Note added to card', 'success');
+}
+
+function editNote(noteId) {
+    const note = appData.entities.notes[noteId];
+    if (!note) return;
+    
+    const title = prompt('Edit note title:', note.title);
+    if (title === null) return;
+    
+    const content = prompt('Edit note content:', note.content);
+    if (content === null) return;
+    
+    updateNote(noteId, title, content, note.tags);
+    
+    // Re-render notes for the attached entity
+    if (note.attachedTo.type === 'card') {
+        renderNotesForCard(note.attachedTo.id, 'cardNotesList');
+    }
+    
+    showStatusMessage('Note updated', 'success');
+}
+
+function deleteNoteConfirm(noteId) {
+    const note = appData.entities.notes[noteId];
+    if (!note) return;
+    
+    if (confirm(`Delete note "${note.title}"?`)) {
+        const attachedType = note.attachedTo.type;
+        const attachedId = note.attachedTo.id;
+        
+        deleteNote(noteId);
+        
+        // Re-render notes for the attached entity
+        if (attachedType === 'card') {
+            renderNotesForCard(attachedId, 'cardNotesList');
+        }
+        
+        showStatusMessage('Note deleted', 'success');
+    }
 }
 
 // Export functions
@@ -3062,8 +3589,8 @@ function getAllTasks() {
                 row.cards[columnKey].forEach(card => {
                     if (!card) return;
                     
-                    // Ensure card has required properties
-                    if (!card.subtasks) card.subtasks = [];
+                    // Ensure card has required properties for unified entity system
+                    if (!card.taskIds) card.taskIds = [];
                     if (!card.dueDate) card.dueDate = null;
                     if (!card.priority) card.priority = 'medium';
                     
@@ -3165,14 +3692,15 @@ function createTaskElement(task) {
     const dueDate = task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date';
     const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && !task.completed;
     
-    const subtasks = task.subtasks || [];
+    const taskIds = task.taskIds || [];
+    const tasks = taskIds.map(taskId => appData.entities.tasks[taskId]).filter(Boolean);
     const priority = task.priority || 'medium';
     const title = task.title || 'Untitled Task';
     const completed = task.completed || false;
     const description = task.description || '';
     
-    const subtaskProgress = subtasks.length > 0 
-        ? `${subtasks.filter(st => st.completed).length}/${subtasks.length}` 
+    const subtaskProgress = tasks.length > 0 
+        ? `${tasks.filter(t => t.completed).length}/${tasks.length}` 
         : '0';
     
     return `
@@ -3535,15 +4063,22 @@ function saveAsTemplate(event) {
                 description: row.description,
                 groupName: group ? group.name : null,
                 cards: Object.keys(row.cards).reduce((cards, columnKey) => {
-                    cards[columnKey] = row.cards[columnKey].map(card => ({
-                        title: card.title,
-                        description: card.description,
-                        priority: card.priority || 'medium',
-                        subtasks: card.subtasks ? card.subtasks.map(st => ({
-                            text: st.text,
-                            completed: false
-                        })) : []
-                    }));
+                    cards[columnKey] = row.cards[columnKey].map(card => {
+                        // Get tasks from entities for template export
+                        const taskIds = card.taskIds || [];
+                        const tasks = taskIds.map(taskId => appData.entities.tasks[taskId]).filter(Boolean);
+                        
+                        return {
+                            title: card.title,
+                            description: card.description,
+                            priority: card.priority || 'medium',
+                            templateTasks: tasks.map(task => ({
+                                text: task.text,
+                                completed: false,
+                                priority: task.priority || 'medium'
+                            }))
+                        };
+                    });
                     return cards;
                 }, {})
             };
@@ -3600,15 +4135,22 @@ function createTemplate(event) {
                 description: row.description,
                 groupName: group ? group.name : null,
                 cards: Object.keys(row.cards).reduce((cards, columnKey) => {
-                    cards[columnKey] = row.cards[columnKey].map(card => ({
-                        title: card.title,
-                        description: card.description,
-                        priority: card.priority || 'medium',
-                        subtasks: card.subtasks ? card.subtasks.map(st => ({
-                            text: st.text,
-                            completed: false
-                        })) : []
-                    }));
+                    cards[columnKey] = row.cards[columnKey].map(card => {
+                        // Get tasks from entities for template export
+                        const taskIds = card.taskIds || [];
+                        const tasks = taskIds.map(taskId => appData.entities.tasks[taskId]).filter(Boolean);
+                        
+                        return {
+                            title: card.title,
+                            description: card.description,
+                            priority: card.priority || 'medium',
+                            templateTasks: tasks.map(task => ({
+                                text: task.text,
+                                completed: false,
+                                priority: task.priority || 'medium'
+                            }))
+                        };
+                    });
                     return cards;
                 }, {})
             };
@@ -3753,18 +4295,49 @@ function createBoardFromTemplate(template, boardName) {
         const newRowId = index + 1;
         const groupId = row.groupName ? groupIdMap.get(row.groupName) : null;
         
-        // Create cards with new IDs
+        // Create cards with new IDs and task entities
         const newCards = {};
         Object.keys(row.cards).forEach(columnKey => {
-            newCards[columnKey] = row.cards[columnKey].map((card, cardIndex) => ({
-                id: cardIndex + 1,
-                title: card.title,
-                description: card.description,
-                completed: false,
-                priority: card.priority || 'medium',
-                dueDate: null,
-                subtasks: card.subtasks || []
-            }));
+            newCards[columnKey] = row.cards[columnKey].map((card, cardIndex) => {
+                const newCardId = cardIndex + 1;
+                const taskIds = [];
+                
+                // Create task entities from template tasks (new format) or legacy subtasks
+                const tasks = card.templateTasks || card.subtasks || [];
+                tasks.forEach(task => {
+                    const taskId = `task_${newData.nextTaskId++}`;
+                    
+                    newData.entities.tasks[taskId] = {
+                        id: taskId,
+                        text: task.text,
+                        completed: false,
+                        dueDate: null,
+                        priority: task.priority || 'medium',
+                        parentType: 'card',
+                        parentId: newCardId.toString(),
+                        tags: [],
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString()
+                    };
+                    
+                    taskIds.push(taskId);
+                });
+                
+                // Add task relationship mapping
+                if (taskIds.length > 0) {
+                    newData.relationships.entityTasks[newCardId.toString()] = taskIds;
+                }
+                
+                return {
+                    id: newCardId,
+                    title: card.title,
+                    description: card.description,
+                    completed: false,
+                    priority: card.priority || 'medium',
+                    dueDate: null,
+                    taskIds: taskIds
+                };
+            });
         });
         
         return {
@@ -3841,15 +4414,46 @@ function addTemplateToCurrentBoard(template) {
                 });
             }
             
-            newCards[columnKey] = templateRow.cards[columnKey].map(card => ({
-                id: boardData.nextCardId++,
-                title: card.title,
-                description: card.description,
-                completed: false,
-                priority: card.priority || 'medium',
-                dueDate: null,
-                subtasks: card.subtasks || []
-            }));
+            newCards[columnKey] = templateRow.cards[columnKey].map(card => {
+                const newCardId = boardData.nextCardId++;
+                const taskIds = [];
+                
+                // Create task entities from template tasks (new format) or legacy subtasks
+                const tasks = card.templateTasks || card.subtasks || [];
+                tasks.forEach(task => {
+                    const taskId = `task_${appData.nextTaskId++}`;
+                    
+                    appData.entities.tasks[taskId] = {
+                        id: taskId,
+                        text: task.text,
+                        completed: false,
+                        dueDate: null,
+                        priority: task.priority || 'medium',
+                        parentType: 'card',
+                        parentId: newCardId.toString(),
+                        tags: [],
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString()
+                    };
+                    
+                    taskIds.push(taskId);
+                });
+                
+                // Add task relationship mapping
+                if (taskIds.length > 0) {
+                    appData.relationships.entityTasks[newCardId.toString()] = taskIds;
+                }
+                
+                return {
+                    id: newCardId,
+                    title: card.title,
+                    description: card.description,
+                    completed: false,
+                    priority: card.priority || 'medium',
+                    dueDate: null,
+                    taskIds: taskIds
+                };
+            });
         });
         
         boardData.rows.push({
@@ -4602,16 +5206,41 @@ function createWeeklyItemElement(item) {
             </div>
         `;
     } else if (item.type === 'note') {
+        // Get note from entities or use direct properties for legacy items
+        let noteTitle, noteContent;
+        if (item.entityId && appData.entities.notes[item.entityId]) {
+            const note = appData.entities.notes[item.entityId];
+            noteTitle = note.title;
+            noteContent = note.content;
+        } else {
+            // Legacy format fallback
+            noteTitle = item.title || 'Note';
+            noteContent = item.content || item.description || '';
+        }
+        
         itemContent = `
             <input type="checkbox" class="item-checkbox" ${item.completed ? 'checked' : ''} 
                    onchange="toggleWeeklyItem('${item.id}')">
             <div class="item-content">
-                <div class="item-title">${item.title}</div>
-                <div class="item-description">${item.content || ''}</div>
+                <div class="item-title">${noteTitle}</div>
+                <div class="item-description">${noteContent}</div>
             </div>
         `;
     } else if (item.type === 'checklist') {
-        const checklistHtml = item.checklist.map((checkItem, index) => `
+        // Get checklist from entities or use direct properties for legacy items
+        let checklistTitle, checklistItems;
+        if (item.entityId && appData.entities.checklists[item.entityId]) {
+            const checklist = appData.entities.checklists[item.entityId];
+            checklistTitle = checklist.title;
+            const taskIds = checklist.tasks || [];
+            checklistItems = taskIds.map(taskId => appData.entities.tasks[taskId]).filter(Boolean);
+        } else {
+            // Legacy format fallback
+            checklistTitle = item.title || 'Checklist';
+            checklistItems = item.checklist || [];
+        }
+        
+        const checklistHtml = checklistItems.map((checkItem, index) => `
             <div class="checklist-item ${checkItem.completed ? 'completed' : ''}">
                 <input type="checkbox" ${checkItem.completed ? 'checked' : ''} 
                        onchange="toggleChecklistItem('${item.id}', ${index})">
@@ -4621,7 +5250,7 @@ function createWeeklyItemElement(item) {
         
         itemContent = `
             <div class="item-content">
-                <div class="item-title">${item.title}</div>
+                <div class="item-title">${checklistTitle}</div>
                 <div class="checklist-items">${checklistHtml}</div>
             </div>
         `;
@@ -4803,17 +5432,37 @@ function toggleChecklistItem(itemId, checkIndex) {
     if (!currentPlan) return;
     
     const item = currentPlan.items.find(i => i.id === itemId);
-    if (item && item.checklist && item.checklist[checkIndex]) {
+    if (!item) return;
+    
+    // Handle new entity system or legacy format
+    if (item.entityId && appData.entities.checklists[item.entityId]) {
+        // New entity system
+        const checklist = appData.entities.checklists[item.entityId];
+        const taskIds = checklist.tasks || [];
+        const taskId = taskIds[checkIndex];
+        
+        if (taskId && appData.entities.tasks[taskId]) {
+            // Toggle task completion
+            appData.entities.tasks[taskId].completed = !appData.entities.tasks[taskId].completed;
+            appData.entities.tasks[taskId].updatedAt = new Date().toISOString();
+            
+            // Update overall item completion based on all tasks
+            const allTasks = taskIds.map(id => appData.entities.tasks[id]).filter(Boolean);
+            const allCompleted = allTasks.length > 0 && allTasks.every(task => task.completed);
+            item.completed = allCompleted;
+        }
+    } else if (item.checklist && item.checklist[checkIndex]) {
+        // Legacy format fallback
         item.checklist[checkIndex].completed = !item.checklist[checkIndex].completed;
         
         // Update overall item completion based on checklist
         const allCompleted = item.checklist.every(checkItem => checkItem.completed);
         item.completed = allCompleted;
-        
-        renderWeeklyItems();
-        updateWeekProgress();
-        saveData();
     }
+    
+    renderWeeklyItems();
+    updateWeekProgress();
+    saveData();
 }
 
 // Update week progress
@@ -5024,6 +5673,38 @@ function deleteWeeklyItem(itemId) {
     const currentPlan = appData.weeklyPlans[currentWeekKey];
     if (!currentPlan) return;
     
+    // Find the item before removing it to clean up relationships
+    const item = currentPlan.items.find(item => item.id === itemId);
+    
+    // Clean up bidirectional relationships for card items
+    if (item && item.type === 'card') {
+        const cardKey = `${item.boardId}:${item.cardId}`;
+        const weekKey = currentWeekKey;
+        
+        // Remove week from card's weekly plans list
+        if (appData.relationships.cardToWeeklyPlans[cardKey]) {
+            appData.relationships.cardToWeeklyPlans[cardKey] = 
+                appData.relationships.cardToWeeklyPlans[cardKey].filter(week => week !== weekKey);
+            
+            // Clean up empty arrays
+            if (appData.relationships.cardToWeeklyPlans[cardKey].length === 0) {
+                delete appData.relationships.cardToWeeklyPlans[cardKey];
+            }
+        }
+        
+        // Remove card from week's cards list  
+        if (appData.relationships.weeklyPlanToCards[weekKey]) {
+            appData.relationships.weeklyPlanToCards[weekKey] = 
+                appData.relationships.weeklyPlanToCards[weekKey].filter(card => card !== cardKey);
+            
+            // Clean up empty arrays
+            if (appData.relationships.weeklyPlanToCards[weekKey].length === 0) {
+                delete appData.relationships.weeklyPlanToCards[weekKey];
+            }
+        }
+    }
+    
+    // Remove item from weekly plan
     currentPlan.items = currentPlan.items.filter(item => item.id !== itemId);
     
     renderWeeklyItems();
@@ -5103,6 +5784,26 @@ function addCardToWeeklyPlan(cardId, boardId, rowId) {
     };
     
     appData.weeklyPlans[weekKey].items.push(newItem);
+    
+    // Update bidirectional relationship mappings
+    const cardKey = `${boardId}:${cardId}`;
+    
+    // Add week to card's weekly plans list
+    if (!appData.relationships.cardToWeeklyPlans[cardKey]) {
+        appData.relationships.cardToWeeklyPlans[cardKey] = [];
+    }
+    if (!appData.relationships.cardToWeeklyPlans[cardKey].includes(weekKey)) {
+        appData.relationships.cardToWeeklyPlans[cardKey].push(weekKey);
+    }
+    
+    // Add card to week's cards list
+    if (!appData.relationships.weeklyPlanToCards[weekKey]) {
+        appData.relationships.weeklyPlanToCards[weekKey] = [];
+    }
+    if (!appData.relationships.weeklyPlanToCards[weekKey].includes(cardKey)) {
+        appData.relationships.weeklyPlanToCards[weekKey].push(cardKey);
+    }
+    
     saveData();
     
     showStatusMessage(`"${card.title}" added to weekly plan`, 'success');
