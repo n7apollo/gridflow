@@ -40,10 +40,30 @@ let appData = {
         weeklyPlanToCards: {},    // weekKey -> [cardIds]
         entityNotes: {},          // entityId -> [noteIds]
         entityChecklists: {},     // entityId -> [checklistIds]
-        entityTasks: {}           // entityId -> [taskIds]
+        entityTasks: {},          // entityId -> [taskIds]
+        
+        // Phase 2: Enhanced relationships
+        entityTags: {},           // entityId -> [tagIds]
+        collectionEntities: {},   // collectionId -> [entityIds]
+        templateUsage: {}         // templateId -> [usageInstances]
     },
     
-    version: '4.0' // Phase 1 unified entity model
+    // Phase 2: Template Library & Smart Collections
+    templateLibrary: {
+        checklists: {},           // Reusable checklist templates
+        taskSets: {},            // Common task patterns
+        notes: {}                // Note templates
+    },
+    
+    collections: {},              // Smart collections/saved views
+    tags: {},                    // Global tag definitions with metadata
+    
+    // Phase 2 ID counters
+    nextTemplateLibraryId: 1,
+    nextCollectionId: 1,
+    nextTagId: 1,
+    
+    version: '5.0' // Phase 2 template library & smart collections
 };
 
 // Current board reference for backward compatibility
@@ -65,6 +85,11 @@ document.addEventListener('DOMContentLoaded', function() {
 // Data persistence functions
 function saveData() {
     try {
+        // Update collections before saving (Phase 2 feature)
+        if (appData.version === '5.0' && Object.keys(appData.collections).length > 0) {
+            updateAllCollections();
+        }
+        
         localStorage.setItem('gridflow_data', JSON.stringify(appData));
         showStatusMessage('Data saved successfully', 'success');
     } catch (error) {
@@ -93,6 +118,12 @@ function loadData() {
         renderBoard();
         updateSettingsUI();
         
+        // Initialize Phase 2 sample data for new v5.0 installations
+        if (appData.version === '5.0') {
+            initializeSampleTemplates();
+            initializeSampleCollections();
+        }
+        
         // Auto-save migrated data
         saveData();
     } catch (error) {
@@ -106,7 +137,7 @@ function loadData() {
 // Comprehensive data migration system
 function migrateData(data) {
     console.log('Starting data migration...');
-    const currentVersion = '4.0';
+    const currentVersion = '5.0';
     const dataVersion = data.version || detectVersion(data);
     
     console.log(`Migrating from version ${dataVersion} to ${currentVersion}`);
@@ -125,6 +156,9 @@ function migrateData(data) {
     }
     if (compareVersions(dataVersion, '3.0') <= 0) {
         migratedData = migrateToV4(migratedData);
+    }
+    if (compareVersions(dataVersion, '4.0') <= 0) {
+        migratedData = migrateToV5(migratedData);
     }
     
     // Final validation and cleanup
@@ -148,8 +182,10 @@ function detectVersion(data) {
         return '2.5'; // Has templates but no weekly planning
     } else if (data.boards && data.templates && data.weeklyPlans && !data.entities) {
         return '3.0'; // Has weekly planning but no unified entities
+    } else if (data.boards && data.templates && data.weeklyPlans && data.entities && !data.templateLibrary) {
+        return '4.0'; // Has unified entities but no template library
     } else {
-        return '4.0'; // Current unified entity format
+        return '5.0'; // Current template library & smart collections format
     }
 }
 
@@ -263,6 +299,112 @@ function migrateToV4(data) {
     
     data.version = '4.0';
     return data;
+}
+
+// Migration to v5.0 (template library & smart collections)
+function migrateToV5(data) {
+    console.log('Migrating to v5.0: Adding template library and smart collections');
+    
+    // Initialize Phase 2 structures
+    if (!data.templateLibrary) {
+        data.templateLibrary = {
+            checklists: {},
+            taskSets: {},
+            notes: {}
+        };
+    }
+    
+    if (!data.collections) data.collections = {};
+    if (!data.tags) data.tags = {};
+    
+    // Initialize Phase 2 ID counters
+    if (!data.nextTemplateLibraryId) data.nextTemplateLibraryId = 1;
+    if (!data.nextCollectionId) data.nextCollectionId = 1;
+    if (!data.nextTagId) data.nextTagId = 1;
+    
+    // Initialize Phase 2 relationships
+    if (!data.relationships.entityTags) data.relationships.entityTags = {};
+    if (!data.relationships.collectionEntities) data.relationships.collectionEntities = {};
+    if (!data.relationships.templateUsage) data.relationships.templateUsage = {};
+    
+    console.log('Phase 2a: Converting existing checklists to reusable templates...');
+    migrateChecklistsToTemplates(data);
+    
+    console.log('Phase 2b: Creating default tag categories...');
+    initializeDefaultTags(data);
+    
+    data.version = '5.0';
+    return data;
+}
+
+// Convert existing checklist entities to reusable templates
+function migrateChecklistsToTemplates(data) {
+    Object.keys(data.entities.checklists).forEach(checklistId => {
+        const checklist = data.entities.checklists[checklistId];
+        
+        // Create template from existing checklist if it has common patterns
+        if (checklist.tasks && checklist.tasks.length > 0) {
+            const templateId = `template_${data.nextTemplateLibraryId++}`;
+            
+            // Extract tasks for template
+            const taskTemplates = checklist.tasks.map(taskId => {
+                const task = data.entities.tasks[taskId];
+                return {
+                    text: task ? task.text : 'Untitled Task',
+                    priority: task ? task.priority : 'medium',
+                    estimatedTime: null
+                };
+            });
+            
+            data.templateLibrary.checklists[templateId] = {
+                id: templateId,
+                name: checklist.title || 'Checklist Template',
+                description: checklist.description || 'Converted from existing checklist',
+                category: 'general',
+                tasks: taskTemplates,
+                tags: ['converted'],
+                isPublic: false,
+                usageCount: 0,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            
+            // Track template usage
+            data.relationships.templateUsage[templateId] = [{
+                entityType: 'checklist',
+                entityId: checklistId,
+                usedAt: new Date().toISOString()
+            }];
+        }
+    });
+}
+
+// Initialize default tag categories for organization
+function initializeDefaultTags(data) {
+    const defaultTags = [
+        { name: 'urgent', color: '#ff4444', category: 'priority' },
+        { name: 'important', color: '#ff8800', category: 'priority' },
+        { name: 'low-priority', color: '#00aa00', category: 'priority' },
+        { name: 'work', color: '#0066cc', category: 'context' },
+        { name: 'personal', color: '#9966cc', category: 'context' },
+        { name: 'project', color: '#cc6600', category: 'context' },
+        { name: 'review', color: '#888888', category: 'status' },
+        { name: 'blocked', color: '#dd0000', category: 'status' },
+        { name: 'waiting', color: '#ffaa00', category: 'status' }
+    ];
+    
+    defaultTags.forEach(tagData => {
+        const tagId = `tag_${data.nextTagId++}`;
+        data.tags[tagId] = {
+            id: tagId,
+            name: tagData.name,
+            color: tagData.color,
+            category: tagData.category,
+            description: `Default ${tagData.category} tag`,
+            usageCount: 0,
+            createdAt: new Date().toISOString()
+        };
+    });
 }
 
 // Convert card subtasks to unified task entities
@@ -477,9 +619,36 @@ function validateAndCleanData(data) {
             weeklyPlanToCards: {},
             entityNotes: {},
             entityChecklists: {},
-            entityTasks: {}
+            entityTasks: {},
+            // Phase 2 relationships
+            entityTags: {},
+            collectionEntities: {},
+            templateUsage: {}
         };
     }
+    // Ensure Phase 2 relationships exist
+    if (!data.relationships.entityTags) data.relationships.entityTags = {};
+    if (!data.relationships.collectionEntities) data.relationships.collectionEntities = {};
+    if (!data.relationships.templateUsage) data.relationships.templateUsage = {};
+    
+    // Ensure v5.0 Phase 2 structures
+    if (!data.templateLibrary) {
+        data.templateLibrary = {
+            checklists: {},
+            taskSets: {},
+            notes: {}
+        };
+    }
+    if (!data.templateLibrary.checklists) data.templateLibrary.checklists = {};
+    if (!data.templateLibrary.taskSets) data.templateLibrary.taskSets = {};
+    if (!data.templateLibrary.notes) data.templateLibrary.notes = {};
+    
+    if (!data.collections) data.collections = {};
+    if (!data.tags) data.tags = {};
+    
+    if (!data.nextTemplateLibraryId) data.nextTemplateLibraryId = 1;
+    if (!data.nextCollectionId) data.nextCollectionId = 1;
+    if (!data.nextTagId) data.nextTagId = 1;
     
     // Ensure default board exists
     if (!data.boards[data.currentBoardId] && Object.keys(data.boards).length === 0) {
@@ -2711,6 +2880,703 @@ function deleteNoteConfirm(noteId) {
         
         showStatusMessage('Note deleted', 'success');
     }
+}
+
+// Phase 2: Template Library System
+// Reusable Checklist Templates
+function createChecklistTemplate(name, description, tasks, category = 'general', tags = []) {
+    const templateId = `template_${appData.nextTemplateLibraryId++}`;
+    
+    appData.templateLibrary.checklists[templateId] = {
+        id: templateId,
+        name: name,
+        description: description,
+        category: category,
+        tasks: tasks.map(task => ({
+            text: task.text || task,
+            priority: task.priority || 'medium',
+            estimatedTime: task.estimatedTime || null
+        })),
+        tags: tags,
+        isPublic: false,
+        usageCount: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    };
+    
+    saveData();
+    return templateId;
+}
+
+function applyChecklistTemplate(templateId, targetType, targetId) {
+    const template = appData.templateLibrary.checklists[templateId];
+    if (!template) return null;
+    
+    // Create new checklist entity from template
+    const checklistId = `checklist_${appData.nextChecklistId++}`;
+    const taskIds = [];
+    
+    // Create task entities from template tasks
+    template.tasks.forEach(taskTemplate => {
+        const taskId = `task_${appData.nextTaskId++}`;
+        
+        appData.entities.tasks[taskId] = {
+            id: taskId,
+            text: taskTemplate.text,
+            completed: false,
+            dueDate: null,
+            priority: taskTemplate.priority,
+            parentType: 'checklist',
+            parentId: checklistId,
+            tags: [...template.tags],
+            estimatedTime: taskTemplate.estimatedTime,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+        
+        taskIds.push(taskId);
+    });
+    
+    // Create checklist entity
+    appData.entities.checklists[checklistId] = {
+        id: checklistId,
+        title: template.name,
+        description: template.description,
+        tasks: taskIds,
+        attachedTo: { type: targetType, id: targetId },
+        isTemplate: false,
+        tags: [...template.tags],
+        templateId: templateId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    };
+    
+    // Update relationships
+    appData.relationships.entityTasks[checklistId] = taskIds;
+    
+    // Track template usage
+    if (!appData.relationships.templateUsage[templateId]) {
+        appData.relationships.templateUsage[templateId] = [];
+    }
+    appData.relationships.templateUsage[templateId].push({
+        entityType: 'checklist',
+        entityId: checklistId,
+        usedAt: new Date().toISOString()
+    });
+    
+    // Update usage count
+    template.usageCount++;
+    template.updatedAt = new Date().toISOString();
+    
+    saveData();
+    return checklistId;
+}
+
+function getChecklistTemplates(category = null) {
+    const templates = Object.values(appData.templateLibrary.checklists);
+    
+    if (category) {
+        return templates.filter(template => template.category === category);
+    }
+    
+    return templates.sort((a, b) => b.usageCount - a.usageCount); // Most used first
+}
+
+function updateChecklistTemplate(templateId, updates) {
+    const template = appData.templateLibrary.checklists[templateId];
+    if (!template) return false;
+    
+    Object.assign(template, updates);
+    template.updatedAt = new Date().toISOString();
+    
+    saveData();
+    return true;
+}
+
+function deleteChecklistTemplate(templateId) {
+    const template = appData.templateLibrary.checklists[templateId];
+    if (!template) return false;
+    
+    // Clean up usage tracking
+    delete appData.relationships.templateUsage[templateId];
+    
+    // Remove template
+    delete appData.templateLibrary.checklists[templateId];
+    
+    saveData();
+    return true;
+}
+
+// Task Templates for Common Patterns
+function createTaskSet(name, description, tasks, category = 'general', tags = []) {
+    const templateId = `taskset_${appData.nextTemplateLibraryId++}`;
+    
+    appData.templateLibrary.taskSets[templateId] = {
+        id: templateId,
+        name: name,
+        description: description,
+        category: category,
+        tasks: tasks.map(task => ({
+            text: task.text || task,
+            priority: task.priority || 'medium',
+            estimatedTime: task.estimatedTime || null,
+            dependencies: task.dependencies || []
+        })),
+        tags: tags,
+        isPublic: false,
+        usageCount: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    };
+    
+    saveData();
+    return templateId;
+}
+
+function applyTaskSetToCard(templateId, cardId, boardId) {
+    const template = appData.templateLibrary.taskSets[templateId];
+    if (!template) return null;
+    
+    const board = appData.boards[boardId];
+    if (!board) return null;
+    
+    // Find the card
+    let targetCard = null;
+    board.rows.forEach(row => {
+        Object.keys(row.cards).forEach(columnKey => {
+            const card = row.cards[columnKey].find(c => c.id == cardId);
+            if (card) targetCard = card;
+        });
+    });
+    
+    if (!targetCard) return null;
+    
+    // Ensure card has taskIds array
+    if (!targetCard.taskIds) targetCard.taskIds = [];
+    
+    const newTaskIds = [];
+    
+    // Create task entities from template
+    template.tasks.forEach(taskTemplate => {
+        const taskId = `task_${appData.nextTaskId++}`;
+        
+        appData.entities.tasks[taskId] = {
+            id: taskId,
+            text: taskTemplate.text,
+            completed: false,
+            dueDate: null,
+            priority: taskTemplate.priority,
+            parentType: 'card',
+            parentId: cardId.toString(),
+            tags: [...template.tags],
+            estimatedTime: taskTemplate.estimatedTime,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+        
+        newTaskIds.push(taskId);
+        targetCard.taskIds.push(taskId);
+    });
+    
+    // Update relationships
+    const cardKey = cardId.toString();
+    if (!appData.relationships.entityTasks[cardKey]) {
+        appData.relationships.entityTasks[cardKey] = [];
+    }
+    appData.relationships.entityTasks[cardKey].push(...newTaskIds);
+    
+    // Track template usage
+    if (!appData.relationships.templateUsage[templateId]) {
+        appData.relationships.templateUsage[templateId] = [];
+    }
+    appData.relationships.templateUsage[templateId].push({
+        entityType: 'card',
+        entityId: cardId.toString(),
+        usedAt: new Date().toISOString()
+    });
+    
+    // Update usage count
+    template.usageCount++;
+    template.updatedAt = new Date().toISOString();
+    
+    saveData();
+    return newTaskIds;
+}
+
+// Enhanced Tagging System
+function createTag(name, color, category, description = '') {
+    const tagId = `tag_${appData.nextTagId++}`;
+    
+    appData.tags[tagId] = {
+        id: tagId,
+        name: name.toLowerCase().trim(),
+        color: color,
+        category: category,
+        description: description,
+        usageCount: 0,
+        createdAt: new Date().toISOString()
+    };
+    
+    saveData();
+    return tagId;
+}
+
+function addTagToEntity(entityType, entityId, tagId) {
+    const tag = appData.tags[tagId];
+    if (!tag) return false;
+    
+    const entityKey = `${entityType}:${entityId}`;
+    
+    if (!appData.relationships.entityTags[entityKey]) {
+        appData.relationships.entityTags[entityKey] = [];
+    }
+    
+    // Avoid duplicates
+    if (!appData.relationships.entityTags[entityKey].includes(tagId)) {
+        appData.relationships.entityTags[entityKey].push(tagId);
+        tag.usageCount++;
+        saveData();
+    }
+    
+    return true;
+}
+
+function removeTagFromEntity(entityType, entityId, tagId) {
+    const entityKey = `${entityType}:${entityId}`;
+    
+    if (appData.relationships.entityTags[entityKey]) {
+        const index = appData.relationships.entityTags[entityKey].indexOf(tagId);
+        if (index > -1) {
+            appData.relationships.entityTags[entityKey].splice(index, 1);
+            
+            // Decrease usage count
+            if (appData.tags[tagId]) {
+                appData.tags[tagId].usageCount = Math.max(0, appData.tags[tagId].usageCount - 1);
+            }
+            
+            // Clean up empty arrays
+            if (appData.relationships.entityTags[entityKey].length === 0) {
+                delete appData.relationships.entityTags[entityKey];
+            }
+            
+            saveData();
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+function getTagsForEntity(entityType, entityId) {
+    const entityKey = `${entityType}:${entityId}`;
+    const tagIds = appData.relationships.entityTags[entityKey] || [];
+    return tagIds.map(tagId => appData.tags[tagId]).filter(Boolean);
+}
+
+function getTagsByCategory(category = null) {
+    const tags = Object.values(appData.tags);
+    
+    if (category) {
+        return tags.filter(tag => tag.category === category);
+    }
+    
+    return tags.sort((a, b) => b.usageCount - a.usageCount);
+}
+
+function searchEntitiesByTags(tagIds, entityTypes = ['task', 'note', 'checklist']) {
+    const results = [];
+    
+    Object.keys(appData.relationships.entityTags).forEach(entityKey => {
+        const [entityType, entityId] = entityKey.split(':');
+        
+        if (!entityTypes.includes(entityType)) return;
+        
+        const entityTagIds = appData.relationships.entityTags[entityKey];
+        const hasAllTags = tagIds.every(tagId => entityTagIds.includes(tagId));
+        
+        if (hasAllTags) {
+            let entity = null;
+            
+            switch (entityType) {
+                case 'task':
+                    entity = appData.entities.tasks[entityId];
+                    break;
+                case 'note':
+                    entity = appData.entities.notes[entityId];
+                    break;
+                case 'checklist':
+                    entity = appData.entities.checklists[entityId];
+                    break;
+            }
+            
+            if (entity) {
+                results.push({
+                    type: entityType,
+                    entity: entity,
+                    tags: getTagsForEntity(entityType, entityId)
+                });
+            }
+        }
+    });
+    
+    return results;
+}
+
+// Smart Collections System
+function createCollection(name, description, filters, isPublic = false) {
+    const collectionId = `collection_${appData.nextCollectionId++}`;
+    
+    appData.collections[collectionId] = {
+        id: collectionId,
+        name: name,
+        description: description,
+        filters: filters, // { tags: [], entityTypes: [], priorities: [], dateRange: null }
+        isPublic: isPublic,
+        itemCount: 0,
+        lastUpdated: new Date().toISOString(),
+        createdAt: new Date().toISOString()
+    };
+    
+    // Initialize collection with current matching entities
+    updateCollectionItems(collectionId);
+    
+    saveData();
+    return collectionId;
+}
+
+function updateCollectionItems(collectionId) {
+    const collection = appData.collections[collectionId];
+    if (!collection) return false;
+    
+    const filters = collection.filters;
+    let entities = [];
+    
+    // Start with all entities
+    if (!filters.entityTypes || filters.entityTypes.length === 0) {
+        // Get all entity types
+        entities.push(...Object.values(appData.entities.tasks).map(e => ({ type: 'task', entity: e })));
+        entities.push(...Object.values(appData.entities.notes).map(e => ({ type: 'note', entity: e })));
+        entities.push(...Object.values(appData.entities.checklists).map(e => ({ type: 'checklist', entity: e })));
+    } else {
+        // Get specific entity types
+        filters.entityTypes.forEach(type => {
+            if (type === 'task' && appData.entities.tasks) {
+                entities.push(...Object.values(appData.entities.tasks).map(e => ({ type: 'task', entity: e })));
+            } else if (type === 'note' && appData.entities.notes) {
+                entities.push(...Object.values(appData.entities.notes).map(e => ({ type: 'note', entity: e })));
+            } else if (type === 'checklist' && appData.entities.checklists) {
+                entities.push(...Object.values(appData.entities.checklists).map(e => ({ type: 'checklist', entity: e })));
+            }
+        });
+    }
+    
+    // Filter by tags
+    if (filters.tags && filters.tags.length > 0) {
+        entities = entities.filter(item => {
+            const entityTags = getTagsForEntity(item.type, item.entity.id);
+            return filters.tags.some(tagId => entityTags.some(tag => tag.id === tagId));
+        });
+    }
+    
+    // Filter by priority
+    if (filters.priorities && filters.priorities.length > 0) {
+        entities = entities.filter(item => {
+            return filters.priorities.includes(item.entity.priority || 'medium');
+        });
+    }
+    
+    // Filter by date range
+    if (filters.dateRange) {
+        const startDate = new Date(filters.dateRange.start);
+        const endDate = new Date(filters.dateRange.end);
+        
+        entities = entities.filter(item => {
+            const entityDate = new Date(item.entity.createdAt);
+            return entityDate >= startDate && entityDate <= endDate;
+        });
+    }
+    
+    // Update collection entity relationships
+    appData.relationships.collectionEntities[collectionId] = entities.map(item => `${item.type}:${item.entity.id}`);
+    
+    // Update collection metadata
+    collection.itemCount = entities.length;
+    collection.lastUpdated = new Date().toISOString();
+    
+    return entities;
+}
+
+function getCollectionItems(collectionId) {
+    const collection = appData.collections[collectionId];
+    if (!collection) return [];
+    
+    const entityKeys = appData.relationships.collectionEntities[collectionId] || [];
+    
+    return entityKeys.map(entityKey => {
+        const [entityType, entityId] = entityKey.split(':');
+        let entity = null;
+        
+        switch (entityType) {
+            case 'task':
+                entity = appData.entities.tasks[entityId];
+                break;
+            case 'note':
+                entity = appData.entities.notes[entityId];
+                break;
+            case 'checklist':
+                entity = appData.entities.checklists[entityId];
+                break;
+        }
+        
+        return {
+            type: entityType,
+            entity: entity,
+            tags: getTagsForEntity(entityType, entityId)
+        };
+    }).filter(item => item.entity); // Filter out deleted entities
+}
+
+function updateAllCollections() {
+    Object.keys(appData.collections).forEach(collectionId => {
+        updateCollectionItems(collectionId);
+    });
+    saveData();
+}
+
+// Cross-Entity Search System
+function searchAllEntities(searchTerm, filters = {}) {
+    const results = [];
+    const lowerSearchTerm = searchTerm.toLowerCase();
+    
+    // Search tasks
+    if (!filters.entityTypes || filters.entityTypes.includes('task')) {
+        Object.values(appData.entities.tasks).forEach(task => {
+            if (task.text.toLowerCase().includes(lowerSearchTerm)) {
+                results.push({
+                    type: 'task',
+                    entity: task,
+                    tags: getTagsForEntity('task', task.id),
+                    matchField: 'text'
+                });
+            }
+        });
+    }
+    
+    // Search notes
+    if (!filters.entityTypes || filters.entityTypes.includes('note')) {
+        Object.values(appData.entities.notes).forEach(note => {
+            let matchField = null;
+            if (note.title.toLowerCase().includes(lowerSearchTerm)) {
+                matchField = 'title';
+            } else if (note.content.toLowerCase().includes(lowerSearchTerm)) {
+                matchField = 'content';
+            }
+            
+            if (matchField) {
+                results.push({
+                    type: 'note',
+                    entity: note,
+                    tags: getTagsForEntity('note', note.id),
+                    matchField: matchField
+                });
+            }
+        });
+    }
+    
+    // Search checklists
+    if (!filters.entityTypes || filters.entityTypes.includes('checklist')) {
+        Object.values(appData.entities.checklists).forEach(checklist => {
+            let matchField = null;
+            if (checklist.title.toLowerCase().includes(lowerSearchTerm)) {
+                matchField = 'title';
+            } else if (checklist.description.toLowerCase().includes(lowerSearchTerm)) {
+                matchField = 'description';
+            }
+            
+            if (matchField) {
+                results.push({
+                    type: 'checklist',
+                    entity: checklist,
+                    tags: getTagsForEntity('checklist', checklist.id),
+                    matchField: matchField
+                });
+            }
+        });
+    }
+    
+    // Apply additional filters
+    let filteredResults = results;
+    
+    if (filters.tags && filters.tags.length > 0) {
+        filteredResults = filteredResults.filter(item => {
+            return filters.tags.some(tagId => item.tags.some(tag => tag.id === tagId));
+        });
+    }
+    
+    if (filters.priorities && filters.priorities.length > 0) {
+        filteredResults = filteredResults.filter(item => {
+            return filters.priorities.includes(item.entity.priority || 'medium');
+        });
+    }
+    
+    return filteredResults.sort((a, b) => {
+        // Prioritize title matches over content matches
+        if (a.matchField === 'title' && b.matchField !== 'title') return -1;
+        if (b.matchField === 'title' && a.matchField !== 'title') return 1;
+        
+        // Sort by relevance (how early the match appears)
+        const aIndex = a.entity[a.matchField].toLowerCase().indexOf(lowerSearchTerm);
+        const bIndex = b.entity[b.matchField].toLowerCase().indexOf(lowerSearchTerm);
+        return aIndex - bIndex;
+    });
+}
+
+// Initialize Sample Templates and Collections (for demonstration)
+function initializeSampleTemplates() {
+    // Sample Checklist Templates
+    if (Object.keys(appData.templateLibrary.checklists).length === 0) {
+        // Project Planning Template
+        createChecklistTemplate(
+            "Project Planning Checklist",
+            "Essential steps for starting any new project",
+            [
+                { text: "Define project scope and objectives", priority: "high" },
+                { text: "Identify key stakeholders", priority: "high" },
+                { text: "Create project timeline", priority: "medium" },
+                { text: "Set budget and resource requirements", priority: "medium" },
+                { text: "Establish communication channels", priority: "medium" },
+                { text: "Create risk management plan", priority: "low" }
+            ],
+            "project",
+            ["planning", "project"]
+        );
+        
+        // Code Review Template
+        createChecklistTemplate(
+            "Code Review Checklist",
+            "Quality assurance checklist for code reviews",
+            [
+                { text: "Code follows style guidelines", priority: "medium" },
+                { text: "Functions are properly documented", priority: "medium" },
+                { text: "Edge cases are handled", priority: "high" },
+                { text: "Tests are written and passing", priority: "high" },
+                { text: "Performance considerations addressed", priority: "medium" },
+                { text: "Security vulnerabilities checked", priority: "high" }
+            ],
+            "development",
+            ["code", "review", "quality"]
+        );
+        
+        // Meeting Preparation Template
+        createChecklistTemplate(
+            "Meeting Preparation",
+            "Ensure meetings are productive and well-organized",
+            [
+                { text: "Create agenda and share with attendees", priority: "high" },
+                { text: "Book meeting room or set up video call", priority: "medium" },
+                { text: "Prepare presentation materials", priority: "medium" },
+                { text: "Review previous meeting notes", priority: "low" },
+                { text: "Send reminder to participants", priority: "medium" }
+            ],
+            "meetings",
+            ["meeting", "preparation"]
+        );
+    }
+    
+    // Sample Task Sets
+    if (Object.keys(appData.templateLibrary.taskSets).length === 0) {
+        // Website Launch Task Set
+        createTaskSet(
+            "Website Launch Tasks",
+            "Essential tasks for launching a new website",
+            [
+                { text: "Final content review and approval", priority: "high" },
+                { text: "Cross-browser testing", priority: "high" },
+                { text: "Performance optimization", priority: "medium" },
+                { text: "SEO meta tags and descriptions", priority: "medium" },
+                { text: "Set up analytics tracking", priority: "medium" },
+                { text: "Configure backup systems", priority: "low" },
+                { text: "Update DNS records", priority: "high" },
+                { text: "Monitor launch for issues", priority: "high" }
+            ],
+            "web-development",
+            ["website", "launch", "development"]
+        );
+        
+        // Employee Onboarding Task Set
+        createTaskSet(
+            "Employee Onboarding",
+            "Standard onboarding tasks for new team members",
+            [
+                { text: "Send welcome email with first day details", priority: "high" },
+                { text: "Prepare workspace and equipment", priority: "high" },
+                { text: "Create accounts for all necessary systems", priority: "high" },
+                { text: "Schedule introduction meetings", priority: "medium" },
+                { text: "Provide company handbook and policies", priority: "medium" },
+                { text: "Set up payroll and benefits", priority: "high" },
+                { text: "Assign mentor or buddy", priority: "medium" }
+            ],
+            "hr",
+            ["onboarding", "hr", "new-employee"]
+        );
+    }
+}
+
+function initializeSampleCollections() {
+    if (Object.keys(appData.collections).length === 0) {
+        // High Priority Items Collection
+        createCollection(
+            "High Priority Items",
+            "All high priority tasks, notes, and checklists across all projects",
+            {
+                entityTypes: ['task', 'note', 'checklist'],
+                priorities: ['high', 'urgent'],
+                tags: [],
+                dateRange: null
+            }
+        );
+        
+        // Work Items Collection
+        createCollection(
+            "Work Items",
+            "All work-related items tagged with 'work'",
+            {
+                entityTypes: ['task', 'note', 'checklist'],
+                priorities: [],
+                tags: [findTagByName('work')].filter(Boolean).map(tag => tag.id),
+                dateRange: null
+            }
+        );
+        
+        // This Week's Items
+        const weekStart = new Date();
+        weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+        
+        createCollection(
+            "This Week's Items",
+            "All items created this week",
+            {
+                entityTypes: ['task', 'note', 'checklist'],
+                priorities: [],
+                tags: [],
+                dateRange: {
+                    start: weekStart.toISOString(),
+                    end: weekEnd.toISOString()
+                }
+            }
+        );
+    }
+}
+
+function findTagByName(name) {
+    return Object.values(appData.tags).find(tag => tag.name === name.toLowerCase());
+}
+
+// Auto-update collections when entities change
+function onEntityChange() {
+    updateAllCollections();
 }
 
 // Export functions
