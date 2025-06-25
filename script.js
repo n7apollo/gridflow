@@ -2814,16 +2814,22 @@ function updateBoardTitle() {
 }
 
 function updateBoardSelector() {
-    const selector = document.getElementById('boardSelect');
-    selector.innerHTML = '';
+    // Update legacy board selector if it exists
+    const legacySelector = document.getElementById('boardSelect');
+    if (legacySelector) {
+        legacySelector.innerHTML = '';
+        
+        Object.entries(appData.boards).forEach(([boardId, board]) => {
+            const option = document.createElement('option');
+            option.value = boardId;
+            option.textContent = board.name;
+            option.selected = boardId === appData.currentBoardId;
+            legacySelector.appendChild(option);
+        });
+    }
     
-    Object.entries(appData.boards).forEach(([boardId, board]) => {
-        const option = document.createElement('option');
-        option.value = boardId;
-        option.textContent = board.name;
-        option.selected = boardId === appData.currentBoardId;
-        selector.appendChild(option);
-    });
+    // Update enhanced board selector display
+    updateCurrentBoardDisplay();
 }
 
 function switchBoard(boardId) {
