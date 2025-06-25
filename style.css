@@ -3275,3 +3275,529 @@ body {
 @media (prefers-color-scheme: dark) {
     /* Placeholder for dark mode styles if needed */
 }
+
+/* ============================================
+   WEEKLY PLANNING INTERFACE
+   ============================================ */
+
+/* Weekly Container */
+.weekly-container {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Weekly Header */
+.weekly-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #e4e6ea;
+}
+
+.weekly-navigation {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.current-week-info {
+    text-align: center;
+}
+
+.current-week-info h2 {
+    margin: 0 0 10px 0;
+    color: #172b4d;
+    font-size: 1.8rem;
+}
+
+.week-progress {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.progress-bar {
+    width: 200px;
+    height: 8px;
+    background: #e4e6ea;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #61bd4f 0%, #51a85f 100%);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    font-size: 14px;
+    color: #5e6c84;
+    font-weight: 500;
+}
+
+.weekly-actions {
+    display: flex;
+    gap: 10px;
+}
+
+/* Weekly Content */
+.weekly-content {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+/* Weekly Goal Section */
+.weekly-goal-section {
+    background: #f9fafc;
+    border-radius: 8px;
+    padding: 20px;
+    border-left: 4px solid #0079bf;
+}
+
+.goal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.goal-header h3 {
+    margin: 0;
+    color: #172b4d;
+    font-size: 1.2rem;
+}
+
+.goal-text {
+    color: #5e6c84;
+    font-style: italic;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.goal-edit-form textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #e4e6ea;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+}
+
+.goal-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+/* Weekly Overview */
+.weekly-overview {
+    background: #f4f5f7;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.overview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.overview-header h3 {
+    margin: 0;
+    color: #172b4d;
+    font-size: 1.2rem;
+}
+
+.item-limit {
+    font-size: 12px;
+    color: #8993a4;
+    font-style: italic;
+}
+
+.weekly-items {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Daily Planning Grid */
+.daily-planning-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.day-column {
+    background: white;
+    border: 1px solid #e4e6ea;
+    border-radius: 8px;
+    overflow: hidden;
+    min-height: 300px;
+}
+
+.day-column.weekend {
+    background: #fafbfc;
+}
+
+.day-header {
+    background: #172b4d;
+    color: white;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.day-column.weekend .day-header {
+    background: #5e6c84;
+}
+
+.day-header h4 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.day-date {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.day-header button {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    border-radius: 4px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.day-header button:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.day-items {
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 200px;
+}
+
+/* Weekly Items */
+.weekly-item {
+    background: white;
+    border: 1px solid #e4e6ea;
+    border-radius: 6px;
+    padding: 12px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    transition: all 0.2s ease;
+}
+
+.weekly-item:hover {
+    border-color: #0079bf;
+    box-shadow: 0 2px 4px rgba(0, 121, 191, 0.1);
+}
+
+.weekly-item.completed {
+    opacity: 0.7;
+    background: #f4f5f7;
+}
+
+.weekly-item.completed .item-content {
+    text-decoration: line-through;
+    color: #8993a4;
+}
+
+.item-checkbox {
+    margin-top: 2px;
+    cursor: pointer;
+}
+
+.item-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.item-title {
+    font-weight: 600;
+    color: #172b4d;
+    margin-bottom: 4px;
+    word-wrap: break-word;
+}
+
+.item-description {
+    font-size: 13px;
+    color: #5e6c84;
+    line-height: 1.4;
+    word-wrap: break-word;
+}
+
+.item-meta {
+    font-size: 11px;
+    color: #8993a4;
+    margin-top: 4px;
+}
+
+.item-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.weekly-item:hover .item-actions {
+    opacity: 1;
+}
+
+.item-action-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #8993a4;
+    padding: 2px;
+    border-radius: 2px;
+    font-size: 12px;
+    transition: all 0.2s ease;
+}
+
+.item-action-btn:hover {
+    background: #e4e6ea;
+    color: #172b4d;
+}
+
+/* Card Item Styling */
+.weekly-item.card-item {
+    border-left: 4px solid #0079bf;
+}
+
+.weekly-item.card-item .item-title::before {
+    content: '📋 ';
+    margin-right: 4px;
+}
+
+/* Note Item Styling */
+.weekly-item.note-item {
+    border-left: 4px solid #61bd4f;
+}
+
+.weekly-item.note-item .item-title::before {
+    content: '📝 ';
+    margin-right: 4px;
+}
+
+/* Checklist Item Styling */
+.weekly-item.checklist-item {
+    border-left: 4px solid #ffab4a;
+}
+
+.weekly-item.checklist-item .item-title::before {
+    content: '☑️ ';
+    margin-right: 4px;
+}
+
+.checklist-items {
+    margin-top: 8px;
+}
+
+.checklist-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+    font-size: 12px;
+}
+
+.checklist-item input[type="checkbox"] {
+    width: 12px;
+    height: 12px;
+    cursor: pointer;
+}
+
+.checklist-item.completed {
+    text-decoration: line-through;
+    color: #8993a4;
+}
+
+/* Weekly Item Modal Styles */
+.item-type-selector {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.radio-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    padding: 8px 12px;
+    border: 1px solid #e4e6ea;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.radio-label:hover {
+    border-color: #0079bf;
+    background: #f4f5f7;
+}
+
+.radio-label input[type="radio"] {
+    margin: 0;
+}
+
+.item-form {
+    margin-top: 15px;
+}
+
+.checklist-builder {
+    border: 1px solid #e4e6ea;
+    border-radius: 6px;
+    padding: 10px;
+    background: #f9fafc;
+}
+
+.checklist-item-input {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.checklist-input {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid #e4e6ea;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.checklist-item-preview {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    background: white;
+    border: 1px solid #e4e6ea;
+    border-radius: 4px;
+    margin-bottom: 4px;
+}
+
+.checklist-item-text {
+    font-size: 13px;
+    color: #172b4d;
+}
+
+.remove-item-btn {
+    background: none;
+    border: none;
+    color: #eb5a46;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 2px;
+}
+
+.remove-item-btn:hover {
+    background: #ffebee;
+    border-radius: 2px;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .weekly-header {
+        flex-direction: column;
+        gap: 15px;
+        align-items: stretch;
+    }
+    
+    .weekly-navigation {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+    
+    .current-week-info h2 {
+        font-size: 1.5rem;
+    }
+    
+    .week-progress {
+        justify-content: center;
+    }
+    
+    .progress-bar {
+        width: 150px;
+    }
+    
+    .weekly-actions {
+        justify-content: center;
+    }
+    
+    .daily-planning-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .day-column {
+        min-height: 200px;
+    }
+    
+    .overview-header {
+        flex-direction: column;
+        gap: 8px;
+        align-items: flex-start;
+    }
+    
+    .item-type-selector {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .goal-header {
+        flex-direction: column;
+        gap: 8px;
+        align-items: flex-start;
+    }
+}
+
+@media (max-width: 480px) {
+    .weekly-container {
+        padding: 15px;
+    }
+    
+    .weekly-content {
+        gap: 20px;
+    }
+    
+    .day-header {
+        padding: 12px;
+    }
+    
+    .day-items {
+        padding: 12px;
+    }
+    
+    .weekly-goal-section,
+    .weekly-overview {
+        padding: 15px;
+    }
+    
+    .checklist-item-input {
+        flex-direction: column;
+        gap: 4px;
+    }
+}

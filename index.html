@@ -56,6 +56,7 @@
                     <div class="view-toggle">
                         <button class="btn btn-toggle active" id="boardViewBtn" onclick="switchToView('board')" title="Board View">📋</button>
                         <button class="btn btn-toggle" id="taskViewBtn" onclick="switchToView('tasks')" title="Task View">✅</button>
+                        <button class="btn btn-toggle" id="weeklyViewBtn" onclick="switchToView('weekly')" title="Weekly Plan">📅</button>
                     </div>
                     <button class="btn btn-primary" onclick="addRow()">+ Add Row</button>
                 </div>
@@ -252,6 +253,141 @@
             <div class="task-content">
                 <div class="task-list" id="taskList">
                     <!-- Tasks will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Weekly Planning Interface -->
+        <div class="weekly-container" id="weeklyContainer" style="display: none;">
+            <div class="weekly-header">
+                <div class="weekly-navigation">
+                    <button class="btn btn-secondary" onclick="navigateWeek(-1)" id="prevWeekBtn">← Previous Week</button>
+                    <div class="current-week-info">
+                        <h2 id="currentWeekTitle">Week of January 13, 2025</h2>
+                        <div class="week-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="weekProgressFill" style="width: 0%"></div>
+                            </div>
+                            <span class="progress-text" id="weekProgressText">0 of 0 completed</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary" onclick="navigateWeek(1)" id="nextWeekBtn">Next Week →</button>
+                </div>
+                
+                <div class="weekly-actions">
+                    <button class="btn btn-secondary" onclick="showWeeklyReflectionModal()">✍️ Reflection</button>
+                    <button class="btn btn-primary" onclick="addWeeklyNote()">+ Add Note</button>
+                </div>
+            </div>
+
+            <div class="weekly-content">
+                <!-- Weekly Goal Section -->
+                <div class="weekly-goal-section" id="weeklyGoalSection">
+                    <div class="goal-header">
+                        <h3>🎯 This Week's Focus</h3>
+                        <button class="btn btn-small btn-secondary" onclick="editWeeklyGoal()" id="editGoalBtn">Edit</button>
+                    </div>
+                    <div class="goal-content" id="weeklyGoalContent">
+                        <p class="goal-text" id="weeklyGoalText">Set your main focus for this week...</p>
+                        <div class="goal-edit-form" id="weeklyGoalForm" style="display: none;">
+                            <textarea id="weeklyGoalInput" placeholder="What's your main focus this week?" rows="2"></textarea>
+                            <div class="goal-actions">
+                                <button class="btn btn-small btn-primary" onclick="saveWeeklyGoal()">Save</button>
+                                <button class="btn btn-small btn-secondary" onclick="cancelGoalEdit()">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Weekly Overview Items -->
+                <div class="weekly-overview">
+                    <div class="overview-header">
+                        <h3>📝 General Week Items</h3>
+                        <span class="item-limit">Keep it focused - max 5 items</span>
+                    </div>
+                    <div class="weekly-items" id="weeklyOverviewItems">
+                        <!-- General weekly items will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Daily Planning Grid -->
+                <div class="daily-planning-grid">
+                    <div class="day-column" data-day="monday">
+                        <div class="day-header">
+                            <h4>Monday</h4>
+                            <span class="day-date" id="mondayDate"></span>
+                            <button class="btn btn-small btn-secondary" onclick="addDailyItem('monday')">+</button>
+                        </div>
+                        <div class="day-items" id="mondayItems">
+                            <!-- Monday items will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <div class="day-column" data-day="tuesday">
+                        <div class="day-header">
+                            <h4>Tuesday</h4>
+                            <span class="day-date" id="tuesdayDate"></span>
+                            <button class="btn btn-small btn-secondary" onclick="addDailyItem('tuesday')">+</button>
+                        </div>
+                        <div class="day-items" id="tuesdayItems">
+                            <!-- Tuesday items will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <div class="day-column" data-day="wednesday">
+                        <div class="day-header">
+                            <h4>Wednesday</h4>
+                            <span class="day-date" id="wednesdayDate"></span>
+                            <button class="btn btn-small btn-secondary" onclick="addDailyItem('wednesday')">+</button>
+                        </div>
+                        <div class="day-items" id="wednesdayItems">
+                            <!-- Wednesday items will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <div class="day-column" data-day="thursday">
+                        <div class="day-header">
+                            <h4>Thursday</h4>
+                            <span class="day-date" id="thursdayDate"></span>
+                            <button class="btn btn-small btn-secondary" onclick="addDailyItem('thursday')">+</button>
+                        </div>
+                        <div class="day-items" id="thursdayItems">
+                            <!-- Thursday items will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <div class="day-column" data-day="friday">
+                        <div class="day-header">
+                            <h4>Friday</h4>
+                            <span class="day-date" id="fridayDate"></span>
+                            <button class="btn btn-small btn-secondary" onclick="addDailyItem('friday')">+</button>
+                        </div>
+                        <div class="day-items" id="fridayItems">
+                            <!-- Friday items will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <div class="day-column weekend" data-day="saturday">
+                        <div class="day-header">
+                            <h4>Saturday</h4>
+                            <span class="day-date" id="saturdayDate"></span>
+                            <button class="btn btn-small btn-secondary" onclick="addDailyItem('saturday')">+</button>
+                        </div>
+                        <div class="day-items" id="saturdayItems">
+                            <!-- Saturday items will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <div class="day-column weekend" data-day="sunday">
+                        <div class="day-header">
+                            <h4>Sunday</h4>
+                            <span class="day-date" id="sundayDate"></span>
+                            <button class="btn btn-small btn-secondary" onclick="addDailyItem('sunday')">+</button>
+                        </div>
+                        <div class="day-items" id="sundayItems">
+                            <!-- Sunday items will be populated here -->
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -830,6 +966,120 @@
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary">Save Task</button>
                     <button type="button" class="btn btn-secondary" onclick="closeTaskModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for weekly reflection -->
+    <div class="modal" id="weeklyReflectionModal">
+        <div class="modal-content">
+            <span class="close" onclick="closeWeeklyReflectionModal()">&times;</span>
+            <h2>Weekly Reflection</h2>
+            <form id="weeklyReflectionForm">
+                <div class="form-group">
+                    <label for="weeklyWins">🎉 What went well this week?</label>
+                    <textarea id="weeklyWins" rows="3" placeholder="Celebrate your wins and progress..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="weeklyChallenges">🤔 What challenges did you face?</label>
+                    <textarea id="weeklyChallenges" rows="3" placeholder="What was difficult or didn't go as planned..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="weeklyLearnings">💡 What did you learn?</label>
+                    <textarea id="weeklyLearnings" rows="3" placeholder="Insights, lessons, or things to remember..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="nextWeekFocus">🔮 Focus for next week?</label>
+                    <textarea id="nextWeekFocus" rows="2" placeholder="What should you prioritize next week..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save Reflection</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeWeeklyReflectionModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for adding weekly items -->
+    <div class="modal" id="weeklyItemModal">
+        <div class="modal-content">
+            <span class="close" onclick="closeWeeklyItemModal()">&times;</span>
+            <h2 id="weeklyItemModalTitle">Add Weekly Item</h2>
+            <form id="weeklyItemForm">
+                <div class="form-group">
+                    <label>Item Type:</label>
+                    <div class="item-type-selector">
+                        <label class="radio-label">
+                            <input type="radio" name="itemType" value="note" checked>
+                            📝 Note/Task
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="itemType" value="checklist">
+                            ☑️ Checklist
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="itemType" value="card">
+                            📋 Existing Card
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Note/Task Form -->
+                <div class="item-form" id="noteForm">
+                    <div class="form-group">
+                        <label for="noteTitle">Title:</label>
+                        <input type="text" id="noteTitle" placeholder="Enter task or note title...">
+                    </div>
+                    <div class="form-group">
+                        <label for="noteContent">Description:</label>
+                        <textarea id="noteContent" rows="3" placeholder="Add details, context, or notes..."></textarea>
+                    </div>
+                </div>
+                
+                <!-- Checklist Form -->
+                <div class="item-form" id="checklistForm" style="display: none;">
+                    <div class="form-group">
+                        <label for="checklistTitle">Checklist Title:</label>
+                        <input type="text" id="checklistTitle" placeholder="e.g., 'Morning routine', 'Project setup'...">
+                    </div>
+                    <div class="form-group">
+                        <label>Checklist Items:</label>
+                        <div class="checklist-builder" id="checklistBuilder">
+                            <div class="checklist-item-input">
+                                <input type="text" placeholder="Enter checklist item..." class="checklist-input">
+                                <button type="button" class="btn btn-small btn-primary" onclick="addChecklistItem()">+</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Card Selection Form -->
+                <div class="item-form" id="cardForm" style="display: none;">
+                    <div class="form-group">
+                        <label for="cardBoardSelect">Board:</label>
+                        <select id="cardBoardSelect" onchange="updateCardOptions()">
+                            <!-- Boards will be populated -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="cardSelect">Card:</label>
+                        <select id="cardSelect">
+                            <!-- Cards will be populated -->
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="itemCompleted">
+                        Mark as completed
+                    </label>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Add to Week</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeWeeklyItemModal()">Cancel</button>
                 </div>
             </form>
         </div>

@@ -18,7 +18,9 @@ let appData = {
         }
     },
     templates: [],
-    nextTemplateId: 1
+    nextTemplateId: 1,
+    weeklyPlans: {},
+    nextWeeklyItemId: 1
 };
 
 // Current board reference for backward compatibility
@@ -87,6 +89,10 @@ function loadData() {
             // Ensure templates exist
             if (!appData.templates) appData.templates = [];
             if (!appData.nextTemplateId) appData.nextTemplateId = 1;
+            
+            // Ensure weekly planning exists
+            if (!appData.weeklyPlans) appData.weeklyPlans = {};
+            if (!appData.nextWeeklyItemId) appData.nextWeeklyItemId = 1;
             
             // Populate pre-built templates if none exist
             console.log('Templates check:', appData.templates ? appData.templates.length : 'undefined');
@@ -4183,3 +4189,660 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add a small delay to ensure other initialization is complete
     setTimeout(initializeEnhancedNavigation, 100);
 });
+
+// ============================================
+// WEEKLY PLANNING SYSTEM
+// ============================================
+
+let currentWeekKey = null;
+let currentEditingWeeklyItem = null;
+
+// Week navigation and utilities
+function getCurrentWeekKey() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const weekNumber = getWeekNumber(now);
+    return `${year}-W${weekNumber.toString().padStart(2, '0')}`;
+}
+
+function getWeekNumber(date) {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+    return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+}
+
+function getWeekStart(weekKey) {
+    const [year, week] = weekKey.split('-W');
+    const yearStart = new Date(parseInt(year), 0, 1);
+    const weekStart = new Date(yearStart);
+    weekStart.setDate(yearStart.getDate() + (parseInt(week) - 1) * 7 - yearStart.getDay() + 1);
+    return weekStart;
+}
+
+function formatWeekTitle(weekKey) {
+    const weekStart = getWeekStart(weekKey);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    
+    const options = { month: 'long', day: 'numeric', year: 'numeric' };
+    return `Week of ${weekStart.toLocaleDateString('en-US', options)}`;
+}
+
+function formatDayDate(date, day) {
+    const dayIndex = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'].indexOf(day);
+    const weekStart = getWeekStart(currentWeekKey);
+    const targetDate = new Date(weekStart);
+    targetDate.setDate(weekStart.getDate() + dayIndex);
+    
+    return targetDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+// Initialize weekly planning
+function initializeWeeklyPlanning() {
+    currentWeekKey = getCurrentWeekKey();
+    
+    // Ensure current week exists in data
+    if (!appData.weeklyPlans[currentWeekKey]) {
+        appData.weeklyPlans[currentWeekKey] = {
+            weekStart: getWeekStart(currentWeekKey).toISOString(),
+            goal: '',
+            items: [],
+            reflection: {
+                wins: '',
+                challenges: '',
+                learnings: '',
+                nextWeekFocus: ''
+            }
+        };
+    }
+    
+    renderWeeklyPlan();
+}
+
+// Main weekly plan renderer
+function renderWeeklyPlan() {
+    const currentPlan = appData.weeklyPlans[currentWeekKey] || {
+        goal: '',
+        items: [],
+        reflection: { wins: '', challenges: '', learnings: '', nextWeekFocus: '' }
+    };
+    
+    // Update header
+    document.getElementById('currentWeekTitle').textContent = formatWeekTitle(currentWeekKey);
+    
+    // Update dates for each day
+    ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].forEach(day => {
+        const dateElement = document.getElementById(`${day}Date`);
+        if (dateElement) {
+            dateElement.textContent = formatDayDate(currentWeekKey, day);
+        }
+    });
+    
+    // Update weekly goal
+    const goalText = document.getElementById('weeklyGoalText');
+    if (currentPlan.goal) {
+        goalText.textContent = currentPlan.goal;
+        goalText.style.fontStyle = 'normal';
+        goalText.style.color = '#172b4d';
+    } else {
+        goalText.textContent = 'Set your main focus for this week...';
+        goalText.style.fontStyle = 'italic';
+        goalText.style.color = '#5e6c84';
+    }
+    
+    // Render items
+    renderWeeklyItems();
+    updateWeekProgress();
+}
+
+// Render weekly items
+function renderWeeklyItems() {
+    const currentPlan = appData.weeklyPlans[currentWeekKey];
+    if (!currentPlan) return;
+    
+    // Clear all containers
+    document.getElementById('weeklyOverviewItems').innerHTML = '';
+    ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].forEach(day => {
+        document.getElementById(`${day}Items`).innerHTML = '';
+    });
+    
+    // Render items
+    currentPlan.items.forEach(item => {
+        const itemElement = createWeeklyItemElement(item);
+        
+        if (item.day === 'general') {
+            document.getElementById('weeklyOverviewItems').appendChild(itemElement);
+        } else {
+            document.getElementById(`${item.day}Items`).appendChild(itemElement);
+        }
+    });
+}
+
+// Create weekly item element
+function createWeeklyItemElement(item) {
+    const div = document.createElement('div');
+    div.className = `weekly-item ${item.type}-item ${item.completed ? 'completed' : ''}`;
+    div.dataset.itemId = item.id;
+    
+    let itemContent = '';
+    
+    if (item.type === 'card') {
+        // Find the actual card
+        const card = findCardById(item.cardId, item.boardId);
+        itemContent = `
+            <input type="checkbox" class="item-checkbox" ${item.completed ? 'checked' : ''} 
+                   onchange="toggleWeeklyItem('${item.id}')">
+            <div class="item-content">
+                <div class="item-title">${card ? card.title : 'Card not found'}</div>
+                <div class="item-description">${card ? card.description || '' : ''}</div>
+                <div class="item-meta">From: ${appData.boards[item.boardId]?.name || 'Unknown board'}</div>
+            </div>
+        `;
+    } else if (item.type === 'note') {
+        itemContent = `
+            <input type="checkbox" class="item-checkbox" ${item.completed ? 'checked' : ''} 
+                   onchange="toggleWeeklyItem('${item.id}')">
+            <div class="item-content">
+                <div class="item-title">${item.title}</div>
+                <div class="item-description">${item.content || ''}</div>
+            </div>
+        `;
+    } else if (item.type === 'checklist') {
+        const checklistHtml = item.checklist.map((checkItem, index) => `
+            <div class="checklist-item ${checkItem.completed ? 'completed' : ''}">
+                <input type="checkbox" ${checkItem.completed ? 'checked' : ''} 
+                       onchange="toggleChecklistItem('${item.id}', ${index})">
+                <span>${checkItem.text}</span>
+            </div>
+        `).join('');
+        
+        itemContent = `
+            <div class="item-content">
+                <div class="item-title">${item.title}</div>
+                <div class="checklist-items">${checklistHtml}</div>
+            </div>
+        `;
+    }
+    
+    div.innerHTML = `
+        ${itemContent}
+        <div class="item-actions">
+            <button class="item-action-btn" onclick="editWeeklyItem('${item.id}')" title="Edit">✏️</button>
+            <button class="item-action-btn" onclick="deleteWeeklyItem('${item.id}')" title="Delete">🗑️</button>
+        </div>
+    `;
+    
+    return div;
+}
+
+// Helper function to find card by ID
+function findCardById(cardId, boardId) {
+    const board = appData.boards[boardId];
+    if (!board) return null;
+    
+    for (const row of board.rows) {
+        for (const columnKey in row.cards) {
+            const card = row.cards[columnKey].find(c => c.id == cardId);
+            if (card) return card;
+        }
+    }
+    return null;
+}
+
+// Week navigation
+function navigateWeek(direction) {
+    const currentWeek = getWeekNumber(getWeekStart(currentWeekKey));
+    const currentYear = parseInt(currentWeekKey.split('-W')[0]);
+    
+    let newWeek = currentWeek + direction;
+    let newYear = currentYear;
+    
+    if (newWeek < 1) {
+        newWeek = 52; // Approximate, could be 53
+        newYear--;
+    } else if (newWeek > 52) {
+        newWeek = 1;
+        newYear++;
+    }
+    
+    currentWeekKey = `${newYear}-W${newWeek.toString().padStart(2, '0')}`;
+    
+    // Ensure new week exists in data
+    if (!appData.weeklyPlans[currentWeekKey]) {
+        appData.weeklyPlans[currentWeekKey] = {
+            weekStart: getWeekStart(currentWeekKey).toISOString(),
+            goal: '',
+            items: [],
+            reflection: {
+                wins: '',
+                challenges: '',
+                learnings: '',
+                nextWeekFocus: ''
+            }
+        };
+    }
+    
+    renderWeeklyPlan();
+    saveData();
+}
+
+// Weekly goal management
+function editWeeklyGoal() {
+    const goalText = document.getElementById('weeklyGoalText');
+    const goalForm = document.getElementById('weeklyGoalForm');
+    const goalInput = document.getElementById('weeklyGoalInput');
+    
+    goalText.style.display = 'none';
+    goalForm.style.display = 'block';
+    
+    const currentPlan = appData.weeklyPlans[currentWeekKey];
+    goalInput.value = currentPlan?.goal || '';
+    goalInput.focus();
+}
+
+function saveWeeklyGoal() {
+    const goalInput = document.getElementById('weeklyGoalInput');
+    const goalText = document.getElementById('weeklyGoalText');
+    const goalForm = document.getElementById('weeklyGoalForm');
+    
+    if (!appData.weeklyPlans[currentWeekKey]) {
+        appData.weeklyPlans[currentWeekKey] = {
+            weekStart: getWeekStart(currentWeekKey).toISOString(),
+            goal: '',
+            items: [],
+            reflection: { wins: '', challenges: '', learnings: '', nextWeekFocus: '' }
+        };
+    }
+    
+    appData.weeklyPlans[currentWeekKey].goal = goalInput.value.trim();
+    
+    goalForm.style.display = 'none';
+    goalText.style.display = 'block';
+    
+    renderWeeklyPlan();
+    saveData();
+}
+
+function cancelGoalEdit() {
+    const goalText = document.getElementById('weeklyGoalText');
+    const goalForm = document.getElementById('weeklyGoalForm');
+    
+    goalForm.style.display = 'none';
+    goalText.style.display = 'block';
+}
+
+// Add weekly items
+function addWeeklyNote() {
+    currentEditingWeeklyItem = null;
+    document.getElementById('weeklyItemModalTitle').textContent = 'Add Weekly Item';
+    
+    // Reset form
+    document.getElementById('weeklyItemForm').reset();
+    document.querySelector('input[value="note"]').checked = true;
+    showItemForm('note');
+    
+    document.getElementById('weeklyItemModal').style.display = 'block';
+}
+
+function addDailyItem(day) {
+    currentEditingWeeklyItem = { day: day };
+    document.getElementById('weeklyItemModalTitle').textContent = `Add ${day.charAt(0).toUpperCase() + day.slice(1)} Item`;
+    
+    // Reset form
+    document.getElementById('weeklyItemForm').reset();
+    document.querySelector('input[value="note"]').checked = true;
+    showItemForm('note');
+    
+    document.getElementById('weeklyItemModal').style.display = 'block';
+}
+
+// Item type form switching
+document.addEventListener('change', function(e) {
+    if (e.target.name === 'itemType') {
+        showItemForm(e.target.value);
+    }
+});
+
+function showItemForm(type) {
+    // Hide all forms
+    document.getElementById('noteForm').style.display = 'none';
+    document.getElementById('checklistForm').style.display = 'none';
+    document.getElementById('cardForm').style.display = 'none';
+    
+    // Show selected form
+    if (type === 'note') {
+        document.getElementById('noteForm').style.display = 'block';
+    } else if (type === 'checklist') {
+        document.getElementById('checklistForm').style.display = 'block';
+    } else if (type === 'card') {
+        document.getElementById('cardForm').style.display = 'block';
+        populateCardOptions();
+    }
+}
+
+// Toggle weekly item completion
+function toggleWeeklyItem(itemId) {
+    const currentPlan = appData.weeklyPlans[currentWeekKey];
+    if (!currentPlan) return;
+    
+    const item = currentPlan.items.find(i => i.id === itemId);
+    if (item) {
+        item.completed = !item.completed;
+        renderWeeklyItems();
+        updateWeekProgress();
+        saveData();
+    }
+}
+
+// Toggle checklist item completion
+function toggleChecklistItem(itemId, checkIndex) {
+    const currentPlan = appData.weeklyPlans[currentWeekKey];
+    if (!currentPlan) return;
+    
+    const item = currentPlan.items.find(i => i.id === itemId);
+    if (item && item.checklist && item.checklist[checkIndex]) {
+        item.checklist[checkIndex].completed = !item.checklist[checkIndex].completed;
+        
+        // Update overall item completion based on checklist
+        const allCompleted = item.checklist.every(checkItem => checkItem.completed);
+        item.completed = allCompleted;
+        
+        renderWeeklyItems();
+        updateWeekProgress();
+        saveData();
+    }
+}
+
+// Update week progress
+function updateWeekProgress() {
+    const currentPlan = appData.weeklyPlans[currentWeekKey];
+    if (!currentPlan) return;
+    
+    const totalItems = currentPlan.items.length;
+    const completedItems = currentPlan.items.filter(item => item.completed).length;
+    
+    const progressPercent = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
+    
+    document.getElementById('weekProgressFill').style.width = `${progressPercent}%`;
+    document.getElementById('weekProgressText').textContent = `${completedItems} of ${totalItems} completed`;
+}
+
+// Modal management
+function closeWeeklyItemModal() {
+    document.getElementById('weeklyItemModal').style.display = 'none';
+    currentEditingWeeklyItem = null;
+}
+
+function showWeeklyReflectionModal() {
+    const currentPlan = appData.weeklyPlans[currentWeekKey];
+    if (currentPlan && currentPlan.reflection) {
+        document.getElementById('weeklyWins').value = currentPlan.reflection.wins || '';
+        document.getElementById('weeklyChallenges').value = currentPlan.reflection.challenges || '';
+        document.getElementById('weeklyLearnings').value = currentPlan.reflection.learnings || '';
+        document.getElementById('nextWeekFocus').value = currentPlan.reflection.nextWeekFocus || '';
+    }
+    
+    document.getElementById('weeklyReflectionModal').style.display = 'block';
+}
+
+function closeWeeklyReflectionModal() {
+    document.getElementById('weeklyReflectionModal').style.display = 'none';
+}
+
+// Form submission handlers
+document.getElementById('weeklyItemForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const itemType = document.querySelector('input[name="itemType"]:checked').value;
+    const day = currentEditingWeeklyItem?.day || 'general';
+    
+    let newItem = {
+        id: `weekly_${appData.nextWeeklyItemId++}`,
+        type: itemType,
+        day: day,
+        completed: document.getElementById('itemCompleted').checked,
+        createdAt: new Date().toISOString()
+    };
+    
+    if (itemType === 'note') {
+        newItem.title = document.getElementById('noteTitle').value.trim();
+        newItem.content = document.getElementById('noteContent').value.trim();
+    } else if (itemType === 'checklist') {
+        newItem.title = document.getElementById('checklistTitle').value.trim();
+        newItem.checklist = collectChecklistItems();
+    } else if (itemType === 'card') {
+        const cardSelect = document.getElementById('cardSelect');
+        const [boardId, cardId] = cardSelect.value.split('|');
+        newItem.cardId = cardId;
+        newItem.boardId = boardId;
+    }
+    
+    // Add to current week
+    if (!appData.weeklyPlans[currentWeekKey]) {
+        appData.weeklyPlans[currentWeekKey] = {
+            weekStart: getWeekStart(currentWeekKey).toISOString(),
+            goal: '',
+            items: [],
+            reflection: { wins: '', challenges: '', learnings: '', nextWeekFocus: '' }
+        };
+    }
+    
+    appData.weeklyPlans[currentWeekKey].items.push(newItem);
+    
+    renderWeeklyItems();
+    updateWeekProgress();
+    closeWeeklyItemModal();
+    saveData();
+    
+    showStatusMessage('Item added to weekly plan', 'success');
+});
+
+document.getElementById('weeklyReflectionForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    if (!appData.weeklyPlans[currentWeekKey]) {
+        appData.weeklyPlans[currentWeekKey] = {
+            weekStart: getWeekStart(currentWeekKey).toISOString(),
+            goal: '',
+            items: [],
+            reflection: { wins: '', challenges: '', learnings: '', nextWeekFocus: '' }
+        };
+    }
+    
+    appData.weeklyPlans[currentWeekKey].reflection = {
+        wins: document.getElementById('weeklyWins').value.trim(),
+        challenges: document.getElementById('weeklyChallenges').value.trim(),
+        learnings: document.getElementById('weeklyLearnings').value.trim(),
+        nextWeekFocus: document.getElementById('nextWeekFocus').value.trim()
+    };
+    
+    closeWeeklyReflectionModal();
+    saveData();
+    
+    showStatusMessage('Weekly reflection saved', 'success');
+});
+
+// Initialize weekly planning when switching to weekly view
+function switchToWeeklyView() {
+    initializeWeeklyPlanning();
+}
+
+// Helper functions for weekly planning
+function collectChecklistItems() {
+    const checklistBuilder = document.getElementById('checklistBuilder');
+    const items = [];
+    
+    const previews = checklistBuilder.querySelectorAll('.checklist-item-preview');
+    previews.forEach(preview => {
+        const text = preview.querySelector('.checklist-item-text').textContent;
+        if (text.trim()) {
+            items.push({ text: text.trim(), completed: false });
+        }
+    });
+    
+    return items;
+}
+
+function addChecklistItem() {
+    const input = document.querySelector('.checklist-input');
+    const text = input.value.trim();
+    
+    if (!text) return;
+    
+    const checklistBuilder = document.getElementById('checklistBuilder');
+    const preview = document.createElement('div');
+    preview.className = 'checklist-item-preview';
+    preview.innerHTML = `
+        <span class="checklist-item-text">${text}</span>
+        <button type="button" class="remove-item-btn" onclick="removeChecklistItem(this)">×</button>
+    `;
+    
+    // Insert before the input
+    const inputDiv = checklistBuilder.querySelector('.checklist-item-input');
+    checklistBuilder.insertBefore(preview, inputDiv);
+    
+    input.value = '';
+    input.focus();
+}
+
+function removeChecklistItem(button) {
+    button.parentElement.remove();
+}
+
+function populateCardOptions() {
+    const boardSelect = document.getElementById('cardBoardSelect');
+    const cardSelect = document.getElementById('cardSelect');
+    
+    // Populate boards
+    boardSelect.innerHTML = '';
+    Object.keys(appData.boards).forEach(boardId => {
+        const option = document.createElement('option');
+        option.value = boardId;
+        option.textContent = appData.boards[boardId].name;
+        boardSelect.appendChild(option);
+    });
+    
+    // Trigger card update
+    updateCardOptions();
+}
+
+function updateCardOptions() {
+    const boardSelect = document.getElementById('cardBoardSelect');
+    const cardSelect = document.getElementById('cardSelect');
+    const selectedBoardId = boardSelect.value;
+    
+    cardSelect.innerHTML = '<option value="">Select a card...</option>';
+    
+    if (!selectedBoardId) return;
+    
+    const board = appData.boards[selectedBoardId];
+    if (!board) return;
+    
+    board.rows.forEach(row => {
+        Object.keys(row.cards).forEach(columnKey => {
+            row.cards[columnKey].forEach(card => {
+                const option = document.createElement('option');
+                option.value = `${selectedBoardId}|${card.id}`;
+                option.textContent = `${card.title} (${row.name})`;
+                cardSelect.appendChild(option);
+            });
+        });
+    });
+}
+
+function editWeeklyItem(itemId) {
+    // TODO: Implement item editing
+    showStatusMessage('Item editing coming soon!', 'info');
+}
+
+function deleteWeeklyItem(itemId) {
+    if (!confirm('Delete this item from your weekly plan?')) return;
+    
+    const currentPlan = appData.weeklyPlans[currentWeekKey];
+    if (!currentPlan) return;
+    
+    currentPlan.items = currentPlan.items.filter(item => item.id !== itemId);
+    
+    renderWeeklyItems();
+    updateWeekProgress();
+    saveData();
+    
+    showStatusMessage('Item removed from weekly plan', 'success');
+}
+
+// Integration with existing view system - update the switchToView function
+function switchToView(view) {
+    // Hide all containers
+    document.getElementById('boardContainer').style.display = 'none';
+    document.getElementById('taskContainer').style.display = 'none';
+    document.getElementById('weeklyContainer').style.display = 'none';
+    
+    // Remove active class from all view buttons
+    document.getElementById('boardViewBtn').classList.remove('active');
+    document.getElementById('taskViewBtn').classList.remove('active');
+    document.getElementById('weeklyViewBtn').classList.remove('active');
+    
+    // Show selected view and activate button
+    if (view === 'board') {
+        document.getElementById('boardContainer').style.display = 'block';
+        document.getElementById('boardViewBtn').classList.add('active');
+        renderBoard();
+    } else if (view === 'tasks') {
+        document.getElementById('taskContainer').style.display = 'block';
+        document.getElementById('taskViewBtn').classList.add('active');
+        renderTaskList();
+    } else if (view === 'weekly') {
+        document.getElementById('weeklyContainer').style.display = 'block';
+        document.getElementById('weeklyViewBtn').classList.add('active');
+        switchToWeeklyView();
+    }
+}
+
+// Add "Add to Weekly Plan" functionality to cards
+function addCardToWeeklyPlan(cardId, boardId, rowId) {
+    const card = findCardById(cardId, boardId);
+    if (!card) {
+        showStatusMessage('Card not found', 'error');
+        return;
+    }
+    
+    const weekKey = getCurrentWeekKey();
+    
+    // Ensure week exists
+    if (!appData.weeklyPlans[weekKey]) {
+        appData.weeklyPlans[weekKey] = {
+            weekStart: getWeekStart(weekKey).toISOString(),
+            goal: '',
+            items: [],
+            reflection: { wins: '', challenges: '', learnings: '', nextWeekFocus: '' }
+        };
+    }
+    
+    // Check if card is already in weekly plan
+    const existingItem = appData.weeklyPlans[weekKey].items.find(
+        item => item.type === 'card' && item.cardId == cardId && item.boardId === boardId
+    );
+    
+    if (existingItem) {
+        showStatusMessage('Card is already in your weekly plan', 'info');
+        return;
+    }
+    
+    // Add card to weekly plan
+    const newItem = {
+        id: `weekly_${appData.nextWeeklyItemId++}`,
+        type: 'card',
+        day: 'general',
+        cardId: cardId,
+        boardId: boardId,
+        completed: false,
+        createdAt: new Date().toISOString()
+    };
+    
+    appData.weeklyPlans[weekKey].items.push(newItem);
+    saveData();
+    
+    showStatusMessage(`"${card.title}" added to weekly plan`, 'success');
+}
