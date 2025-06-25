@@ -20,7 +20,8 @@ let appData = {
     templates: [],
     nextTemplateId: 1,
     weeklyPlans: {},
-    nextWeeklyItemId: 1
+    nextWeeklyItemId: 1,
+    version: '3.0' // Current version for migration tracking
 };
 
 // Current board reference for backward compatibility
@@ -55,80 +56,242 @@ function loadData() {
         const saved = localStorage.getItem('gridflow_data');
         if (saved) {
             const savedData = JSON.parse(saved);
-            
-            // Check if it's old single-board format
-            if (savedData.rows && !savedData.boards) {
-                // Migrate old format to new multi-board format
-                appData = {
-                    currentBoardId: 'default',
-                    boards: {
-                        'default': {
-                            name: 'My Board',
-                            ...savedData
-                        }
-                    }
-                };
-            } else {
-                appData = savedData;
-            }
-            
-            // Ensure current board exists
-            if (!appData.boards[appData.currentBoardId]) {
-                appData.currentBoardId = Object.keys(appData.boards)[0] || 'default';
-            }
-            
-            boardData = appData.boards[appData.currentBoardId];
-            
-            // Ensure all required properties exist
-            if (!boardData.groups) boardData.groups = [];
-            if (!boardData.columns) boardData.columns = [];
-            if (!boardData.settings) boardData.settings = { showCheckboxes: false, showSubtaskProgress: true };
-            if (!boardData.nextColumnId) boardData.nextColumnId = 1;
-            if (!boardData.nextGroupId) boardData.nextGroupId = 1;
-            
-            // Ensure templates exist
-            if (!appData.templates) appData.templates = [];
-            if (!appData.nextTemplateId) appData.nextTemplateId = 1;
-            
-            // Ensure weekly planning exists
-            if (!appData.weeklyPlans) appData.weeklyPlans = {};
-            if (!appData.nextWeeklyItemId) appData.nextWeeklyItemId = 1;
-            
-            // Populate pre-built templates if none exist
-            console.log('Templates check:', appData.templates ? appData.templates.length : 'undefined');
-            if (appData.templates.length === 0) {
-                console.log('Populating default templates...');
-                populateDefaultTemplates();
-                console.log('Templates after population:', appData.templates.length);
-            }
-            
-            // Migrate existing cards to include new fields
-            Object.values(appData.boards).forEach(board => {
-                if (board.rows) {
-                    board.rows.forEach(row => {
-                        if (row.cards) {
-                            Object.keys(row.cards).forEach(columnKey => {
-                                row.cards[columnKey].forEach(card => {
-                                    if (card.dueDate === undefined) card.dueDate = null;
-                                    if (card.priority === undefined) card.priority = 'medium';
-                                    if (card.subtasks === undefined) card.subtasks = [];
-                                });
-                            });
-                        }
-                    });
-                }
-            });
+            appData = migrateData(savedData);
         } else {
             initializeSampleData();
         }
+        
+        // Ensure current board exists and is set
+        if (!appData.boards[appData.currentBoardId]) {
+            appData.currentBoardId = Object.keys(appData.boards)[0] || 'default';
+        }
+        boardData = appData.boards[appData.currentBoardId];
+        
         updateBoardTitle();
         renderBoard();
         updateSettingsUI();
+        
+        // Auto-save migrated data
+        saveData();
     } catch (error) {
         console.error('Failed to load data:', error);
+        showStatusMessage('Failed to load data, initializing new board', 'error');
         initializeSampleData();
         renderBoard();
     }
+}
+
+// Comprehensive data migration system
+function migrateData(data) {
+    console.log('Starting data migration...');
+    const currentVersion = '3.0';
+    const dataVersion = data.version || detectVersion(data);
+    
+    console.log(`Migrating from version ${dataVersion} to ${currentVersion}`);
+    
+    let migratedData = { ...data };
+    
+    // Migration chain - apply migrations in order
+    if (compareVersions(dataVersion, '1.0') <= 0) {
+        migratedData = migrateToV2(migratedData);
+    }
+    if (compareVersions(dataVersion, '2.0') <= 0) {
+        migratedData = migrateToV2_5(migratedData);
+    }
+    if (compareVersions(dataVersion, '2.5') <= 0) {
+        migratedData = migrateToV3(migratedData);
+    }
+    
+    // Final validation and cleanup
+    migratedData = validateAndCleanData(migratedData);
+    migratedData.version = currentVersion;
+    
+    console.log('Data migration completed successfully');
+    return migratedData;
+}
+
+// Detect version from data structure
+function detectVersion(data) {
+    if (data.version) return data.version;
+    
+    // Version detection based on structure
+    if (data.rows && !data.boards) {
+        return '1.0'; // Original single-board format
+    } else if (data.boards && !data.templates) {
+        return '2.0'; // Multi-board format without templates
+    } else if (data.boards && data.templates && !data.weeklyPlans) {
+        return '2.5'; // Has templates but no weekly planning
+    } else {
+        return '3.0'; // Current format
+    }
+}
+
+// Compare version strings (simple semantic versioning)
+function compareVersions(v1, v2) {
+    const parts1 = v1.split('.').map(Number);
+    const parts2 = v2.split('.').map(Number);
+    
+    for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+        const part1 = parts1[i] || 0;
+        const part2 = parts2[i] || 0;
+        
+        if (part1 < part2) return -1;
+        if (part1 > part2) return 1;
+    }
+    return 0;
+}
+
+// Migration to v2.0 (single-board to multi-board)
+function migrateToV2(data) {
+    console.log('Migrating to v2.0: Converting to multi-board format');
+    
+    if (data.rows && !data.boards) {
+        return {
+            currentBoardId: 'default',
+            boards: {
+                'default': {
+                    name: data.name || 'My Board',
+                    ...data
+                }
+            },
+            version: '2.0'
+        };
+    }
+    return data;
+}
+
+// Migration to v2.5 (add templates)
+function migrateToV2_5(data) {
+    console.log('Migrating to v2.5: Adding template system');
+    
+    // Ensure templates structure exists
+    if (!data.templates) {
+        data.templates = [];
+        data.nextTemplateId = 1;
+        
+        // Populate default templates
+        console.log('Adding default templates...');
+        const migratedAppData = { ...appData, ...data };
+        const currentAppData = appData;
+        appData = migratedAppData; // Temporarily set for populateDefaultTemplates
+        populateDefaultTemplates();
+        data.templates = appData.templates;
+        data.nextTemplateId = appData.nextTemplateId;
+        appData = currentAppData; // Restore
+    }
+    
+    data.version = '2.5';
+    return data;
+}
+
+// Migration to v3.0 (add weekly planning)
+function migrateToV3(data) {
+    console.log('Migrating to v3.0: Adding weekly planning system');
+    
+    // Ensure weekly planning structure exists
+    if (!data.weeklyPlans) {
+        data.weeklyPlans = {};
+        data.nextWeeklyItemId = 1;
+    }
+    
+    data.version = '3.0';
+    return data;
+}
+
+// Validate and ensure all required fields exist
+function validateAndCleanData(data) {
+    console.log('Validating and cleaning data...');
+    
+    // Ensure top-level structure
+    if (!data.currentBoardId) data.currentBoardId = 'default';
+    if (!data.boards) data.boards = {};
+    if (!data.templates) data.templates = [];
+    if (!data.nextTemplateId) data.nextTemplateId = 1;
+    if (!data.weeklyPlans) data.weeklyPlans = {};
+    if (!data.nextWeeklyItemId) data.nextWeeklyItemId = 1;
+    
+    // Ensure default board exists
+    if (!data.boards[data.currentBoardId] && Object.keys(data.boards).length === 0) {
+        data.boards['default'] = createDefaultBoard();
+        data.currentBoardId = 'default';
+    }
+    
+    // Validate each board
+    Object.keys(data.boards).forEach(boardId => {
+        const board = data.boards[boardId];
+        
+        // Ensure board structure
+        if (!board.name) board.name = 'Untitled Board';
+        if (!board.groups) board.groups = [];
+        if (!board.rows) board.rows = [];
+        if (!board.columns) board.columns = [];
+        if (!board.settings) board.settings = { showCheckboxes: false, showSubtaskProgress: true };
+        if (!board.nextRowId) board.nextRowId = 1;
+        if (!board.nextCardId) board.nextCardId = 1;
+        if (!board.nextColumnId) board.nextColumnId = 1;
+        if (!board.nextGroupId) board.nextGroupId = 1;
+        
+        // Ensure default columns exist
+        if (board.columns.length === 0) {
+            board.columns = [
+                { id: 1, name: 'To Do', key: 'todo' },
+                { id: 2, name: 'In Progress', key: 'inprogress' },
+                { id: 3, name: 'Done', key: 'done' }
+            ];
+            board.nextColumnId = 4;
+        }
+        
+        // Validate cards in each row
+        board.rows.forEach(row => {
+            if (!row.cards) row.cards = {};
+            if (!row.description) row.description = '';
+            
+            // Ensure cards object has all column keys
+            board.columns.forEach(column => {
+                if (!row.cards[column.key]) row.cards[column.key] = [];
+                
+                // Validate each card
+                row.cards[column.key].forEach(card => {
+                    if (card.dueDate === undefined) card.dueDate = null;
+                    if (card.priority === undefined) card.priority = 'medium';
+                    if (card.subtasks === undefined) card.subtasks = [];
+                    if (card.completed === undefined) card.completed = false;
+                    if (!card.title) card.title = 'Untitled Card';
+                    if (card.description === undefined) card.description = '';
+                });
+            });
+        });
+        
+        // Validate groups
+        board.groups.forEach(group => {
+            if (!group.name) group.name = 'Untitled Group';
+            if (!group.color) group.color = '#0079bf';
+            if (group.collapsed === undefined) group.collapsed = false;
+        });
+    });
+    
+    return data;
+}
+
+function createDefaultBoard() {
+    return {
+        name: 'My Board',
+        groups: [],
+        rows: [],
+        columns: [
+            { id: 1, name: 'To Do', key: 'todo' },
+            { id: 2, name: 'In Progress', key: 'inprogress' },
+            { id: 3, name: 'Done', key: 'done' }
+        ],
+        nextRowId: 1,
+        nextCardId: 1,
+        nextColumnId: 4,
+        nextGroupId: 1,
+        settings: {
+            showCheckboxes: false,
+            showSubtaskProgress: true
+        }
+    };
 }
 
 // Initialize with sample data
@@ -2191,7 +2354,7 @@ function exportToJSON() {
             ...appData,
             exportedAt: new Date().toISOString(),
             exportedFrom: 'GridFlow',
-            version: '2.0'
+            version: appData.version || '3.0' // Use current version
         };
         
         const dataStr = JSON.stringify(exportData, null, 2);
@@ -2231,82 +2394,174 @@ function importFromJSON() {
         try {
             const importedData = JSON.parse(e.target.result);
             
-            // Check if it's new multi-board format or old single-board format
-            if (importedData.boards) {
-                // New multi-board format
-                appData = importedData;
-                
-                // Ensure current board exists
-                if (!appData.boards[appData.currentBoardId]) {
-                    appData.currentBoardId = Object.keys(appData.boards)[0] || 'default';
-                }
-                
-                boardData = appData.boards[appData.currentBoardId];
-                
-                const boardCount = Object.keys(appData.boards).length;
-                const importDate = importedData.exportedAt ? new Date(importedData.exportedAt).toLocaleDateString() : 'Unknown date';
-                showStatusMessage(`${boardCount} boards imported successfully! (Backup from ${importDate})`, 'success');
-            } else if (importedData.rows || importedData.columns) {
-                // Old single-board format - import as new board or replace current
-                const shouldReplace = confirm('This appears to be a single board backup. Replace current board or import as new board?\n\nOK = Replace current board\nCancel = Import as new board');
-                
-                if (shouldReplace) {
-                    // Replace current board
-                    appData.boards[appData.currentBoardId] = {
-                        name: appData.boards[appData.currentBoardId].name,
-                        ...importedData
-                    };
-                    boardData = appData.boards[appData.currentBoardId];
-                } else {
-                    // Import as new board
-                    const newBoardId = 'imported_' + Date.now();
-                    const boardName = prompt('Enter name for imported board:', 'Imported Board') || 'Imported Board';
-                    appData.boards[newBoardId] = {
-                        name: boardName,
-                        ...importedData
-                    };
-                    appData.currentBoardId = newBoardId;
-                    boardData = appData.boards[newBoardId];
-                }
-                
-                const importDate = importedData.exportedAt ? new Date(importedData.exportedAt).toLocaleDateString() : 'Unknown date';
-                showStatusMessage(`Board imported successfully! (Backup from ${importDate})`, 'success');
+            // Use the migration system to handle any version of data
+            console.log('Starting import process...');
+            const migratedData = migrateData(importedData);
+            
+            // Ask user if they want to merge or replace data
+            const hasExistingData = Object.keys(appData.boards).length > 0;
+            let shouldMerge = false;
+            
+            if (hasExistingData) {
+                const choice = confirm(
+                    'You have existing data. How would you like to import?\n\n' +
+                    'OK = Merge with existing data\n' +
+                    'Cancel = Replace all data\n\n' +
+                    'Note: Merging will add new boards and preserve existing ones.'
+                );
+                shouldMerge = choice;
+            }
+            
+            if (shouldMerge) {
+                // Merge imported data with existing data
+                mergeImportedData(migratedData);
             } else {
-                throw new Error('Invalid data format');
+                // Replace all data
+                appData = migratedData;
             }
             
-            // Ensure all required properties exist on current board
-            if (!boardData.groups) boardData.groups = [];
-            if (!boardData.settings) boardData.settings = { showCheckboxes: false, showSubtaskProgress: true };
-            if (!boardData.nextRowId) boardData.nextRowId = boardData.rows && boardData.rows.length > 0 ? Math.max(...boardData.rows.map(r => r.id)) + 1 : 1;
-            if (!boardData.nextCardId) {
-                let maxCardId = 0;
-                if (boardData.rows) {
-                    boardData.rows.forEach(row => {
-                        Object.values(row.cards || {}).forEach(cards => {
-                            cards.forEach(card => {
-                                if (card.id > maxCardId) maxCardId = card.id;
-                            });
-                        });
-                    });
-                }
-                boardData.nextCardId = maxCardId + 1;
+            // Ensure current board exists and is set
+            if (!appData.boards[appData.currentBoardId]) {
+                appData.currentBoardId = Object.keys(appData.boards)[0] || 'default';
             }
-            if (!boardData.nextColumnId) boardData.nextColumnId = boardData.columns && boardData.columns.length > 0 ? Math.max(...boardData.columns.map(c => c.id)) + 1 : 1;
-            if (!boardData.nextGroupId) boardData.nextGroupId = boardData.groups && boardData.groups.length > 0 ? Math.max(...boardData.groups.map(g => g.id)) + 1 : 1;
+            boardData = appData.boards[appData.currentBoardId];
             
+            // Update UI
             updateBoardTitle();
+            updateBoardSelector();
             renderBoard();
             updateSettingsUI();
             saveData();
+            
+            // Show success message
+            const boardCount = Object.keys(appData.boards).length;
+            const importDate = importedData.exportedAt ? 
+                new Date(importedData.exportedAt).toLocaleDateString() : 'Unknown date';
+            const importVersion = importedData.version || detectVersion(importedData);
+            
+            showStatusMessage(
+                `Import successful! ${boardCount} boards available. ` +
+                `(Version ${importVersion} data from ${importDate})`, 
+                'success'
+            );
+            
             fileInput.value = '';
+            closeExportModal();
+            
         } catch (error) {
             console.error('Import failed:', error);
-            showStatusMessage('Import failed: Invalid file format', 'error');
+            showStatusMessage(
+                `Import failed: ${error.message || 'Invalid file format'}`, 
+                'error'
+            );
         }
     };
     reader.readAsText(file);
-    closeExportModal();
+}
+
+// Merge imported data with existing data
+function mergeImportedData(importedData) {
+    console.log('Merging imported data with existing data...');
+    
+    // Merge boards (rename if conflicts)
+    Object.keys(importedData.boards).forEach(boardId => {
+        let finalBoardId = boardId;
+        
+        // Handle board ID conflicts
+        if (appData.boards[boardId]) {
+            finalBoardId = generateUniqueBoardId(boardId);
+            console.log(`Board ID conflict: renamed ${boardId} to ${finalBoardId}`);
+        }
+        
+        appData.boards[finalBoardId] = importedData.boards[boardId];
+    });
+    
+    // Merge templates (avoid duplicates by name)
+    if (importedData.templates) {
+        importedData.templates.forEach(template => {
+            const existingTemplate = appData.templates.find(t => t.name === template.name);
+            if (!existingTemplate) {
+                template.id = appData.nextTemplateId++;
+                appData.templates.push(template);
+            }
+        });
+    }
+    
+    // Merge weekly plans (by week key)
+    if (importedData.weeklyPlans) {
+        Object.keys(importedData.weeklyPlans).forEach(weekKey => {
+            if (!appData.weeklyPlans[weekKey]) {
+                appData.weeklyPlans[weekKey] = importedData.weeklyPlans[weekKey];
+            }
+        });
+    }
+    
+    // Update ID counters to prevent conflicts
+    updateIdCounters();
+}
+
+// Generate unique board ID when merging
+function generateUniqueBoardId(originalId) {
+    let counter = 1;
+    let newId = `${originalId}_imported`;
+    
+    while (appData.boards[newId]) {
+        newId = `${originalId}_imported_${counter}`;
+        counter++;
+    }
+    
+    return newId;
+}
+
+// Update ID counters to prevent conflicts
+function updateIdCounters() {
+    // Update template ID counter
+    if (appData.templates.length > 0) {
+        const maxTemplateId = Math.max(...appData.templates.map(t => 
+            parseInt(t.id.toString().replace(/\D/g, '')) || 0
+        ));
+        appData.nextTemplateId = Math.max(appData.nextTemplateId, maxTemplateId + 1);
+    }
+    
+    // Update weekly item ID counter
+    let maxWeeklyItemId = 0;
+    Object.values(appData.weeklyPlans).forEach(plan => {
+        plan.items.forEach(item => {
+            const itemIdNum = parseInt(item.id.toString().replace(/\D/g, '')) || 0;
+            if (itemIdNum > maxWeeklyItemId) maxWeeklyItemId = itemIdNum;
+        });
+    });
+    appData.nextWeeklyItemId = Math.max(appData.nextWeeklyItemId, maxWeeklyItemId + 1);
+    
+    // Update board-specific counters
+    Object.values(appData.boards).forEach(board => {
+        if (board.rows && board.rows.length > 0) {
+            const maxRowId = Math.max(...board.rows.map(r => r.id || 0));
+            board.nextRowId = Math.max(board.nextRowId || 1, maxRowId + 1);
+        }
+        
+        if (board.columns && board.columns.length > 0) {
+            const maxColumnId = Math.max(...board.columns.map(c => c.id || 0));
+            board.nextColumnId = Math.max(board.nextColumnId || 1, maxColumnId + 1);
+        }
+        
+        if (board.groups && board.groups.length > 0) {
+            const maxGroupId = Math.max(...board.groups.map(g => g.id || 0));
+            board.nextGroupId = Math.max(board.nextGroupId || 1, maxGroupId + 1);
+        }
+        
+        let maxCardId = 0;
+        if (board.rows) {
+            board.rows.forEach(row => {
+                Object.values(row.cards || {}).forEach(cards => {
+                    cards.forEach(card => {
+                        if (card.id > maxCardId) maxCardId = card.id;
+                    });
+                });
+            });
+        }
+        board.nextCardId = Math.max(board.nextCardId || 1, maxCardId + 1);
+    });
 }
 
 // Utility functions
