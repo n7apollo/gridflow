@@ -197,120 +197,220 @@ class GridFlowModals extends HTMLElement {
 
             <!-- Board Modal -->
             <div class="modal" id="boardModal">
-                <div class="modal-content">
-                    <span class="close" data-action="closeBoardModal">&times;</span>
-                    <h2 id="boardModalTitle">Board</h2>
-                    <div id="boardModalContent"></div>
-                </div>
-            </div>
+    <div class="modal-content">
+        <span class="close" data-action="closeBoardModal">&times;</span>
+        <h2 id="boardModalTitle">Boards</h2>
+        <div id="boardsList"></div>
+    </div>
+</div>
 
             <!-- Board Edit Modal -->
             <div class="modal" id="boardEditModal">
-                <div class="modal-content">
-                    <span class="close" data-action="closeBoardEditModal">&times;</span>
-                    <h2 id="boardEditModalTitle">Edit Board</h2>
-                    <div id="boardEditModalContent"></div>
-                </div>
+    <div class="modal-content">
+        <span class="close" data-action="closeBoardEditModal">&times;</span>
+        <h2 id="boardEditModalTitle">Edit Board</h2>
+        <form id="boardEditForm">
+            <div class="form-group">
+                <label for="editBoardName">Board Name:</label>
+                <input type="text" id="editBoardName" name="editBoardName" required>
             </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary" data-action="saveBoardEdit">Save</button>
+                <button type="button" class="btn btn-secondary" data-action="closeBoardEditModal">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
 
             <!-- Group Modal -->
             <div class="modal" id="groupModal">
-                <div class="modal-content">
-                    <span class="close" data-action="closeGroupModal">&times;</span>
-                    <h2 id="groupModalTitle">Group</h2>
-                    <div id="groupModalContent"></div>
-                </div>
+    <div class="modal-content">
+        <span class="close" data-action="closeGroupModal">&times;</span>
+        <h2 id="groupModalTitle">Group</h2>
+        <form id="groupForm">
+            <div class="form-group">
+                <label for="groupName">Group Name:</label>
+                <input type="text" id="groupName" name="groupName" required>
             </div>
+            <div class="form-group">
+                <label for="groupColor">Color:</label>
+                <input type="color" id="groupColor" name="groupColor">
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary" data-action="saveGroup">Save</button>
+                <button type="button" class="btn btn-secondary" data-action="closeGroupModal">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
 
             <!-- Column Modal -->
             <div class="modal" id="columnModal">
-                <div class="modal-content">
-                    <span class="close" data-action="closeColumnModal">&times;</span>
-                    <h2 id="columnModalTitle">Column</h2>
-                    <div id="columnModalContent"></div>
-                </div>
+    <div class="modal-content">
+        <span class="close" data-action="closeColumnModal">&times;</span>
+        <h2 id="columnModalTitle">Column</h2>
+        <form id="columnForm">
+            <div class="form-group">
+                <label for="columnName">Column Name:</label>
+                <input type="text" id="columnName" name="columnName" required>
             </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary" data-action="saveColumn">Save</button>
+                <button type="button" class="btn btn-secondary" data-action="closeColumnModal">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
 
             <!-- Row Modal -->
             <div class="modal" id="rowModal">
-                <div class="modal-content">
-                    <span class="close" data-action="closeRowModal">&times;</span>
-                    <h2 id="rowModalTitle">Row</h2>
-                    <div id="rowModalContent"></div>
-                </div>
+    <div class="modal-content">
+        <span class="close" data-action="closeRowModal">&times;</span>
+        <h2 id="rowModalTitle">Row</h2>
+        <form id="rowForm">
+            <div class="form-group">
+                <label for="rowName">Row Name:</label>
+                <input type="text" id="rowName" name="rowName" required>
             </div>
+            <div class="form-group">
+                <label for="rowDescription">Description:</label>
+                <textarea id="rowDescription" name="rowDescription"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary" data-action="saveRow">Save</button>
+                <button type="button" class="btn btn-secondary" data-action="closeRowModal">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
 
             <!-- Card Detail Modal -->
             <div class="modal" id="cardDetailModal">
-                <div class="modal-content">
-                    <span class="close" data-action="closeCardDetailModal">&times;</span>
-                    <h2 id="cardDetailModalTitle">Card Details</h2>
-                    <div id="cardDetailModalContent"></div>
-                </div>
-            </div>
+    <div class="modal-content">
+        <span class="close" data-action="closeCardDetailModal">&times;</span>
+        <h2 id="cardDetailModalTitle">Card Details</h2>
+        <div id="cardDetailModalContent"></div>
+    </div>
+</div>
 
             <!-- Weekly Item Modal -->
             <div class="modal" id="weeklyItemModal">
-                <div class="modal-content">
-                    <span class="close" data-action="closeWeeklyItemModal">&times;</span>
-                    <h2 id="weeklyItemModalTitle">Weekly Item</h2>
-                    <form id="weeklyItemForm"></form>
-                </div>
+    <div class="modal-content">
+        <span class="close" data-action="closeWeeklyItemModal">&times;</span>
+        <h2 id="weeklyItemModalTitle">Weekly Item</h2>
+        <form id="weeklyItemForm">
+            <div class="form-group">
+                <label for="weeklyItemType">Type:</label>
+                <select id="weeklyItemType" name="weeklyItemType">
+                    <option value="note">Note</option>
+                    <option value="task">Task</option>
+                    <option value="checklist">Checklist</option>
+                </select>
             </div>
+            <div class="form-group">
+                <label for="weeklyItemTitle">Title:</label>
+                <input type="text" id="weeklyItemTitle" name="weeklyItemTitle" required>
+            </div>
+            <div class="form-group">
+                <label for="weeklyItemContent">Content:</label>
+                <textarea id="weeklyItemContent" name="weeklyItemContent"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary" data-action="saveWeeklyItem">Save</button>
+                <button type="button" class="btn btn-secondary" data-action="closeWeeklyItemModal">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
 
             <!-- Save As Template Modal -->
             <div class="modal" id="saveAsTemplateModal">
-                <div class="modal-content">
-                    <span class="close" data-action="closeSaveAsTemplateModal">&times;</span>
-                    <h2 id="saveAsTemplateModalTitle">Save as Template</h2>
-                    <div id="saveAsTemplateModalContent"></div>
-                </div>
+    <div class="modal-content">
+        <span class="close" data-action="closeSaveAsTemplateModal">&times;</span>
+        <h2 id="saveAsTemplateModalTitle">Save as Template</h2>
+        <form id="saveAsTemplateForm">
+            <div class="form-group">
+                <label for="saveTemplateName">Template Name:</label>
+                <input type="text" id="saveTemplateName" name="saveTemplateName" required>
             </div>
+            <div class="form-group">
+                <label for="saveTemplateDescription">Description:</label>
+                <textarea id="saveTemplateDescription" name="saveTemplateDescription"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary" data-action="saveAsTemplate">Save</button>
+                <button type="button" class="btn btn-secondary" data-action="closeSaveAsTemplateModal">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
 
             <!-- Create Template Modal -->
             <div class="modal" id="createTemplateModal">
-                <div class="modal-content">
-                    <span class="close" data-action="closeCreateTemplateModal">&times;</span>
-                    <h2 id="createTemplateModalTitle">Create Template</h2>
-                    <div id="createTemplateModalContent"></div>
-                </div>
+    <div class="modal-content">
+        <span class="close" data-action="closeCreateTemplateModal">&times;</span>
+        <h2 id="createTemplateModalTitle">Create Template</h2>
+        <form id="createTemplateForm">
+            <div class="form-group">
+                <label for="createTemplateName">Template Name:</label>
+                <input type="text" id="createTemplateName" name="createTemplateName" required>
             </div>
+            <div class="form-group">
+                <label for="createTemplateDescription">Description:</label>
+                <textarea id="createTemplateDescription" name="createTemplateDescription"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary" data-action="createTemplate">Create</button>
+                <button type="button" class="btn btn-secondary" data-action="closeCreateTemplateModal">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
 
             <!-- Apply Template Modal -->
             <div class="modal" id="applyTemplateModal">
-                <div class="modal-content">
-                    <span class="close" data-action="closeApplyTemplateModal">&times;</span>
-                    <h2 id="applyTemplateModalTitle">Apply Template</h2>
-                    <div id="applyTemplateModalContent"></div>
-                </div>
+    <div class="modal-content">
+        <span class="close" data-action="closeApplyTemplateModal">&times;</span>
+        <h2 id="applyTemplateModalTitle">Apply Template</h2>
+        <form id="applyTemplateForm">
+            <div class="form-group">
+                <label for="applyTemplateSelect">Select Template:</label>
+                <select id="applyTemplateSelect" name="applyTemplateSelect"></select>
             </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary" data-action="applySelectedTemplate">Apply</button>
+                <button type="button" class="btn btn-secondary" data-action="closeApplyTemplateModal">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
 
             <!-- Outline Modal -->
             <div class="modal" id="outlineModal">
-                <div class="modal-content">
-                    <span class="close" data-action="closeOutlineModal">&times;</span>
-                    <h2 id="outlineModalTitle">Outline</h2>
-                    <div id="outlineModalContent"></div>
-                </div>
-            </div>
+    <div class="modal-content">
+        <span class="close" data-action="closeOutlineModal">&times;</span>
+        <h2 id="outlineModalTitle">Outline</h2>
+        <div id="outlineModalContent"></div>
+    </div>
+</div>
 
             <!-- Groups List Modal -->
             <div class="modal" id="groupsListModal">
-                <div class="modal-content">
-                    <span class="close" data-action="closeGroupsListModal">&times;</span>
-                    <h2 id="groupsListModalTitle">Groups List</h2>
-                    <div id="groupsListModalContent"></div>
-                </div>
-            </div>
+    <div class="modal-content">
+        <span class="close" data-action="closeGroupsListModal">&times;</span>
+        <h2 id="groupsListModalTitle">Groups List</h2>
+        <div id="groupsListModalContent"></div>
+    </div>
+</div>
 
             <!-- Columns List Modal -->
             <div class="modal" id="columnsListModal">
-                <div class="modal-content">
-                    <span class="close" data-action="closeColumnsListModal">&times;</span>
-                    <h2 id="columnsListModalTitle">Columns List</h2>
-                    <div id="columnsListModalContent"></div>
-                </div>
-            </div>
+    <div class="modal-content">
+        <span class="close" data-action="closeColumnsListModal">&times;</span>
+        <h2 id="columnsListModalTitle">Columns List</h2>
+        <div id="columnsListModalContent"></div>
+    </div>
+</div>
 
             <!-- Export Modal -->
             <div class="modal" id="exportModal">
