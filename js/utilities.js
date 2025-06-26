@@ -192,7 +192,6 @@ if (typeof window !== 'undefined') {
 }
 
 // Make functions available globally for backwards compatibility during transition
-window.escapeHtml = escapeHtml;
 window.showStatusMessage = showStatusMessage;
 window.setupEventListeners = setupEventListeners;
 window.closeOutlineModal = closeOutlineModal;
