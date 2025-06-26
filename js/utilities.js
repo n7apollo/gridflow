@@ -152,6 +152,7 @@ export function setupEventListeners() {
     // Modal close on outside click
     window.addEventListener('click', function(event) {
         const cardModal = document.getElementById('cardModal');
+        const taskModal = document.getElementById('taskModal');
         const rowModal = document.getElementById('rowModal');
         const columnModal = document.getElementById('columnModal');
         const groupModal = document.getElementById('groupModal');
@@ -161,6 +162,7 @@ export function setupEventListeners() {
         const boardEditModal = document.getElementById('boardEditModal');
         
         if (event.target === cardModal) window.closeModal();
+        if (event.target === taskModal) window.closeTaskModal();
         if (event.target === rowModal) window.closeRowModal();
         if (event.target === columnModal) window.closeColumnModal();
         if (event.target === groupModal) window.closeGroupModal();
@@ -174,6 +176,7 @@ export function setupEventListeners() {
     document.addEventListener('keydown', function(event) {
         if (event.key === 'Escape') {
             window.closeModal();
+            window.closeTaskModal();
             window.closeRowModal();
             window.closeColumnModal();
             window.closeGroupModal();

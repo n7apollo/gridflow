@@ -113,6 +113,58 @@ class GridFlowModals extends HTMLElement {
                 </div>
             </div>
 
+            <!-- Task Modal -->
+            <div class="modal" id="taskModal">
+                <div class="modal-content">
+                    <span class="close" data-action="closeTaskModal">&times;</span>
+                    <h2 id="taskModalTitle">Add Task</h2>
+                    <form id="taskForm">
+                        <div class="form-group">
+                            <label for="taskTitle">Title:</label>
+                            <input type="text" id="taskTitle" name="taskTitle" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="taskDescription">Description:</label>
+                            <textarea id="taskDescription" name="taskDescription"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="taskBoard">Board:</label>
+                            <select id="taskBoard" name="taskBoard" required></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="taskRow">Row:</label>
+                            <select id="taskRow" name="taskRow" required></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="taskColumn">Column:</label>
+                            <select id="taskColumn" name="taskColumn" required></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="taskPriority">Priority:</label>
+                            <select id="taskPriority" name="taskPriority">
+                                <option value="low">Low</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="high">High</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="taskDueDate">Due Date:</label>
+                            <input type="date" id="taskDueDate" name="taskDueDate">
+                        </div>
+                        <div class="form-group">
+                            <label for="taskCompleted">
+                                <input type="checkbox" id="taskCompleted" name="taskCompleted">
+                                Mark as completed
+                            </label>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary" data-action="saveTask">Save Task</button>
+                            <button type="button" class="btn btn-secondary" data-action="closeTaskModal">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
             <!-- Export Modal -->
             <div class="modal" id="exportModal">
                 <div class="modal-content">
