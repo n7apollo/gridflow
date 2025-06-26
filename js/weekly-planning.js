@@ -324,12 +324,29 @@ export function goToCurrentWeek() {
  * Edit weekly goal
  */
 export function editWeeklyGoal() {
-    const appData = getAppData();
-    const currentWeek = appData.weeklyPlans[currentWeekKey] || {};
-    const currentGoal = currentWeek.goal || '';
+    // Show inline input and Save/Cancel buttons in the weekly goal area
+    const weeklyGoal = document.getElementById('weeklyGoal');
+    const currentGoal = weeklyGoal ? weeklyGoal.textContent : '';
+    if (!weeklyGoal) return;
     
-    const newGoal = prompt('Enter your weekly focus goal:', currentGoal);
-    if (newGoal !== null) {
+    weeklyGoal.style.display = 'none';
+    let form = document.getElementById('weeklyGoalForm');
+    if (!form) {
+        form = document.createElement('div');
+        form.id = 'weeklyGoalForm';
+        form.innerHTML = `
+            <input type="text" id="weeklyGoalInput" value="${currentGoal === 'Click to set your weekly focus goal...' ? '' : currentGoal}" placeholder="Enter your weekly focus goal...">
+            <button class="btn btn-small btn-primary" id="saveWeeklyGoalBtn">Save</button>
+            <button class="btn btn-small btn-secondary" id="cancelWeeklyGoalBtn">Cancel</button>
+        `;
+        weeklyGoal.parentNode.insertBefore(form, weeklyGoal.nextSibling);
+    } else {
+        form.style.display = 'block';
+        document.getElementById('weeklyGoalInput').value = currentGoal === 'Click to set your weekly focus goal...' ? '' : currentGoal;
+    }
+    document.getElementById('saveWeeklyGoalBtn').onclick = function() {
+        const newGoal = document.getElementById('weeklyGoalInput').value.trim();
+        const appData = getAppData();
         if (!appData.weeklyPlans[currentWeekKey]) {
             appData.weeklyPlans[currentWeekKey] = {
                 weekStart: getWeekStart(currentWeekKey).toISOString(),
@@ -338,14 +355,16 @@ export function editWeeklyGoal() {
                 reflection: { wins: '', challenges: '', learnings: '', nextWeekFocus: '' }
             };
         }
-        
-        appData.weeklyPlans[currentWeekKey].goal = newGoal.trim();
+        appData.weeklyPlans[currentWeekKey].goal = newGoal;
         setAppData(appData);
         saveData();
         renderWeeklyPlan();
-        
         showStatusMessage('Weekly goal updated', 'success');
-    }
+    };
+    document.getElementById('cancelWeeklyGoalBtn').onclick = function() {
+        form.style.display = 'none';
+        weeklyGoal.style.display = 'block';
+    };
 }
 
 /**
@@ -381,13 +400,20 @@ export function saveWeeklyGoal() {
  * @param {string} type - Type of item ('note' or 'checklist')
  */
 export function addWeeklyNote(day = 'monday', type = 'note') {
-    const content = prompt(type === 'note' ? 'Enter note content:' : 'Enter checklist item:');
-    if (!content || !content.trim()) return;
-    
-    const appData = getAppData();
-    if (!appData.weeklyPlans[currentWeekKey]) {
-        initializeWeeklyPlanning();
+    // Open the weeklyItemModal and prefill the form
+    const modal = document.getElementById('weeklyItemModal');
+    if (!modal) return;
+    document.getElementById('weeklyItemModalTitle').textContent = 'Add Note';
+    const form = document.getElementById('weeklyItemForm');
+    if (form) {
+        form.reset();
+        document.getElementById('weeklyItemType').value = type;
+        document.getElementById('weeklyItemTitle').value = '';
+        document.getElementById('weeklyItemContent').value = '';
+        form.dataset.day = day;
     }
+    modal.style.display = 'block';
+}
     
     const newItem = {
         id: `item_${appData.nextWeeklyItemId++}`,
