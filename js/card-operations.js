@@ -42,23 +42,36 @@ export function openCardModal(rowId, columnKey, cardId = null) {
         if (!card) return;
         
         currentEditingCard = { ...card, rowId, columnKey };
-        document.getElementById('modalTitle').textContent = 'Edit Card';
-        document.getElementById('cardTitle').value = card.title;
-        document.getElementById('cardDescription').value = card.description;
-        document.getElementById('cardCompleted').checked = card.completed || false;
-        document.getElementById('cardDueDate').value = card.dueDate || '';
-        document.getElementById('cardPriority').value = card.priority || 'medium';
+        const modalTitle = document.getElementById('modalTitle');
+        const cardTitle = document.getElementById('cardTitle');
+        const cardDescription = document.getElementById('cardDescription');
+        const cardCompleted = document.getElementById('cardCompleted');
+        const cardDueDate = document.getElementById('cardDueDate');
+        const cardPriority = document.getElementById('cardPriority');
+        if (modalTitle) modalTitle.textContent = 'Edit Card';
+        if (cardTitle) cardTitle.value = card.title;
+        if (cardDescription) cardDescription.value = card.description;
+        if (cardCompleted) cardCompleted.checked = card.completed || false;
+        if (cardDueDate) cardDueDate.value = card.dueDate || '';
+        if (cardPriority) cardPriority.value = card.priority || 'medium';
     } else {
         currentEditingCard = { rowId, columnKey };
-        document.getElementById('modalTitle').textContent = 'Add Card';
-        document.getElementById('cardTitle').value = '';
-        document.getElementById('cardDescription').value = '';
-        document.getElementById('cardCompleted').checked = false;
-        document.getElementById('cardDueDate').value = '';
-        document.getElementById('cardPriority').value = 'medium';
+        const modalTitle = document.getElementById('modalTitle');
+        const cardTitle = document.getElementById('cardTitle');
+        const cardDescription = document.getElementById('cardDescription');
+        const cardCompleted = document.getElementById('cardCompleted');
+        const cardDueDate = document.getElementById('cardDueDate');
+        const cardPriority = document.getElementById('cardPriority');
+        if (modalTitle) modalTitle.textContent = 'Add Card';
+        if (cardTitle) cardTitle.value = '';
+        if (cardDescription) cardDescription.value = '';
+        if (cardCompleted) cardCompleted.checked = false;
+        if (cardDueDate) cardDueDate.value = '';
+        if (cardPriority) cardPriority.value = 'medium';
     }
     
-    document.getElementById('cardModal').style.display = 'block';
+    const cardModal = document.getElementById('cardModal');
+    if (cardModal) cardModal.style.display = 'block';
 }
 
 /**
