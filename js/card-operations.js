@@ -225,9 +225,12 @@ export function showCardDetailModal(cardId, rowId, columnKey) {
     const group = row.groupId ? boardData.groups.find(g => g.id === row.groupId) : null;
     
     // Populate modal content
-    document.getElementById('cardDetailTitle').textContent = card.title;
-    document.getElementById('cardDetailDescription').textContent = card.description || 'No description provided';
-    document.getElementById('cardDetailGroup').textContent = group ? group.name : 'No Group';
+    const titleEl = document.getElementById('cardDetailTitle');
+    const descEl = document.getElementById('cardDetailDescription');
+    const groupEl = document.getElementById('cardDetailGroup');
+    if (titleEl) titleEl.textContent = card.title;
+    if (descEl) descEl.textContent = card.description || 'No description provided';
+    if (groupEl) groupEl.textContent = group ? group.name : 'No Group';
     document.getElementById('cardDetailRow').textContent = row.name;
     document.getElementById('cardDetailColumn').textContent = column.name;
     
