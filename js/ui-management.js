@@ -330,8 +330,8 @@ function cancelGoalEdit() {
     const goalText = document.getElementById('weeklyGoalText');
     const goalForm = document.getElementById('weeklyGoalForm');
     
-    goalForm.style.display = 'none';
-    goalText.style.display = 'block';
+    if (goalForm) goalForm.style.display = 'none';
+    if (goalText) goalText.style.display = 'block';
 }
 
 function addDailyItem(day) {
