@@ -21,10 +21,10 @@ function showSettingsModal() {
     modal.style.display = 'block';
     
     // Render content for all tabs
-    renderColumnsListModal();
-    renderGroupsListModal();
+    if (window.renderColumnsListModal) window.renderColumnsListModal();
+    if (window.renderGroupsListModal) window.renderGroupsListModal();
     updateModalSettingsUI();
-    updateBoardInfo();
+    if (window.updateBoardInfo) window.updateBoardInfo();
     
     // Check if mobile and initialize accordingly
     const isMobile = window.innerWidth <= 768;
@@ -280,7 +280,9 @@ function closeMobileMenu() {
 
 function initializeEnhancedNavigation() {
     // Update current board display
-    updateCurrentBoardDisplay();
+    if (window.updateCurrentBoardDisplay) {
+        window.updateCurrentBoardDisplay();
+    }
     
     // Add click outside listeners to close dropdowns
     document.addEventListener('click', function(event) {
@@ -361,7 +363,7 @@ function showItemForm(type) {
         document.getElementById('checklistForm').style.display = 'block';
     } else if (type === 'card') {
         document.getElementById('cardForm').style.display = 'block';
-        populateCardOptions();
+        if (window.populateCardOptions) window.populateCardOptions();
     }
 }
 

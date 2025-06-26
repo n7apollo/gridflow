@@ -114,22 +114,6 @@ if (typeof window !== 'undefined') {
  * @param {string} message - Message to display
  * @param {string} type - Message type ('info', 'success', 'error')
  */
-export function showStatusMessage(message, type = 'info') {
-    // Remove existing messages
-    const existing = document.querySelector('.status-message');
-    if (existing) {
-        existing.remove();
-    }
-    
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `status-message ${type}`;
-    messageDiv.textContent = message;
-    document.body.appendChild(messageDiv);
-    
-    setTimeout(() => {
-        messageDiv.remove();
-    }, 3000);
-}
 
 /**
  * Set up global event listeners for the application
