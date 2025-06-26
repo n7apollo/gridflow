@@ -76,65 +76,16 @@ let currentEditingGroup = null;
 let currentDetailCard = null; // Track card in detail modal
 // SortableJS handles all drag state - no global variables needed
 
-// Initialize the application
-document.addEventListener('DOMContentLoaded', function() {
-    loadData();
-    setupEventListeners();
-});
+// Application initialization moved to js/app.js
+// This script.js file now contains the remaining non-modularized functions
 
-// Data persistence functions
-function saveData() {
-    try {
-        // Update collections before saving (Phase 2 feature)
-        if (appData.version === '5.0' && Object.keys(appData.collections).length > 0) {
-            updateAllCollections();
-        }
-        
-        localStorage.setItem('gridflow_data', JSON.stringify(appData));
-        showStatusMessage('Data saved successfully', 'success');
-    } catch (error) {
-        console.error('Failed to save data:', error);
-        showStatusMessage('Failed to save data', 'error');
-    }
-}
+// Data persistence functions moved to js/core-data.js
 
-function loadData() {
-    try {
-        const saved = localStorage.getItem('gridflow_data');
-        if (saved) {
-            const savedData = JSON.parse(saved);
-            appData = migrateData(savedData);
-        } else {
-            initializeSampleData();
-        }
-        
-        // Ensure current board exists and is set
-        if (!appData.boards[appData.currentBoardId]) {
-            appData.currentBoardId = Object.keys(appData.boards)[0] || 'default';
-        }
-        boardData = appData.boards[appData.currentBoardId];
-        
-        updateBoardTitle();
-        renderBoard();
-        updateSettingsUI();
-        
-        // Initialize Phase 2 sample data for new v5.0 installations
-        if (appData.version === '5.0') {
-            initializeSampleTemplates();
-            initializeSampleCollections();
-        }
-        
-        // Auto-save migrated data
-        saveData();
-    } catch (error) {
-        console.error('Failed to load data:', error);
-        showStatusMessage('Failed to load data, initializing new board', 'error');
-        initializeSampleData();
-        renderBoard();
-    }
-}
+// loadData function moved to js/core-data.js
 
-// Comprehensive data migration system
+// Data migration functions moved to js/core-data.js
+
+// TODO: Remove these functions once all modules are extracted - they're now handled by js/core-data.js
 function migrateData(data) {
     console.log('Starting data migration...');
     const currentVersion = '5.0';
@@ -3340,7 +3291,7 @@ function updateAllCollections() {
     Object.keys(appData.collections).forEach(collectionId => {
         updateCollectionItems(collectionId);
     });
-    saveData();
+    // Note: Don't call saveData() here to avoid infinite loop - caller will save
 }
 
 // Cross-Entity Search System
@@ -3432,6 +3383,7 @@ function searchAllEntities(searchTerm, filters = {}) {
 }
 
 // Initialize Sample Templates and Collections (for demonstration)
+// initializeSampleTemplates moved to js/template-system.js as populateDefaultTemplates
 function initializeSampleTemplates() {
     // Sample Checklist Templates
     if (Object.keys(appData.templateLibrary.checklists).length === 0) {
@@ -3957,25 +3909,11 @@ function updateIdCounters() {
     });
 }
 
-// Utility functions
-function showStatusMessage(message, type = 'info') {
-    // Remove existing messages
-    const existing = document.querySelector('.status-message');
-    if (existing) {
-        existing.remove();
-    }
-    
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `status-message ${type}`;
-    messageDiv.textContent = message;
-    document.body.appendChild(messageDiv);
-    
-    setTimeout(() => {
-        messageDiv.remove();
-    }, 3000);
-}
+// Utility functions moved to js/utilities.js
 
-// Setup event listeners
+// Event listeners moved to js/utilities.js
+
+// Placeholder for setupEventListeners - now handled by utilities module
 function setupEventListeners() {
     // Card form
     document.getElementById('cardForm').addEventListener('submit', saveCard);
@@ -4195,9 +4133,10 @@ async function copyToClipboard(text) {
     }
 }
 
-// Board Management Functions
+// Board Management Functions moved to js/board-management.js
 let currentEditingBoard = null;
 
+// TODO: Remove these functions once all modules are extracted - they're now handled by js/board-management.js
 function updateBoardTitle() {
     const currentBoard = appData.boards[appData.currentBoardId];
     if (currentBoard) {
@@ -4393,6 +4332,8 @@ function switchToView(viewType) {
     }
 }
 
+// Task management functions moved to js/task-management.js
+// TODO: Remove these functions once all modules are extracted
 function populateTaskView() {
     populateTaskBoardFilters();
     populateTaskFilters();
@@ -4869,6 +4810,8 @@ function toggleTaskCompletion(taskId, boardId, rowId, columnKey) {
 // Template Management Functions
 let selectedTemplateId = null;
 
+// Template system functions moved to js/template-system.js
+// TODO: Remove these functions once all modules are extracted
 function showSaveAsTemplateModal() {
     document.getElementById('saveAsTemplateModal').style.display = 'block';
     updateTemplatePreview();
@@ -5644,7 +5587,8 @@ function populateDefaultTemplates() {
 }
 
 // ============================================
-// ENHANCED NAVIGATION SYSTEM
+// ENHANCED NAVIGATION SYSTEM moved to js/board-management.js
+// TODO: Remove these functions once all modules are extracted
 // ============================================
 
 // Enhanced Board Selector Functions
@@ -5928,7 +5872,8 @@ document.addEventListener('DOMContentLoaded', function() {
 let currentWeekKey = null;
 let currentEditingWeeklyItem = null;
 
-// Week navigation and utilities
+// Weekly planning functions moved to js/weekly-planning.js
+// TODO: Remove these functions once all modules are extracted
 function getCurrentWeekKey() {
     const now = new Date();
     const year = now.getFullYear();
@@ -6580,30 +6525,38 @@ function deleteWeeklyItem(itemId) {
     showStatusMessage('Item removed from weekly plan', 'success');
 }
 
-// Integration with existing view system - update the switchToView function
+// Integration with existing view system - switchToView function moved to js/task-management.js
+// TODO: Remove this function once all modules are extracted
 function switchToView(view) {
     // Hide all containers
     document.getElementById('boardContainer').style.display = 'none';
     document.getElementById('taskContainer').style.display = 'none';
     document.getElementById('weeklyContainer').style.display = 'none';
     
-    // Remove active class from all view buttons
+    // Remove active class from all view buttons (header)
     document.getElementById('boardViewBtn').classList.remove('active');
     document.getElementById('taskViewBtn').classList.remove('active');
     document.getElementById('weeklyViewBtn').classList.remove('active');
     
-    // Show selected view and activate button
+    // Remove active class from sidebar nav links
+    const sidebarLinks = document.querySelectorAll('.sidebar .nav-link');
+    sidebarLinks.forEach(link => link.classList.remove('active'));
+    
+    // Show selected view and activate buttons
     if (view === 'board') {
         document.getElementById('boardContainer').style.display = 'block';
         document.getElementById('boardViewBtn').classList.add('active');
+        document.getElementById('sidebarBoardView').classList.add('active');
         renderBoard();
     } else if (view === 'tasks') {
         document.getElementById('taskContainer').style.display = 'block';
         document.getElementById('taskViewBtn').classList.add('active');
+        document.getElementById('sidebarTaskView').classList.add('active');
         renderTaskList();
     } else if (view === 'weekly') {
         document.getElementById('weeklyContainer').style.display = 'block';
         document.getElementById('weeklyViewBtn').classList.add('active');
+        document.getElementById('sidebarWeeklyView').classList.add('active');
         switchToWeeklyView();
     }
 }
