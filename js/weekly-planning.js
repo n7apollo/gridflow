@@ -414,25 +414,6 @@ export function addWeeklyNote(day = 'monday', type = 'note') {
     }
     modal.style.display = 'block';
 }
-    
-    const newItem = {
-        id: `item_${appData.nextWeeklyItemId++}`,
-        type: type,
-        day: day,
-        title: type === 'checklist' ? content.trim() : undefined,
-        content: type === 'note' ? content.trim() : undefined,
-        completed: false,
-        createdAt: new Date().toISOString()
-    };
-    
-    appData.weeklyPlans[currentWeekKey].items.push(newItem);
-    setAppData(appData);
-    saveData();
-    renderWeeklyItems();
-    updateWeekProgress();
-    
-    showStatusMessage(`${type.charAt(0).toUpperCase() + type.slice(1)} added`, 'success');
-}
 
 /**
  * Toggle weekly item completion
