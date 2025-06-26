@@ -46,11 +46,14 @@ class ComponentLoader {
         ]).then(() => {
             console.log('All custom elements ready');
             
-            // Initialize the main application logic
-            // The app.js module should have already loaded and initialized
-            // We just need to make sure components are ready
+            // Initialize the navigation system now that components are loaded
             if (window.navigation && window.navigation.initializeNavigation) {
                 window.navigation.initializeNavigation();
+            }
+            
+            // Re-run setupEventListeners now that modals exist
+            if (window.utilities && window.utilities.setupEventListeners) {
+                window.utilities.setupEventListeners();
             }
         });
     }

@@ -26,7 +26,7 @@ import * as dataMigration from './data-migration.js';
 import * as dragDrop from './drag-drop.js';
 
 // Initialize the application
-document.addEventListener('DOMContentLoaded', function() {
+function initializeGridFlow() {
     // Make modules available globally for backward compatibility
     window.utilities = utilities;
     window.coreData = coreData;
@@ -53,11 +53,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load data first
     const { appData, boardData } = coreData.loadData();
     
-    // Initialize utilities
+    // Initialize utilities (will now handle missing DOM elements gracefully)
     utilities.setupEventListeners();
     
-    // Initialize navigation system
-    navigation.initializeNavigation();
+    // Initialize navigation system (will be called by component loader)
+    // navigation.initializeNavigation();
     
     // Initialize board management
     boardManagement.updateBoardTitle();
@@ -76,10 +76,16 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize collections (populate defaults if needed)
     collections.initializeSampleCollections();
     
-    // Update UI
-    if (window.renderBoard) window.renderBoard();
-    if (window.updateSettingsUI) window.updateSettingsUI();
-});
+    // Update UI (will be called by navigation after components are ready)
+    // if (window.renderBoard) window.renderBoard();
+    // if (window.updateSettingsUI) window.updateSettingsUI();
+}
+
+// Initialize immediately for global scope setup
+document.addEventListener('DOMContentLoaded', initializeGridFlow);
+
+// Make initialization function available for component loader
+window.initializeGridFlow = initializeGridFlow;
 
 // Export for potential external use
 export { utilities, coreData, navigation, boardManagement, boardRendering, taskManagement, weeklyPlanning, templateSystem, templateLibrary, importExport, searchSystem, taggingSystem, collections, cardOperations, rowOperations, columnOperations, groupOperations, subtaskManagement, entitySystem, dataMigration, dragDrop };

@@ -120,19 +120,34 @@ if (typeof window !== 'undefined') {
  */
 export function setupEventListeners() {
     // Card form
-    document.getElementById('cardForm').addEventListener('submit', window.saveCard);
+    const cardForm = document.getElementById('cardForm');
+    if (cardForm) {
+        cardForm.addEventListener('submit', window.saveCard);
+    }
     
     // Row form
-    document.getElementById('rowForm').addEventListener('submit', window.saveRow);
+    const rowForm = document.getElementById('rowForm');
+    if (rowForm) {
+        rowForm.addEventListener('submit', window.saveRow);
+    }
     
     // Column form
-    document.getElementById('columnForm').addEventListener('submit', window.saveColumn);
+    const columnForm = document.getElementById('columnForm');
+    if (columnForm) {
+        columnForm.addEventListener('submit', window.saveColumn);
+    }
     
     // Group form
-    document.getElementById('groupForm').addEventListener('submit', window.saveGroup);
+    const groupForm = document.getElementById('groupForm');
+    if (groupForm) {
+        groupForm.addEventListener('submit', window.saveGroup);
+    }
     
     // Board edit form
-    document.getElementById('boardEditForm').addEventListener('submit', window.saveBoardEdit);
+    const boardEditForm = document.getElementById('boardEditForm');
+    if (boardEditForm) {
+        boardEditForm.addEventListener('submit', window.saveBoardEdit);
+    }
     
     // Modal close on outside click
     window.addEventListener('click', function(event) {

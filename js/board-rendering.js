@@ -30,7 +30,11 @@ export function renderBoard() {
  * Creates the header row with column titles and actions
  */
 export function renderColumnHeaders() {
-    const container = document.getElementById('columnHeaders');
+    const container = document.getElementById('boardHeader');
+    if (!container) {
+        console.warn('boardHeader element not found');
+        return;
+    }
     container.innerHTML = '<div class="row-label-header">Projects</div>';
     
     boardData.columns.forEach((column, index) => {
@@ -378,7 +382,7 @@ export function updateCSSGridColumns() {
     const columnCount = boardData.columns.length;
     document.documentElement.style.setProperty('--column-count', columnCount);
     
-    const headers = document.getElementById('columnHeaders');
+    const headers = document.getElementById('boardHeader');
     const rows = document.querySelectorAll('.board-row');
     
     headers.style.gridTemplateColumns = `200px repeat(${columnCount}, 1fr)`;
