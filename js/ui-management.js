@@ -7,7 +7,9 @@
 
 function closeModal() {
     document.getElementById('cardModal').style.display = 'none';
-    currentEditingCard = null;
+    if (window.coreData && window.coreData.setCurrentEditingCard) {
+        window.coreData.setCurrentEditingCard(null);
+    }
 }
 
 // ============================================
@@ -136,13 +138,17 @@ function toggleCheckboxes() {
         checked = modalCheckbox.checked;
     }
     
-    boardData.settings.showCheckboxes = checked;
+    // Access boardData through coreData module
+    const boardData = window.coreData ? window.coreData.getBoardData() : null;
+    if (boardData) {
+        boardData.settings.showCheckboxes = checked;
+    }
     
     // Sync both checkboxes
     if (oldCheckbox) oldCheckbox.checked = checked;
     if (modalCheckbox) modalCheckbox.checked = checked;
     
-    renderBoard();
+    if (window.renderBoard) window.renderBoard();
 }
 
 function toggleSubtaskProgress() {
@@ -157,38 +163,48 @@ function toggleSubtaskProgress() {
         checked = modalCheckbox.checked;
     }
     
-    boardData.settings.showSubtaskProgress = checked;
+    // Access boardData through coreData module
+    const boardData = window.coreData ? window.coreData.getBoardData() : null;
+    if (boardData) {
+        boardData.settings.showSubtaskProgress = checked;
+    }
     
     // Sync both checkboxes
     if (oldCheckbox) oldCheckbox.checked = checked;
     if (modalCheckbox) modalCheckbox.checked = checked;
     
-    renderBoard();
+    if (window.renderBoard) window.renderBoard();
 }
 
 function updateSettingsUI() {
     const checkbox = document.getElementById('showCheckboxes');
-    if (checkbox) {
+    const boardData = window.coreData ? window.coreData.getBoardData() : null;
+    
+    if (checkbox && boardData) {
         checkbox.checked = boardData.settings.showCheckboxes;
     }
     
     const subtaskCheckbox = document.getElementById('showSubtaskProgress');
-    if (subtaskCheckbox) {
+    if (subtaskCheckbox && boardData) {
         subtaskCheckbox.checked = boardData.settings.showSubtaskProgress;
     }
     
     // Update templates UI
-    updateTemplatesUI();
+    if (window.updateTemplatesUI) {
+        window.updateTemplatesUI();
+    }
 }
 
 function updateModalSettingsUI() {
     const checkboxModal = document.getElementById('showCheckboxesModal');
-    if (checkboxModal) {
+    const boardData = window.coreData ? window.coreData.getBoardData() : null;
+    
+    if (checkboxModal && boardData) {
         checkboxModal.checked = boardData.settings.showCheckboxes;
     }
     
     const subtaskCheckboxModal = document.getElementById('showSubtaskProgressModal');
-    if (subtaskCheckboxModal) {
+    if (subtaskCheckboxModal && boardData) {
         subtaskCheckboxModal.checked = boardData.settings.showSubtaskProgress;
     }
 }
@@ -317,7 +333,11 @@ function cancelGoalEdit() {
 }
 
 function addDailyItem(day) {
-    currentEditingWeeklyItem = { day: day };
+    // Set current editing item through coreData module
+    if (window.coreData && window.coreData.setCurrentEditingWeeklyItem) {
+        window.coreData.setCurrentEditingWeeklyItem({ day: day });
+    }
+    
     document.getElementById('weeklyItemModalTitle').textContent = `Add ${day.charAt(0).toUpperCase() + day.slice(1)} Item`;
     
     // Reset form
@@ -346,6 +366,11 @@ function showItemForm(type) {
 }
 
 function toggleChecklistItem(itemId, checkIndex) {
+    const appData = window.coreData ? window.coreData.getAppData() : null;
+    const currentWeekKey = window.coreData ? window.coreData.getCurrentWeekKey() : null;
+    
+    if (!appData || !currentWeekKey) return;
+    
     const currentPlan = appData.weeklyPlans[currentWeekKey];
     if (!currentPlan) return;
     
@@ -354,8 +379,12 @@ function toggleChecklistItem(itemId, checkIndex) {
     
     if (item.type === 'checklist' && item.checklist && item.checklist[checkIndex]) {
         item.checklist[checkIndex].completed = !item.checklist[checkIndex].completed;
-        saveData();
-        renderWeeklyPlan();
+        if (window.coreData && window.coreData.saveData) {
+            window.coreData.saveData();
+        }
+        if (window.renderWeeklyPlan) {
+            window.renderWeeklyPlan();
+        }
     }
 }
 
