@@ -18,6 +18,7 @@ import * as rowOperations from './row-operations.js';
 import * as columnOperations from './column-operations.js';
 import * as groupOperations from './group-operations.js';
 import * as subtaskManagement from './subtask-management.js';
+import * as entitySystem from './entity-system.js';
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
@@ -37,6 +38,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.columnOperations = columnOperations;
     window.groupOperations = groupOperations;
     window.subtaskManagement = subtaskManagement;
+    window.entitySystem = entitySystem;
     
     // Load data first
     const { appData, boardData } = coreData.loadData();
