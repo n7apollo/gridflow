@@ -4039,3 +4039,64 @@ body {
         gap: 4px;
     }
 }
+/* ============================================
+   WEB COMPONENTS STYLING
+   ============================================ */
+
+/* Loading indicator for component initialization */
+.loading-indicator {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10000;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 15px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Web component containers */
+gridflow-sidebar,
+gridflow-header,
+gridflow-views,
+gridflow-modals {
+    display: block;
+}
+
+/* Ensure components dont interfere with existing layout */
+gridflow-sidebar {
+    position: relative;
+    z-index: 100;
+}
+
+gridflow-header {
+    position: relative;
+    z-index: 50;
+}
+
+gridflow-views {
+    flex: 1;
+    min-height: 0;
+}
+
+gridflow-modals {
+    position: relative;
+    z-index: 1000;
+}

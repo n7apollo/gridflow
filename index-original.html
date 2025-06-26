@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GridFlow - Project Management Tool</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- External libraries for export functionality -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- SortableJS for reliable drag and drop -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    
+    <!-- GridFlow Modules -->
+    <script type="module" src="js/app.js"></script>
+    <script src="js/navigation.js"></script>
+    <script src="js/ui-management.js"></script>
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <span class="logo-icon">⚡</span>
+                <span class="logo-text">GridFlow</span>
+            </div>
+            <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle Sidebar">
+                <span class="toggle-icon">‹</span>
+            </button>
+        </div>
+        
+        <div class="sidebar-content">
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">VIEWS</div>
+                <nav class="sidebar-nav">
+                    <ul>
+                        <li class="nav-item">
+                            <a href="#" class="nav-link active" id="sidebarBoardView" onclick="switchToView('board')">
+                                <span class="nav-icon">📋</span>
+                                <span class="nav-text">Board View</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" id="sidebarTaskView" onclick="switchToView('tasks')">
+                                <span class="nav-icon">✅</span>
+                                <span class="nav-text">Task View</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" id="sidebarWeeklyView" onclick="switchToView('weekly')">
+                                <span class="nav-icon">📅</span>
+                                <span class="nav-text">Weekly Plan</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+            
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">ACTIONS</div>
+                <nav class="sidebar-nav">
+                    <ul>
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" onclick="addRow()">
+                                <span class="nav-icon">➕</span>
+                                <span class="nav-text">Add Row</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" onclick="addGroup()">
+                                <span class="nav-icon">📁</span>
+                                <span class="nav-text">Add Group</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" onclick="showApplyTemplateModal()">
+                                <span class="nav-icon">📋</span>
+                                <span class="nav-text">Templates</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+            
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">SETTINGS</div>
+                <nav class="sidebar-nav">
+                    <ul>
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" onclick="showSettingsModal()">
+                                <span class="nav-icon">⚙️</span>
+                                <span class="nav-text">Settings</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" onclick="showExportModal()">
+                                <span class="nav-icon">📤</span>
+                                <span class="nav-text">Export</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+        
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">U</div>
+                <div class="user-name">User</div>
+            </div>
+        </div>
+    </aside>
+
+    <div class="app-container main-content">
+        <header class="app-header">
+            <div class="header-left">
+                <button class="mobile-menu-btn" onclick="toggleSidebar()" title="Menu">☰</button>
+                <h1>GridFlow</h1>
+                <div class="board-navigation">
+                    <div class="board-selector-enhanced">
+                        <button class="current-board-btn" onclick="toggleBoardDropdown()" id="currentBoardBtn">
+                            <span class="board-name" id="currentBoardName">My Board</span>
+                            <span class="board-chevron">▼</span>
+                        </button>
+                        <div class="board-dropdown" id="boardDropdown">
+                            <div class="board-search">
+                                <input type="text" placeholder="Search boards..." id="boardSearchInput" oninput="filterBoards()">
+                            </div>
+                            <div class="recent-boards">
+                                <div class="board-section-header">Recent Boards</div>
+                                <div id="recentBoardsList"></div>
+                            </div>
+                            <div class="all-boards">
+                                <div class="board-section-header">All Boards</div>
+                                <div id="allBoardsList"></div>
+                            </div>
+                            <div class="board-actions">
+                                <button class="board-action-btn" onclick="createNewBoard()">
+                                    <span class="action-icon">+</span>
+                                    <span class="action-text">New Board</span>
+                                </button>
+                                <button class="board-action-btn" onclick="showBoardModal()">
+                                    <span class="action-icon">⚙️</span>
+                                    <span class="action-text">Manage</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="header-actions">
+                <!-- Primary Actions (always visible) -->
+                <div class="action-group primary-actions">
+                    <div class="view-toggle">
+                        <button class="btn btn-toggle active" id="boardViewBtn" onclick="switchToView('board')" title="Board View">📋</button>
+                        <button class="btn btn-toggle" id="taskViewBtn" onclick="switchToView('tasks')" title="Task View">✅</button>
+                        <button class="btn btn-toggle" id="weeklyViewBtn" onclick="switchToView('weekly')" title="Weekly Plan">📅</button>
+                    </div>
+                    <button class="btn btn-primary" onclick="addRow()">+ Add Row</button>
+                </div>
+                
+                <!-- Secondary Actions (desktop visible, mobile collapsed) -->
+                <div class="action-group secondary-actions" id="secondaryActions">
+                    <div class="templates-menu">
+                        <button class="btn btn-secondary dropdown-trigger" onclick="toggleTemplatesMenu()" id="templatesBtn">
+                            <span class="btn-icon">📋</span>
+                            <span class="btn-text">Templates</span>
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div class="dropdown-menu" id="templatesDropdown">
+                            <button class="dropdown-item" onclick="showApplyTemplateModal()">
+                                <span class="item-icon">📋</span>
+                                <span class="item-text">Use Template</span>
+                            </button>
+                            <button class="dropdown-item" onclick="showSaveAsTemplateModal()">
+                                <span class="item-icon">💾</span>
+                                <span class="item-text">Save as Template</span>
+                            </button>
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary" onclick="addGroup()">+ Group</button>
+                </div>
+                
+                <!-- Tertiary Actions (settings, export) -->
+                <div class="action-group tertiary-actions" id="tertiaryActions">
+                    <div class="more-menu">
+                        <button class="btn btn-secondary dropdown-trigger" onclick="toggleMoreMenu()" id="moreBtn">
+                            <span class="btn-icon">⋯</span>
+                            <span class="btn-text desktop-only">More</span>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-right" id="moreDropdown">
+                            <button class="dropdown-item" onclick="showSettingsModal()">
+                                <span class="item-icon">⚙️</span>
+                                <span class="item-text">Settings</span>
+                            </button>
+                            <button class="dropdown-item" onclick="showExportModal()">
+                                <span class="item-icon">📤</span>
+                                <span class="item-text">Export</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Mobile Menu Toggle -->
+                <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" id="mobileMenuBtn">
+                    <span class="hamburger"></span>
+                </button>
+            </div>
+            
+            <!-- Mobile Menu Overlay -->
+            <div class="mobile-menu-overlay" id="mobileMenuOverlay" onclick="closeMobileMenu()"></div>
+            <div class="mobile-menu" id="mobileMenu">
+                <div class="mobile-menu-header">
+                    <span class="mobile-menu-title">Actions</span>
+                    <button class="mobile-menu-close" onclick="closeMobileMenu()">×</button>
+                </div>
+                <div class="mobile-menu-content">
+                    <div class="mobile-menu-section">
+                        <div class="mobile-menu-section-title">Add Content</div>
+                        <button class="mobile-menu-item" onclick="addRow(); closeMobileMenu();">
+                            <span class="mobile-item-icon">📄</span>
+                            <span class="mobile-item-text">Add Row</span>
+                        </button>
+                        <button class="mobile-menu-item" onclick="addGroup(); closeMobileMenu();">
+                            <span class="mobile-item-icon">📁</span>
+                            <span class="mobile-item-text">Add Group</span>
+                        </button>
+                    </div>
+                    <div class="mobile-menu-section">
+                        <div class="mobile-menu-section-title">Templates</div>
+                        <button class="mobile-menu-item" onclick="showApplyTemplateModal(); closeMobileMenu();">
+                            <span class="mobile-item-icon">📋</span>
+                            <span class="mobile-item-text">Use Template</span>
+                        </button>
+                        <button class="mobile-menu-item" onclick="showSaveAsTemplateModal(); closeMobileMenu();">
+                            <span class="mobile-item-icon">💾</span>
+                            <span class="mobile-item-text">Save as Template</span>
+                        </button>
+                    </div>
+                    <div class="mobile-menu-section">
+                        <div class="mobile-menu-section-title">Settings</div>
+                        <button class="mobile-menu-item" onclick="showSettingsModal(); closeMobileMenu();">
+                            <span class="mobile-item-icon">⚙️</span>
+                            <span class="mobile-item-text">Board Settings</span>
+                        </button>
+                        <button class="mobile-menu-item" onclick="showExportModal(); closeMobileMenu();">
+                            <span class="mobile-item-icon">📤</span>
+                            <span class="mobile-item-text">Export & Sync</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Settings Panel -->
+        <div class="settings-panel" id="settingsPanel">
+            <div class="settings-content">
+                <h3>Settings</h3>
+                <div class="settings-section">
+                    <h4>Columns Management</h4>
+                    <div class="columns-list" id="columnsList">
+                        <!-- Columns will be listed here -->
+                    </div>
+                    <button class="btn btn-small btn-primary" onclick="addColumn()">+ Add Column</button>
+                    <div class="reorder-info">
+                        <small>💡 Drag column headers to reorder them</small>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <h4>Groups Management</h4>
+                    <div class="groups-list" id="groupsList">
+                        <!-- Groups will be listed here -->
+                    </div>
+                    <button class="btn btn-small btn-primary" onclick="addGroup()">+ Add Group</button>
+                </div>
+                <div class="settings-section">
+                    <h4>Templates</h4>
+                    <div class="templates-list" id="templatesList">
+                        <!-- Templates will be listed here -->
+                    </div>
+                    <div class="template-actions">
+                        <button class="btn btn-small btn-primary" onclick="showCreateTemplateModal()">+ Create Template</button>
+                        <button class="btn btn-small btn-secondary" onclick="showApplyTemplateModal()">Apply Template</button>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <h4>Display Options</h4>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="showCheckboxes" onchange="toggleCheckboxes()">
+                        Show completion checkboxes on cards
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="showSubtaskProgress" onchange="toggleSubtaskProgress()">
+                        Show subtask progress on cards
+                    </label>
+                </div>
+                <div class="settings-actions">
+                    <button class="btn btn-secondary" onclick="toggleSettings()">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="board-container" id="boardContainer">
+            <div class="column-headers" id="columnHeaders">
+                <div class="row-label-header">Projects
+                    <div class="reorder-hint">💡 Drag to reorder</div>
+                </div>
+                <!-- Column headers will be dynamically generated -->
+            </div>
+            
+            <div class="rows-container" id="rowsContainer">
+                <!-- Rows will be dynamically added here -->
+            </div>
+        </div>
+
+        <!-- Task Management Interface -->
+        <div class="task-container" id="taskContainer" style="display: none;">
+            <div class="task-header">
+                <div class="task-controls">
+                    <div class="task-board-selector">
+                        <label for="taskBoardFilter">Board:</label>
+                        <select id="taskBoardFilter" onchange="filterTasksByBoard()">
+                            <option value="all">All Boards</option>
+                            <!-- Board options will be populated dynamically -->
+                        </select>
+                    </div>
+                    <div class="task-filters">
+                        <select id="taskStatusFilter" onchange="filterTasks()">
+                            <option value="all">All Tasks</option>
+                            <option value="pending">Pending</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                        <select id="taskPriorityFilter" onchange="filterTasks()">
+                            <option value="all">All Priorities</option>
+                            <option value="urgent">Urgent</option>
+                            <option value="high">High</option>
+                            <option value="medium">Medium</option>
+                            <option value="low">Low</option>
+                        </select>
+                        <select id="taskSortBy" onchange="sortTasks()">
+                            <option value="priority">Sort by Priority</option>
+                            <option value="dueDate">Sort by Due Date</option>
+                            <option value="title">Sort by Title</option>
+                            <option value="created">Sort by Created</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="openTaskModal()">+ Add Task</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="task-content">
+                <div class="task-list" id="taskList">
+                    <!-- Tasks will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Weekly Planning Interface -->
+        <div class="weekly-container" id="weeklyContainer" style="display: none;">
+            <div class="weekly-header">
+                <div class="weekly-navigation">
+                    <button class="btn btn-secondary" onclick="navigateWeek(-1)" id="prevWeekBtn">← Previous Week</button>
+                    <div class="current-week-info">
+                        <h2 id="currentWeekTitle">Week of January 13, 2025</h2>
+                        <div class="week-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="weekProgressFill" style="width: 0%"></div>
+                            </div>
+                            <span class="progress-text" id="weekProgressText">0 of 0 completed</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary" onclick="navigateWeek(1)" id="nextWeekBtn">Next Week →</button>
+                </div>
+                
+                <div class="weekly-actions">
+                    <button class="btn btn-secondary" onclick="showWeeklyReflectionModal()">✍️ Reflection</button>
+                    <button class="btn btn-primary" onclick="addWeeklyNote()">+ Add Note</button>
+                </div>
+            </div>
+
+            <div class="weekly-content">
+                <!-- Weekly Goal Section -->
+                <div class="weekly-goal-section" id="weeklyGoalSection">
+                    <div class="goal-header">
+                        <h3>🎯 This Week's Focus</h3>
+                        <button class="btn btn-small btn-secondary" onclick="editWeeklyGoal()" id="editGoalBtn">Edit</button>
+                    </div>
+                    <div class="goal-content" id="weeklyGoalContent">
+                        <p class="goal-text" id="weeklyGoalText">Set your main focus for this week...</p>
+                        <div class="goal-edit-form" id="weeklyGoalForm" style="display: none;">
+                            <textarea id="weeklyGoalInput" placeholder="What's your main focus this week?" rows="2"></textarea>
+                            <div class="goal-actions">
+                                <button class="btn btn-small btn-primary" onclick="saveWeeklyGoal()">Save</button>
+                                <button class="btn btn-small btn-secondary" onclick="cancelGoalEdit()">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Weekly Overview Items -->
+                <div class="weekly-overview">
+                    <div class="overview-header">
+                        <h3>📝 General Week Items</h3>
+                        <span class="item-limit">Keep it focused - max 5 items</span>
+                    </div>
+                    <div class="weekly-items" id="weeklyOverviewItems">
+                        <!-- General weekly items will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Daily Planning Grid -->
+                <div class="daily-planning-grid">
+                    <div class="day-column" data-day="monday">
+                        <div class="day-header">
+                            <h4>Monday</h4>
+                            <span class="day-date" id="mondayDate"></span>
+                            <button class="btn btn-small btn-secondary" onclick="addDailyItem('monday')">+</button>
+                        </div>
+                        <div class="day-items" id="mondayItems">
+                            <!-- Monday items will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <div class="day-column" data-day="tuesday">
+                        <div class="day-header">
+                            <h4>Tuesday</h4>
+                            <span class="day-date" id="tuesdayDate"></span>
+                            <button class="btn btn-small btn-secondary" onclick="addDailyItem('tuesday')">+</button>
+                        </div>
+                        <div class="day-items" id="tuesdayItems">
+                            <!-- Tuesday items will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <div class="day-column" data-day="wednesday">
+                        <div class="day-header">
+                            <h4>Wednesday</h4>
+                            <span class="day-date" id="wednesdayDate"></span>
+                            <button class="btn btn-small btn-secondary" onclick="addDailyItem('wednesday')">+</button>
+                        </div>
+                        <div class="day-items" id="wednesdayItems">
+                            <!-- Wednesday items will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <div class="day-column" data-day="thursday">
+                        <div class="day-header">
+                            <h4>Thursday</h4>
+                            <span class="day-date" id="thursdayDate"></span>
+                            <button class="btn btn-small btn-secondary" onclick="addDailyItem('thursday')">+</button>
+                        </div>
+                        <div class="day-items" id="thursdayItems">
+                            <!-- Thursday items will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <div class="day-column" data-day="friday">
+                        <div class="day-header">
+                            <h4>Friday</h4>
+                            <span class="day-date" id="fridayDate"></span>
+                            <button class="btn btn-small btn-secondary" onclick="addDailyItem('friday')">+</button>
+                        </div>
+                        <div class="day-items" id="fridayItems">
+                            <!-- Friday items will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <div class="day-column weekend" data-day="saturday">
+                        <div class="day-header">
+                            <h4>Saturday</h4>
+                            <span class="day-date" id="saturdayDate"></span>
+                            <button class="btn btn-small btn-secondary" onclick="addDailyItem('saturday')">+</button>
+                        </div>
+                        <div class="day-items" id="saturdayItems">
+                            <!-- Saturday items will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <div class="day-column weekend" data-day="sunday">
+                        <div class="day-header">
+                            <h4>Sunday</h4>
+                            <span class="day-date" id="sundayDate"></span>
+                            <button class="btn btn-small btn-secondary" onclick="addDailyItem('sunday')">+</button>
+                        </div>
+                        <div class="day-items" id="sundayItems">
+                            <!-- Sunday items will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal for adding/editing cards -->
+    <div class="modal" id="cardModal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2 id="modalTitle">Add Card</h2>
+            <form id="cardForm">
+                <div class="form-group">
+                    <label for="cardTitle">Card Title:</label>
+                    <input type="text" id="cardTitle" required>
+                </div>
+                <div class="form-group">
+                    <label for="cardDescription">Description:</label>
+                    <textarea id="cardDescription" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="cardDueDate">Due Date:</label>
+                    <input type="date" id="cardDueDate">
+                </div>
+                <div class="form-group">
+                    <label for="cardPriority">Priority:</label>
+                    <select id="cardPriority">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                        <option value="urgent">Urgent</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="cardCompleted">
+                        Mark as completed
+                    </label>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save Card</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal for adding/editing rows -->
+    <div class="modal" id="rowModal">
+        <div class="modal-content">
+            <span class="close" onclick="closeRowModal()">&times;</span>
+            <h2 id="rowModalTitle">Add Row</h2>
+            <form id="rowForm">
+                <div class="form-group">
+                    <label for="rowName">Row Name:</label>
+                    <input type="text" id="rowName" required>
+                </div>
+                <div class="form-group">
+                    <label for="rowDescription">Description:</label>
+                    <textarea id="rowDescription" rows="3" placeholder="Optional description for this row"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="rowGroup">Group:</label>
+                    <select id="rowGroup">
+                        <option value="">No Group</option>
+                        <!-- Groups will be populated here -->
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save Row</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeRowModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal for column management -->
+    <div class="modal" id="columnModal">
+        <div class="modal-content">
+            <span class="close" onclick="closeColumnModal()">&times;</span>
+            <h2 id="columnModalTitle">Add Column</h2>
+            <form id="columnForm">
+                <div class="form-group">
+                    <label for="columnName">Column Name:</label>
+                    <input type="text" id="columnName" required>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save Column</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeColumnModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal for group management -->
+    <div class="modal" id="groupModal">
+        <div class="modal-content">
+            <span class="close" onclick="closeGroupModal()">&times;</span>
+            <h2 id="groupModalTitle">Add Group</h2>
+            <form id="groupForm">
+                <div class="form-group">
+                    <label for="groupName">Group Name:</label>
+                    <input type="text" id="groupName" required>
+                </div>
+                <div class="form-group">
+                    <label for="groupColor">Group Color:</label>
+                    <input type="color" id="groupColor" value="#0079bf">
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save Group</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeGroupModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal for export options -->
+    <div class="modal" id="exportModal">
+        <div class="modal-content">
+            <span class="close" onclick="closeExportModal()">&times;</span>
+            <h2>Export Board</h2>
+            <div class="export-options">
+                <button class="btn btn-primary export-btn" onclick="exportToPDF()">📄 Export as PDF</button>
+                <button class="btn btn-primary export-btn" onclick="exportToPNG()">🖼️ Export as PNG</button>
+                <button class="btn btn-primary export-btn" onclick="exportToExcel()">📊 Export as Excel</button>
+                <button class="btn btn-secondary export-btn" onclick="exportToJSON()">💾 Backup Data (JSON)</button>
+            </div>
+            
+            <div class="sync-section">
+                <h3>💡 Cross-Device Sync</h3>
+                <div class="sync-instructions">
+                    <p><strong>Easy cloud sync workflow:</strong></p>
+                    <ol>
+                        <li><strong>Export:</strong> Click "Backup Data" to download your JSON file</li>
+                        <li><strong>Upload:</strong> Save to iCloud Drive, Google Drive, or Dropbox</li>
+                        <li><strong>Sync:</strong> On other devices, download and import the file</li>
+                    </ol>
+                    <p class="sync-tip">💡 Tip: Files are automatically named with dates for easy organization!</p>
+                </div>
+            </div>
+            
+            <div class="import-section">
+                <h3>Import Data</h3>
+                <input type="file" id="importFile" accept=".json" onchange="importFromJSON()">
+                <label for="importFile" class="btn btn-secondary">📂 Import JSON Backup</label>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal for column outline -->
+    <div class="modal" id="outlineModal">
+        <div class="modal-content outline-modal">
+            <span class="close" onclick="closeOutlineModal()">&times;</span>
+            <h2 id="outlineModalTitle">Column Outline</h2>
+            <div class="outline-container">
+                <div class="outline-content" id="outlineContent">
+                    <!-- Outline will be generated here -->
+                </div>
+            </div>
+            <div class="outline-actions">
+                <button class="btn btn-primary" onclick="copyOutlineAsFormatted()" title="Copy with bullet formatting">📋 Copy Formatted</button>
+                <button class="btn btn-secondary" onclick="copyOutlineAsPlain()" title="Copy as plain text">📄 Copy Plain Text</button>
+                <button class="btn btn-secondary" onclick="copyOutlineAsMarkdown()" title="Copy as markdown">📝 Copy Markdown</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal for board management -->
+    <div class="modal" id="boardModal">
+        <div class="modal-content">
+            <span class="close" onclick="closeBoardModal()">&times;</span>
+            <h2>Manage Boards</h2>
+            <div class="boards-list" id="boardsList">
+                <!-- Boards will be listed here -->
+            </div>
+            <div class="board-actions">
+                <button class="btn btn-primary" onclick="createNewBoard()">+ Create New Board</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal for board creation/editing -->
+    <div class="modal" id="boardEditModal">
+        <div class="modal-content">
+            <span class="close" onclick="closeBoardEditModal()">&times;</span>
+            <h2 id="boardEditModalTitle">Create New Board</h2>
+            <form id="boardEditForm">
+                <div class="form-group">
+                    <label for="boardEditName">Board Name:</label>
+                    <input type="text" id="boardEditName" required>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save Board</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeBoardEditModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal for board settings -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content settings-modal-content">
+            <span class="close" onclick="closeSettingsModal()">&times;</span>
+            <h2>Board Settings</h2>
+            <div class="settings-modal-body">
+                <div class="settings-tabs">
+                    <div class="tab-list" role="tablist">
+                        <button class="tab-button active" onclick="switchTab('columns')" data-tab="columns">
+                            <span class="tab-icon">📊</span>
+                            <span class="tab-label">Columns</span>
+                        </button>
+                        <button class="tab-button" onclick="switchTab('groups')" data-tab="groups">
+                            <span class="tab-icon">📁</span>
+                            <span class="tab-label">Groups</span>
+                        </button>
+                        <button class="tab-button" onclick="switchTab('display')" data-tab="display">
+                            <span class="tab-icon">👁️</span>
+                            <span class="tab-label">Display</span>
+                        </button>
+                        <button class="tab-button" onclick="switchTab('board')" data-tab="board">
+                            <span class="tab-icon">⚙️</span>
+                            <span class="tab-label">Board</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="settings-content-area">
+                    <!-- Columns Tab -->
+                    <div id="columns-tab" class="tab-content active">
+                        <div class="mobile-back-header">
+                            <button class="mobile-back-btn" onclick="showMobileTabList()">
+                                <span>←</span>
+                                <span>Settings</span>
+                            </button>
+                            <h3 class="mobile-tab-title">Columns</h3>
+                        </div>
+                        <div class="tab-header">
+                            <h3>Columns Management</h3>
+                            <p>Manage your board columns and their order</p>
+                        </div>
+                        <div class="columns-list" id="columnsListModal">
+                            <!-- Columns will be listed here -->
+                        </div>
+                        <button class="btn btn-primary" onclick="addColumn()">+ Add Column</button>
+                        <div class="reorder-info">
+                            <small>💡 Drag column headers to reorder them, or use the arrow buttons below</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Groups Tab -->
+                    <div id="groups-tab" class="tab-content">
+                        <div class="mobile-back-header">
+                            <button class="mobile-back-btn" onclick="showMobileTabList()">
+                                <span>←</span>
+                                <span>Settings</span>
+                            </button>
+                            <h3 class="mobile-tab-title">Groups</h3>
+                        </div>
+                        <div class="tab-header">
+                            <h3>Groups Management</h3>
+                            <p>Organize your rows into colored groups</p>
+                        </div>
+                        <div class="groups-list" id="groupsListModal">
+                            <!-- Groups will be listed here -->
+                        </div>
+                        <button class="btn btn-primary" onclick="addGroup()">+ Add Group</button>
+                    </div>
+                    
+                    <!-- Display Tab -->
+                    <div id="display-tab" class="tab-content">
+                        <div class="mobile-back-header">
+                            <button class="mobile-back-btn" onclick="showMobileTabList()">
+                                <span>←</span>
+                                <span>Settings</span>
+                            </button>
+                            <h3 class="mobile-tab-title">Display</h3>
+                        </div>
+                        <div class="tab-header">
+                            <h3>Display Options</h3>
+                            <p>Customize how information is shown on your board</p>
+                        </div>
+                        <div class="display-options">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="showCheckboxesModal" onchange="toggleCheckboxes()">
+                                <span class="checkbox-text">
+                                    <strong>Show completion checkboxes</strong>
+                                    <small>Display checkboxes on cards to mark them as complete</small>
+                                </span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="showSubtaskProgressModal" onchange="toggleSubtaskProgress()">
+                                <span class="checkbox-text">
+                                    <strong>Show subtask progress</strong>
+                                    <small>Display progress bars showing subtask completion on cards</small>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Board Tab -->
+                    <div id="board-tab" class="tab-content">
+                        <div class="mobile-back-header">
+                            <button class="mobile-back-btn" onclick="showMobileTabList()">
+                                <span>←</span>
+                                <span>Settings</span>
+                            </button>
+                            <h3 class="mobile-tab-title">Board</h3>
+                        </div>
+                        <div class="tab-header">
+                            <h3>Board Settings</h3>
+                            <p>Manage board name and general settings</p>
+                        </div>
+                        <div class="board-settings">
+                            <div class="form-group">
+                                <label for="boardNameInput">Board Name</label>
+                                <input type="text" id="boardNameInput" class="form-input" placeholder="Enter board name">
+                                <button class="btn btn-primary" onclick="saveBoardName()">Save Name</button>
+                            </div>
+                            <div class="board-info">
+                                <div class="info-item">
+                                    <strong>Created:</strong> <span id="boardCreatedDate">-</span>
+                                </div>
+                                <div class="info-item">
+                                    <strong>Total Cards:</strong> <span id="boardCardCount">0</span>
+                                </div>
+                                <div class="info-item">
+                                    <strong>Total Rows:</strong> <span id="boardRowCount">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for card detail view -->
+    <div class="modal" id="cardDetailModal">
+        <div class="modal-content card-detail-content">
+            <span class="close" onclick="closeCardDetailModal()">&times;</span>
+            <div class="card-detail-header">
+                <h2 id="cardDetailTitle">Card Title</h2>
+                <div class="card-detail-meta">
+                    <span class="card-detail-location">
+                        <span id="cardDetailGroup"></span>
+                        <span id="cardDetailRow"></span> → 
+                        <span id="cardDetailColumn"></span>
+                    </span>
+                </div>
+            </div>
+            <div class="card-detail-body">
+                <div class="card-detail-section">
+                    <h3>Description</h3>
+                    <div id="cardDetailDescription" class="card-detail-description">
+                        No description provided
+                    </div>
+                </div>
+                <div class="card-detail-section">
+                    <h3>Status</h3>
+                    <div class="card-detail-status">
+                        <span id="cardDetailCompletionStatus" class="status-badge">Pending</span>
+                    </div>
+                </div>
+                <div class="card-detail-section">
+                    <div class="subtask-header">
+                        <h3>Subtasks</h3>
+                        <button id="addSubtaskBtn" class="btn btn-small btn-primary">+ Add Subtask</button>
+                    </div>
+                    <div id="addSubtaskForm" class="add-subtask-form" style="display: none;">
+                        <div class="subtask-input-group">
+                            <input type="text" id="newSubtaskInput" placeholder="Enter subtask description..." class="subtask-input">
+                            <div class="subtask-input-actions">
+                                <button id="saveSubtaskBtn" class="btn btn-small btn-primary">Add</button>
+                                <button id="cancelSubtaskBtn" class="btn btn-small btn-secondary">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="subtasksList" class="subtasks-list">
+                        <!-- Subtasks will be rendered here -->
+                    </div>
+                </div>
+            </div>
+            <div class="card-detail-actions">
+                <button id="editCardFromDetailBtn" class="btn btn-primary">✏️ Edit Card</button>
+                <button id="deleteCardFromDetailBtn" class="btn btn-danger">🗑️ Delete Card</button>
+                <button class="btn btn-secondary" onclick="closeCardDetailModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for saving current board as template -->
+    <div class="modal" id="saveAsTemplateModal">
+        <div class="modal-content">
+            <span class="close" onclick="closeSaveAsTemplateModal()">&times;</span>
+            <h2>Save Current Board as Template</h2>
+            <p class="template-explanation">Save your current board structure as a reusable template. This includes all groups, rows, and task layouts (but not the actual data).</p>
+            <form id="saveAsTemplateForm">
+                <div class="form-group">
+                    <label for="saveTemplateName">Template Name:</label>
+                    <input type="text" id="saveTemplateName" required placeholder="e.g., 'Project Launch Workflow'">
+                </div>
+                <div class="form-group">
+                    <label for="saveTemplateDescription">Description:</label>
+                    <textarea id="saveTemplateDescription" rows="2" placeholder="Describe what this template is used for..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="saveTemplateCategory">Category:</label>
+                    <select id="saveTemplateCategory">
+                        <option value="Management">Management</option>
+                        <option value="Operations">Operations</option>
+                        <option value="Development">Development</option>
+                        <option value="Research">Research</option>
+                        <option value="Marketing">Marketing</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="template-preview">
+                    <h4>What will be saved:</h4>
+                    <div id="templatePreview">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save as Template</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeSaveAsTemplateModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for creating templates (legacy) -->
+    <div class="modal" id="createTemplateModal">
+        <div class="modal-content">
+            <span class="close" onclick="closeCreateTemplateModal()">&times;</span>
+            <h2>Create Template</h2>
+            <form id="createTemplateForm">
+                <div class="form-group">
+                    <label for="templateName">Template Name:</label>
+                    <input type="text" id="templateName" required>
+                </div>
+                <div class="form-group">
+                    <label for="templateDescription">Description:</label>
+                    <textarea id="templateDescription" rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="templateCategory">Category:</label>
+                    <select id="templateCategory">
+                        <option value="Research">Research</option>
+                        <option value="Management">Management</option>
+                        <option value="Operations">Operations</option>
+                        <option value="Development">Development</option>
+                        <option value="Marketing">Marketing</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="includeCurrentBoard" checked>
+                        Create template from current board structure
+                    </label>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Create Template</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeCreateTemplateModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for applying templates -->
+    <div class="modal" id="applyTemplateModal">
+        <div class="modal-content">
+            <span class="close" onclick="closeApplyTemplateModal()">&times;</span>
+            <h2>Apply Template</h2>
+            <div class="template-selection">
+                <div class="template-categories" id="templateCategories">
+                    <!-- Template categories will be listed here -->
+                </div>
+                <div class="template-list" id="templateApplyList">
+                    <!-- Templates will be listed here -->
+                </div>
+            </div>
+            <div class="apply-options">
+                <div class="form-group">
+                    <label>
+                        <input type="radio" name="applyMode" value="new" checked>
+                        Create as new board
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="radio" name="applyMode" value="current">
+                        Add to current board
+                    </label>
+                </div>
+                <div class="form-group" id="newBoardNameGroup">
+                    <label for="newBoardName">New Board Name:</label>
+                    <input type="text" id="newBoardName" placeholder="Enter board name">
+                </div>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-primary" onclick="applySelectedTemplate()">Apply Template</button>
+                <button class="btn btn-secondary" onclick="closeApplyTemplateModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for task management interface -->
+    <div class="modal" id="taskModal">
+        <div class="modal-content">
+            <span class="close" onclick="closeTaskModal()">&times;</span>
+            <h2 id="taskModalTitle">Add Task</h2>
+            <form id="taskForm">
+                <div class="form-group form-full">
+                    <label for="taskTitle">Task Title:</label>
+                    <input type="text" id="taskTitle" required>
+                </div>
+                
+                <div class="form-group form-full">
+                    <label for="taskDescription">Description:</label>
+                    <textarea id="taskDescription" rows="2"></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="taskBoard">Board:</label>
+                        <select id="taskBoard" required>
+                            <!-- Board options will be populated dynamically -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskGroup">Group:</label>
+                        <select id="taskGroup" onchange="updateTaskRowOptions()">
+                            <option value="">No Group</option>
+                            <!-- Group options will be populated dynamically -->
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="taskRow">Row:</label>
+                        <select id="taskRow" required>
+                            <!-- Row options will be populated dynamically -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskColumn">Column:</label>
+                        <select id="taskColumn" required>
+                            <!-- Column options will be populated dynamically -->
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="taskDueDate">Due Date:</label>
+                        <input type="date" id="taskDueDate">
+                    </div>
+                    <div class="form-group">
+                        <label for="taskPriority">Priority:</label>
+                        <select id="taskPriority">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                            <option value="urgent">Urgent</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group form-full">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="taskCompleted">
+                        Mark as completed
+                    </label>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save Task</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeTaskModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for weekly reflection -->
+    <div class="modal" id="weeklyReflectionModal">
+        <div class="modal-content">
+            <span class="close" onclick="closeWeeklyReflectionModal()">&times;</span>
+            <h2>Weekly Reflection</h2>
+            <form id="weeklyReflectionForm">
+                <div class="form-group">
+                    <label for="weeklyWins">🎉 What went well this week?</label>
+                    <textarea id="weeklyWins" rows="3" placeholder="Celebrate your wins and progress..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="weeklyChallenges">🤔 What challenges did you face?</label>
+                    <textarea id="weeklyChallenges" rows="3" placeholder="What was difficult or didn't go as planned..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="weeklyLearnings">💡 What did you learn?</label>
+                    <textarea id="weeklyLearnings" rows="3" placeholder="Insights, lessons, or things to remember..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="nextWeekFocus">🔮 Focus for next week?</label>
+                    <textarea id="nextWeekFocus" rows="2" placeholder="What should you prioritize next week..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save Reflection</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeWeeklyReflectionModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for adding weekly items -->
+    <div class="modal" id="weeklyItemModal">
+        <div class="modal-content">
+            <span class="close" onclick="closeWeeklyItemModal()">&times;</span>
+            <h2 id="weeklyItemModalTitle">Add Weekly Item</h2>
+            <form id="weeklyItemForm">
+                <div class="form-group">
+                    <label>Item Type:</label>
+                    <div class="item-type-selector">
+                        <label class="radio-label">
+                            <input type="radio" name="itemType" value="note" checked>
+                            📝 Note/Task
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="itemType" value="checklist">
+                            ☑️ Checklist
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="itemType" value="card">
+                            📋 Existing Card
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Note/Task Form -->
+                <div class="item-form" id="noteForm">
+                    <div class="form-group">
+                        <label for="noteTitle">Title:</label>
+                        <input type="text" id="noteTitle" placeholder="Enter task or note title...">
+                    </div>
+                    <div class="form-group">
+                        <label for="noteContent">Description:</label>
+                        <textarea id="noteContent" rows="3" placeholder="Add details, context, or notes..."></textarea>
+                    </div>
+                </div>
+                
+                <!-- Checklist Form -->
+                <div class="item-form" id="checklistForm" style="display: none;">
+                    <div class="form-group">
+                        <label for="checklistTitle">Checklist Title:</label>
+                        <input type="text" id="checklistTitle" placeholder="e.g., 'Morning routine', 'Project setup'...">
+                    </div>
+                    <div class="form-group">
+                        <label>Checklist Items:</label>
+                        <div class="checklist-builder" id="checklistBuilder">
+                            <div class="checklist-item-input">
+                                <input type="text" placeholder="Enter checklist item..." class="checklist-input">
+                                <button type="button" class="btn btn-small btn-primary" onclick="addChecklistItem()">+</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Card Selection Form -->
+                <div class="item-form" id="cardForm" style="display: none;">
+                    <div class="form-group">
+                        <label for="cardBoardSelect">Board:</label>
+                        <select id="cardBoardSelect" onchange="updateCardOptions()">
+                            <!-- Boards will be populated -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="cardSelect">Card:</label>
+                        <select id="cardSelect">
+                            <!-- Cards will be populated -->
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="itemCompleted">
+                        Mark as completed
+                    </label>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Add to Week</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeWeeklyItemModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
