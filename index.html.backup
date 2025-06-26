@@ -11,109 +11,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <!-- SortableJS for reliable drag and drop -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-    
-    <!-- GridFlow Modules -->
-    <script type="module" src="js/app.js"></script>
 </head>
 <body>
-    <!-- Sidebar -->
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <div class="sidebar-logo">
-                <span class="logo-icon">⚡</span>
-                <span class="logo-text">GridFlow</span>
-            </div>
-            <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle Sidebar">
-                <span class="toggle-icon">‹</span>
-            </button>
-        </div>
-        
-        <div class="sidebar-content">
-            <div class="sidebar-section">
-                <div class="sidebar-section-title">VIEWS</div>
-                <nav class="sidebar-nav">
-                    <ul>
-                        <li class="nav-item">
-                            <a href="#" class="nav-link active" id="sidebarBoardView" onclick="switchToView('board')">
-                                <span class="nav-icon">📋</span>
-                                <span class="nav-text">Board View</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="#" class="nav-link" id="sidebarTaskView" onclick="switchToView('tasks')">
-                                <span class="nav-icon">✅</span>
-                                <span class="nav-text">Task View</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="#" class="nav-link" id="sidebarWeeklyView" onclick="switchToView('weekly')">
-                                <span class="nav-icon">📅</span>
-                                <span class="nav-text">Weekly Plan</span>
-                            </a>
-                        </li>
-                    </ul>
-                </nav>
-            </div>
-            
-            <div class="sidebar-section">
-                <div class="sidebar-section-title">ACTIONS</div>
-                <nav class="sidebar-nav">
-                    <ul>
-                        <li class="nav-item">
-                            <a href="#" class="nav-link" onclick="addRow()">
-                                <span class="nav-icon">➕</span>
-                                <span class="nav-text">Add Row</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="#" class="nav-link" onclick="addGroup()">
-                                <span class="nav-icon">📁</span>
-                                <span class="nav-text">Add Group</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="#" class="nav-link" onclick="showApplyTemplateModal()">
-                                <span class="nav-icon">📋</span>
-                                <span class="nav-text">Templates</span>
-                            </a>
-                        </li>
-                    </ul>
-                </nav>
-            </div>
-            
-            <div class="sidebar-section">
-                <div class="sidebar-section-title">SETTINGS</div>
-                <nav class="sidebar-nav">
-                    <ul>
-                        <li class="nav-item">
-                            <a href="#" class="nav-link" onclick="showSettingsModal()">
-                                <span class="nav-icon">⚙️</span>
-                                <span class="nav-text">Settings</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="#" class="nav-link" onclick="showExportModal()">
-                                <span class="nav-icon">📤</span>
-                                <span class="nav-text">Export</span>
-                            </a>
-                        </li>
-                    </ul>
-                </nav>
-            </div>
-        </div>
-        
-        <div class="sidebar-footer">
-            <div class="user-info">
-                <div class="user-avatar">U</div>
-                <div class="user-name">User</div>
-            </div>
-        </div>
-    </aside>
-
-    <div class="app-container main-content">
+    <div class="app-container">
         <header class="app-header">
             <div class="header-left">
-                <button class="mobile-menu-btn" onclick="toggleSidebar()" title="Menu">☰</button>
                 <h1>GridFlow</h1>
                 <div class="board-navigation">
                     <div class="board-selector-enhanced">
@@ -1182,5 +1084,7 @@
             </form>
         </div>
     </div>
+    
+    <script src="script.js"></script>
 </body>
 </html>
