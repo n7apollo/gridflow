@@ -335,17 +335,20 @@ export function editWeeklyGoal() {
         form = document.createElement('div');
         form.id = 'weeklyGoalForm';
         form.innerHTML = `
-            <input type="text" id="weeklyGoalInput" value="${currentGoal === 'Click to set your weekly focus goal...' ? '' : currentGoal}" placeholder="Enter your weekly focus goal...">
-            <button class="btn btn-small btn-primary" id="saveWeeklyGoalBtn">Save</button>
-            <button class="btn btn-small btn-secondary" id="cancelWeeklyGoalBtn">Cancel</button>
+            <input type=\"text\" id=\"weeklyGoalInput\" value=\"${currentGoal === 'Click to set your weekly focus goal...' ? '' : currentGoal}\" placeholder=\"Enter your weekly focus goal...\">
+            <button class=\"btn btn-small btn-primary\" id=\"saveWeeklyGoalBtn\">Save</button>
+            <button class=\"btn btn-small btn-secondary\" id=\"cancelWeeklyGoalBtn\">Cancel</button>
         `;
         weeklyGoal.parentNode.insertBefore(form, weeklyGoal.nextSibling);
     } else {
         form.style.display = 'block';
-        document.getElementById('weeklyGoalInput').value = currentGoal === 'Click to set your weekly focus goal...' ? '' : currentGoal;
+        form.querySelector('#weeklyGoalInput').value = currentGoal === 'Click to set your weekly focus goal...' ? '' : currentGoal;
     }
-    document.getElementById('saveWeeklyGoalBtn').onclick = function() {
-        const newGoal = document.getElementById('weeklyGoalInput').value.trim();
+    // Set handlers after DOM update
+    const saveBtn = form.querySelector('#saveWeeklyGoalBtn');
+    const cancelBtn = form.querySelector('#cancelWeeklyGoalBtn');
+    saveBtn.onclick = function() {
+        const newGoal = form.querySelector('#weeklyGoalInput').value.trim();
         const appData = getAppData();
         if (!appData.weeklyPlans[currentWeekKey]) {
             appData.weeklyPlans[currentWeekKey] = {
@@ -361,7 +364,7 @@ export function editWeeklyGoal() {
         renderWeeklyPlan();
         showStatusMessage('Weekly goal updated', 'success');
     };
-    document.getElementById('cancelWeeklyGoalBtn').onclick = function() {
+    cancelBtn.onclick = function() {
         form.style.display = 'none';
         weeklyGoal.style.display = 'block';
     };
