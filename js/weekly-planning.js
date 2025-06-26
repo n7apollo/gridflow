@@ -335,10 +335,10 @@ export function editWeeklyGoal() {
         form = document.createElement('div');
         form.id = 'weeklyGoalForm';
         form.innerHTML = `
-            <input type=\"text\" id=\"weeklyGoalInput\" value=\"${currentGoal === 'Click to set your weekly focus goal...' ? '' : currentGoal}\" placeholder=\"Enter your weekly focus goal...\">
-            <button class=\"btn btn-small btn-primary\" id=\"saveWeeklyGoalBtn\">Save</button>
-            <button class=\"btn btn-small btn-secondary\" id=\"cancelWeeklyGoalBtn\">Cancel</button>
-        `;
+    <textarea id=\"weeklyGoalInput\" rows=\"3\" style=\"width:100%;resize:vertical;min-height:48px;\" placeholder=\"Enter your weekly focus goal...\">${currentGoal === 'Click to set your weekly focus goal...' ? '' : currentGoal}</textarea>
+    <button class=\"btn btn-small btn-primary\" id=\"saveWeeklyGoalBtn\">Save</button>
+    <button class=\"btn btn-small btn-secondary\" id=\"cancelWeeklyGoalBtn\">Cancel</button>
+`;
         weeklyGoal.parentNode.insertBefore(form, weeklyGoal.nextSibling);
     } else {
         form.style.display = 'block';
