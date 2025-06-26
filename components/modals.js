@@ -195,6 +195,123 @@ class GridFlowModals extends HTMLElement {
                 </div>
             </div>
 
+            <!-- Board Modal -->
+            <div class="modal" id="boardModal">
+                <div class="modal-content">
+                    <span class="close" data-action="closeBoardModal">&times;</span>
+                    <h2 id="boardModalTitle">Board</h2>
+                    <div id="boardModalContent"></div>
+                </div>
+            </div>
+
+            <!-- Board Edit Modal -->
+            <div class="modal" id="boardEditModal">
+                <div class="modal-content">
+                    <span class="close" data-action="closeBoardEditModal">&times;</span>
+                    <h2 id="boardEditModalTitle">Edit Board</h2>
+                    <div id="boardEditModalContent"></div>
+                </div>
+            </div>
+
+            <!-- Group Modal -->
+            <div class="modal" id="groupModal">
+                <div class="modal-content">
+                    <span class="close" data-action="closeGroupModal">&times;</span>
+                    <h2 id="groupModalTitle">Group</h2>
+                    <div id="groupModalContent"></div>
+                </div>
+            </div>
+
+            <!-- Column Modal -->
+            <div class="modal" id="columnModal">
+                <div class="modal-content">
+                    <span class="close" data-action="closeColumnModal">&times;</span>
+                    <h2 id="columnModalTitle">Column</h2>
+                    <div id="columnModalContent"></div>
+                </div>
+            </div>
+
+            <!-- Row Modal -->
+            <div class="modal" id="rowModal">
+                <div class="modal-content">
+                    <span class="close" data-action="closeRowModal">&times;</span>
+                    <h2 id="rowModalTitle">Row</h2>
+                    <div id="rowModalContent"></div>
+                </div>
+            </div>
+
+            <!-- Card Detail Modal -->
+            <div class="modal" id="cardDetailModal">
+                <div class="modal-content">
+                    <span class="close" data-action="closeCardDetailModal">&times;</span>
+                    <h2 id="cardDetailModalTitle">Card Details</h2>
+                    <div id="cardDetailModalContent"></div>
+                </div>
+            </div>
+
+            <!-- Weekly Item Modal -->
+            <div class="modal" id="weeklyItemModal">
+                <div class="modal-content">
+                    <span class="close" data-action="closeWeeklyItemModal">&times;</span>
+                    <h2 id="weeklyItemModalTitle">Weekly Item</h2>
+                    <form id="weeklyItemForm"></form>
+                </div>
+            </div>
+
+            <!-- Save As Template Modal -->
+            <div class="modal" id="saveAsTemplateModal">
+                <div class="modal-content">
+                    <span class="close" data-action="closeSaveAsTemplateModal">&times;</span>
+                    <h2 id="saveAsTemplateModalTitle">Save as Template</h2>
+                    <div id="saveAsTemplateModalContent"></div>
+                </div>
+            </div>
+
+            <!-- Create Template Modal -->
+            <div class="modal" id="createTemplateModal">
+                <div class="modal-content">
+                    <span class="close" data-action="closeCreateTemplateModal">&times;</span>
+                    <h2 id="createTemplateModalTitle">Create Template</h2>
+                    <div id="createTemplateModalContent"></div>
+                </div>
+            </div>
+
+            <!-- Apply Template Modal -->
+            <div class="modal" id="applyTemplateModal">
+                <div class="modal-content">
+                    <span class="close" data-action="closeApplyTemplateModal">&times;</span>
+                    <h2 id="applyTemplateModalTitle">Apply Template</h2>
+                    <div id="applyTemplateModalContent"></div>
+                </div>
+            </div>
+
+            <!-- Outline Modal -->
+            <div class="modal" id="outlineModal">
+                <div class="modal-content">
+                    <span class="close" data-action="closeOutlineModal">&times;</span>
+                    <h2 id="outlineModalTitle">Outline</h2>
+                    <div id="outlineModalContent"></div>
+                </div>
+            </div>
+
+            <!-- Groups List Modal -->
+            <div class="modal" id="groupsListModal">
+                <div class="modal-content">
+                    <span class="close" data-action="closeGroupsListModal">&times;</span>
+                    <h2 id="groupsListModalTitle">Groups List</h2>
+                    <div id="groupsListModalContent"></div>
+                </div>
+            </div>
+
+            <!-- Columns List Modal -->
+            <div class="modal" id="columnsListModal">
+                <div class="modal-content">
+                    <span class="close" data-action="closeColumnsListModal">&times;</span>
+                    <h2 id="columnsListModalTitle">Columns List</h2>
+                    <div id="columnsListModalContent"></div>
+                </div>
+            </div>
+
             <!-- Export Modal -->
             <div class="modal" id="exportModal">
                 <div class="modal-content">
