@@ -149,10 +149,17 @@ export function setupEventListeners() {
         boardEditForm.addEventListener('submit', window.saveBoardEdit);
     }
     
+    // Weekly reflection form
+    const weeklyReflectionForm = document.getElementById('weeklyReflectionForm');
+    if (weeklyReflectionForm) {
+        weeklyReflectionForm.addEventListener('submit', window.saveWeeklyReflection);
+    }
+    
     // Modal close on outside click
     window.addEventListener('click', function(event) {
         const cardModal = document.getElementById('cardModal');
         const taskModal = document.getElementById('taskModal');
+        const weeklyReflectionModal = document.getElementById('weeklyReflectionModal');
         const rowModal = document.getElementById('rowModal');
         const columnModal = document.getElementById('columnModal');
         const groupModal = document.getElementById('groupModal');
@@ -163,6 +170,7 @@ export function setupEventListeners() {
         
         if (event.target === cardModal) window.closeModal();
         if (event.target === taskModal) window.closeTaskModal();
+        if (event.target === weeklyReflectionModal) window.closeWeeklyReflectionModal();
         if (event.target === rowModal) window.closeRowModal();
         if (event.target === columnModal) window.closeColumnModal();
         if (event.target === groupModal) window.closeGroupModal();
@@ -177,6 +185,7 @@ export function setupEventListeners() {
         if (event.key === 'Escape') {
             window.closeModal();
             window.closeTaskModal();
+            window.closeWeeklyReflectionModal();
             window.closeRowModal();
             window.closeColumnModal();
             window.closeGroupModal();

@@ -165,6 +165,36 @@ class GridFlowModals extends HTMLElement {
                 </div>
             </div>
 
+            <!-- Weekly Reflection Modal -->
+            <div class="modal" id="weeklyReflectionModal">
+                <div class="modal-content">
+                    <span class="close" data-action="closeWeeklyReflectionModal">&times;</span>
+                    <h2>Weekly Reflection</h2>
+                    <form id="weeklyReflectionForm">
+                        <div class="form-group">
+                            <label for="reflectionWins">What went well this week?</label>
+                            <textarea id="reflectionWins" name="reflectionWins" rows="3" placeholder="Celebrate your wins, both big and small..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="reflectionChallenges">What challenges did you face?</label>
+                            <textarea id="reflectionChallenges" name="reflectionChallenges" rows="3" placeholder="What obstacles or difficulties did you encounter?"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="reflectionLearnings">What did you learn?</label>
+                            <textarea id="reflectionLearnings" name="reflectionLearnings" rows="3" placeholder="What insights, skills, or knowledge did you gain?"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="reflectionNextWeek">Focus for next week:</label>
+                            <textarea id="reflectionNextWeek" name="reflectionNextWeek" rows="2" placeholder="What's your main priority or focus for next week?"></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary" data-action="saveWeeklyReflection">Save Reflection</button>
+                            <button type="button" class="btn btn-secondary" data-action="closeWeeklyReflectionModal">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
             <!-- Export Modal -->
             <div class="modal" id="exportModal">
                 <div class="modal-content">

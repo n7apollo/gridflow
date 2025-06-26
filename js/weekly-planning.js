@@ -508,30 +508,49 @@ export function showWeeklyReflectionModal() {
     const currentWeek = appData.weeklyPlans[currentWeekKey] || {};
     const reflection = currentWeek.reflection || {};
     
-    // Populate modal with current reflection data
-    document.getElementById('reflectionWins').value = reflection.wins || '';
-    document.getElementById('reflectionChallenges').value = reflection.challenges || '';
-    document.getElementById('reflectionLearnings').value = reflection.learnings || '';
-    document.getElementById('reflectionNextWeek').value = reflection.nextWeekFocus || '';
+    // Populate modal with current reflection data (with null checks)
+    const reflectionWins = document.getElementById('reflectionWins');
+    if (reflectionWins) reflectionWins.value = reflection.wins || '';
     
-    document.getElementById('weeklyReflectionModal').style.display = 'block';
+    const reflectionChallenges = document.getElementById('reflectionChallenges');
+    if (reflectionChallenges) reflectionChallenges.value = reflection.challenges || '';
+    
+    const reflectionLearnings = document.getElementById('reflectionLearnings');
+    if (reflectionLearnings) reflectionLearnings.value = reflection.learnings || '';
+    
+    const reflectionNextWeek = document.getElementById('reflectionNextWeek');
+    if (reflectionNextWeek) reflectionNextWeek.value = reflection.nextWeekFocus || '';
+    
+    const modal = document.getElementById('weeklyReflectionModal');
+    if (modal) modal.style.display = 'block';
 }
 
 /**
  * Close weekly reflection modal
  */
 export function closeWeeklyReflectionModal() {
-    document.getElementById('weeklyReflectionModal').style.display = 'none';
+    const modal = document.getElementById('weeklyReflectionModal');
+    if (modal) modal.style.display = 'none';
 }
 
 /**
  * Save weekly reflection
  */
 export function saveWeeklyReflection() {
-    const wins = document.getElementById('reflectionWins').value.trim();
-    const challenges = document.getElementById('reflectionChallenges').value.trim();
-    const learnings = document.getElementById('reflectionLearnings').value.trim();
-    const nextWeekFocus = document.getElementById('reflectionNextWeek').value.trim();
+    const winsEl = document.getElementById('reflectionWins');
+    const challengesEl = document.getElementById('reflectionChallenges');
+    const learningsEl = document.getElementById('reflectionLearnings');
+    const nextWeekEl = document.getElementById('reflectionNextWeek');
+    
+    if (!winsEl || !challengesEl || !learningsEl || !nextWeekEl) {
+        console.warn('Weekly reflection form elements not found');
+        return;
+    }
+    
+    const wins = winsEl.value.trim();
+    const challenges = challengesEl.value.trim();
+    const learnings = learningsEl.value.trim();
+    const nextWeekFocus = nextWeekEl.value.trim();
     
     const appData = getAppData();
     if (!appData.weeklyPlans[currentWeekKey]) {
