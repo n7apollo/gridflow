@@ -1,0 +1,571 @@
+// Application state
+let appData = {
+    currentBoardId: 'default',
+    boards: {
+        'default': {
+            name: 'My Board',
+            groups: [],
+            rows: [],
+            columns: [],
+            nextRowId: 1,
+            nextCardId: 1,
+            nextColumnId: 1,
+            nextGroupId: 1,
+            settings: {
+                showCheckboxes: false,
+                showSubtaskProgress: true
+            }
+        }
+    },
+    templates: [],
+    nextTemplateId: 1,
+    weeklyPlans: {},
+    nextWeeklyItemId: 1,
+    
+    // Phase 1: Unified entity system
+    entities: {
+        tasks: {},      // Unified tasks (subtasks, checklist items, weekly tasks)
+        notes: {},      // Centralized notes system  
+        checklists: {}  // Reusable checklists
+    },
+    
+    // Entity ID counters
+    nextTaskId: 1,
+    nextNoteId: 1,
+    nextChecklistId: 1,
+    
+    // Relationship tracking for bidirectional sync
+    relationships: {
+        cardToWeeklyPlans: {},    // cardId -> [weekKeys]
+        weeklyPlanToCards: {},    // weekKey -> [cardIds]
+        entityNotes: {},          // entityId -> [noteIds]
+        entityChecklists: {},     // entityId -> [checklistIds]
+        entityTasks: {},          // entityId -> [taskIds]
+        
+        // Phase 2: Enhanced relationships
+        entityTags: {},           // entityId -> [tagIds]
+        collectionEntities: {},   // collectionId -> [entityIds]
+        templateUsage: {}         // templateId -> [usageInstances]
+    },
+    
+    // Phase 2: Template Library & Smart Collections
+    templateLibrary: {
+        checklists: {},           // Reusable checklist templates
+        taskSets: {},            // Common task patterns
+        notes: {}                // Note templates
+    },
+    
+    collections: {},              // Smart collections/saved views
+    tags: {},                    // Global tag definitions with metadata
+    
+    // Phase 2 ID counters
+    nextTemplateLibraryId: 1,
+    nextCollectionId: 1,
+    nextTagId: 1,
+    
+    version: '5.0' // Phase 2 template library & smart collections
+};
+
+// Current board reference for backward compatibility
+let boardData = appData.boards[appData.currentBoardId];
+
+let currentEditingCard = null;
+// currentEditingColumn moved to js/column-operations.js
+// currentEditingGroup moved to js/group-operations.js
+let currentDetailCard = null; // Track card in detail modal
+// SortableJS handles all drag state - no global variables needed
+
+// Application initialization moved to js/app.js
+// This script.js file now contains the remaining non-modularized functions
+
+// Data persistence functions moved to js/core-data.js
+
+// loadData function moved to js/core-data.js
+
+// Data migration functions moved to js/core-data.js
+
+// TODO: Remove these functions once all modules are extracted - they're now handled by js/core-data.js
+
+// Detect version from data structure
+
+// Compare version strings (simple semantic versioning)
+
+// Migration to v2.0 (single-board to multi-board)
+
+// Migration to v2.5 (add templates)
+
+// Migration to v3.0 (add weekly planning)
+
+// Migration to v4.0 (unified entity system)
+
+// Migration to v5.0 (template library & smart collections)
+
+// Convert existing checklist entities to reusable templates - moved to js/data-migration.js
+
+// Initialize default tag categories for organization - moved to js/data-migration.js
+
+// Convert card subtasks to unified task entities - moved to js/data-migration.js
+
+// Convert weekly plan items to entities - moved to js/data-migration.js
+
+// Build relationship mappings between entities - moved to js/data-migration.js
+
+// Validate and ensure all required fields exist
+
+
+// Initialize with sample data
+
+// Board rendering functions moved to js/board-rendering.js
+
+// Toggle card completion function moved to js/card-operations.js
+
+// SortableJS setup functions moved to js/drag-drop.js
+
+// setupRowSorting function moved to js/drag-drop.js
+
+
+// reorderCardsInColumn function moved to js/drag-drop.js
+
+// SortableJS handles all drop zone logic
+
+
+
+
+// Move functions moved to js/drag-drop.js
+
+// moveCardBetweenRows function moved to js/drag-drop.js
+
+
+
+// moveColumn function moved to js/column-operations.js
+
+// moveColumnUp function moved to js/column-operations.js
+
+// moveColumnDown function moved to js/column-operations.js
+
+// Group functions moved to js/group-operations.js
+
+// Settings Modal functions moved to js/ui-management.js
+
+
+
+// Column management
+// renderColumnsList function moved to js/column-operations.js
+
+// renderColumnsListModal function moved to js/column-operations.js
+
+// renderGroupsListModal function moved to js/group-operations.js
+
+// renderGroupsList function moved to js/group-operations.js
+
+// addColumn function moved to js/column-operations.js
+
+// editColumn function moved to js/column-operations.js
+
+// deleteColumn function moved to js/column-operations.js
+
+// saveColumn function moved to js/column-operations.js
+
+// closeColumnModal function moved to js/column-operations.js
+
+// CRUD Operations for Rows moved to js/row-operations.js
+
+
+
+
+
+
+// CRUD Operations for Cards moved to js/card-operations.js
+
+// Modal management functions moved to js/ui-management.js
+
+// Card detail modal functions moved to js/card-operations.js
+
+// Subtask functions moved to js/board-rendering.js and js/subtask-management.js
+
+// Add subtask form functions moved to js/subtask-management.js
+
+// Edit subtask inline functions moved to js/subtask-management.js
+
+// Centralized Notes System functions moved to js/entity-system.js
+
+// Phase 2: Template Library System
+// Reusable Checklist Templates
+
+
+
+
+
+// Task Templates for Common Patterns - moved to js/template-library.js
+
+// applyTaskSetToCard function moved to js/template-library.js
+
+// Enhanced Tagging System functions moved to js/tagging-system.js
+
+
+
+
+
+
+// Smart Collections System moved to js/collections.js
+
+
+
+
+
+// Initialize Sample Templates and Collections (for demonstration)
+// initializeSampleTemplates moved to js/template-library.js
+
+// initializeSampleCollections moved to js/collections.js
+
+
+// Auto-update collections when entities change - function moved to js/entity-system.js
+
+// Export functions
+// Show export modal function moved to js/import-export.js
+
+// Close export modal function moved to js/import-export.js
+
+// Export to PDF function moved to js/import-export.js
+
+// Export to PNG function moved to js/import-export.js
+
+// Export to Excel function moved to js/import-export.js
+
+// Export to JSON function moved to js/import-export.js
+
+// Import from JSON function moved to js/import-export.js
+
+// Merge imported data function moved to js/import-export.js
+
+// Generate unique board ID when merging
+
+// Update ID counters function moved to js/import-export.js
+
+// Utility functions moved to js/utilities.js
+
+// Event listeners moved to js/utilities.js
+
+// Placeholder for setupEventListeners - now handled by utilities module
+
+// Column Outline Functions
+let currentOutlineData = { html: '', plain: '', markdown: '' };
+
+
+
+
+
+async function copyOutlineAsFormatted() {
+    try {
+        // Try to copy as HTML if supported
+        if (navigator.clipboard && navigator.clipboard.write) {
+            const htmlBlob = new Blob([currentOutlineData.html], { type: 'text/html' });
+            const textBlob = new Blob([currentOutlineData.plain], { type: 'text/plain' });
+            await navigator.clipboard.write([
+                new ClipboardItem({
+                    'text/html': htmlBlob,
+                    'text/plain': textBlob
+                })
+            ]);
+        } else {
+            // Fallback to plain text
+            await copyToClipboard(currentOutlineData.plain);
+        }
+        showStatusMessage('Formatted outline copied to clipboard!', 'success');
+    } catch (err) {
+        console.error('Failed to copy formatted outline:', err);
+        showStatusMessage('Failed to copy outline', 'error');
+    }
+}
+
+async function copyOutlineAsPlain() {
+    try {
+        await copyToClipboard(currentOutlineData.plain);
+        showStatusMessage('Plain text outline copied to clipboard!', 'success');
+    } catch (err) {
+        console.error('Failed to copy plain outline:', err);
+        showStatusMessage('Failed to copy outline', 'error');
+    }
+}
+
+async function copyOutlineAsMarkdown() {
+    try {
+        await copyToClipboard(currentOutlineData.markdown);
+        showStatusMessage('Markdown outline copied to clipboard!', 'success');
+    } catch (err) {
+        console.error('Failed to copy markdown outline:', err);
+        showStatusMessage('Failed to copy outline', 'error');
+    }
+}
+
+async function copyToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+    } else {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+    }
+}
+
+// Board Management Functions moved to js/board-management.js
+let currentEditingBoard = null;
+
+// TODO: Remove these functions once all modules are extracted - they're now handled by js/board-management.js
+
+
+
+
+
+
+
+
+
+
+
+// Task Management Functions
+
+// Task management functions moved to js/task-management.js
+// TODO: Remove these functions once all modules are extracted
+
+
+
+
+
+
+
+
+// Task filtering functions
+
+
+
+// Task creation and editing functions
+let currentEditingTask = null;
+
+
+
+
+
+
+
+
+
+
+// Template Management Functions
+let selectedTemplateId = null;
+
+// Template system functions moved to js/template-system.js
+// TODO: Remove these functions once all modules are extracted
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ============================================
+// ENHANCED NAVIGATION SYSTEM moved to js/board-management.js
+// TODO: Remove these functions once all modules are extracted
+// ============================================
+
+// Enhanced Board Selector Functions
+
+
+
+
+
+
+
+// Dropdown Menu Functions moved to js/ui-management.js
+
+// Enhanced navigation management moved to js/ui-management.js
+
+// ============================================
+// WEEKLY PLANNING SYSTEM
+// ============================================
+
+let currentWeekKey = null;
+let currentEditingWeeklyItem = null;
+
+// Weekly planning functions moved to js/weekly-planning.js
+// TODO: Remove these functions once all modules are extracted
+
+
+
+
+
+// Initialize weekly planning
+
+// Main weekly plan renderer
+
+// Render weekly items
+
+// Create weekly item element
+
+// Helper function to find card by ID
+
+// Week navigation
+
+// Weekly goal management
+
+
+// Weekly goal management moved to js/ui-management.js
+
+// Add weekly items
+
+// Add weekly items functions moved to js/ui-management.js
+
+// Toggle weekly item completion
+
+// Toggle checklist item completion moved to js/ui-management.js
+
+// Update week progress
+
+// Modal management
+
+
+
+// Form submission handlers
+document.getElementById('weeklyItemForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const itemType = document.querySelector('input[name="itemType"]:checked').value;
+    const day = currentEditingWeeklyItem?.day || 'general';
+    
+    let newItem = {
+        id: `weekly_${appData.nextWeeklyItemId++}`,
+        type: itemType,
+        day: day,
+        completed: document.getElementById('itemCompleted').checked,
+        createdAt: new Date().toISOString()
+    };
+    
+    if (itemType === 'note') {
+        newItem.title = document.getElementById('noteTitle').value.trim();
+        newItem.content = document.getElementById('noteContent').value.trim();
+    } else if (itemType === 'checklist') {
+        newItem.title = document.getElementById('checklistTitle').value.trim();
+        newItem.checklist = collectChecklistItems();
+    } else if (itemType === 'card') {
+        const cardSelect = document.getElementById('cardSelect');
+        const [boardId, cardId] = cardSelect.value.split('|');
+        newItem.cardId = cardId;
+        newItem.boardId = boardId;
+    }
+    
+    // Add to current week
+    if (!appData.weeklyPlans[currentWeekKey]) {
+        appData.weeklyPlans[currentWeekKey] = {
+            weekStart: getWeekStart(currentWeekKey).toISOString(),
+            goal: '',
+            items: [],
+            reflection: { wins: '', challenges: '', learnings: '', nextWeekFocus: '' }
+        };
+    }
+    
+    appData.weeklyPlans[currentWeekKey].items.push(newItem);
+    
+    renderWeeklyItems();
+    updateWeekProgress();
+    closeWeeklyItemModal();
+    saveData();
+    
+    showStatusMessage('Item added to weekly plan', 'success');
+});
+
+document.getElementById('weeklyReflectionForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    if (!appData.weeklyPlans[currentWeekKey]) {
+        appData.weeklyPlans[currentWeekKey] = {
+            weekStart: getWeekStart(currentWeekKey).toISOString(),
+            goal: '',
+            items: [],
+            reflection: { wins: '', challenges: '', learnings: '', nextWeekFocus: '' }
+        };
+    }
+    
+    appData.weeklyPlans[currentWeekKey].reflection = {
+        wins: document.getElementById('weeklyWins').value.trim(),
+        challenges: document.getElementById('weeklyChallenges').value.trim(),
+        learnings: document.getElementById('weeklyLearnings').value.trim(),
+        nextWeekFocus: document.getElementById('nextWeekFocus').value.trim()
+    };
+    
+    closeWeeklyReflectionModal();
+    saveData();
+    
+    showStatusMessage('Weekly reflection saved', 'success');
+});
+
+// Initialize weekly planning when switching to weekly view
+
+// Helper functions for weekly planning
+function collectChecklistItems() {
+    const checklistBuilder = document.getElementById('checklistBuilder');
+    const items = [];
+    
+    const previews = checklistBuilder.querySelectorAll('.checklist-item-preview');
+    previews.forEach(preview => {
+        const text = preview.querySelector('.checklist-item-text').textContent;
+        if (text.trim()) {
+            items.push({ text: text.trim(), completed: false });
+        }
+    });
+    
+    return items;
+}
+
+function addChecklistItem() {
+    const input = document.querySelector('.checklist-input');
+    const text = input.value.trim();
+    
+    if (!text) return;
+    
+    const checklistBuilder = document.getElementById('checklistBuilder');
+    const preview = document.createElement('div');
+    preview.className = 'checklist-item-preview';
+    preview.innerHTML = `
+        <span class="checklist-item-text">${text}</span>
+        <button type="button" class="remove-item-btn" onclick="removeChecklistItem(this)">×</button>
+    `;
+    
+    // Insert before the input
+    const inputDiv = checklistBuilder.querySelector('.checklist-item-input');
+    checklistBuilder.insertBefore(preview, inputDiv);
+    
+    input.value = '';
+    input.focus();
+}
+
+function removeChecklistItem(button) {
+    button.parentElement.remove();
+}
+
+// Card options functions moved to js/card-operations.js
+
+
+
+// Integration with existing view system - switchToView function moved to js/task-management.js
+// TODO: Remove this function once all modules are extracted
+
+// Add "Add to Weekly Plan" functionality to cards

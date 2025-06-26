@@ -5,10 +5,13 @@
 
 import * as utilities from './utilities.js';
 import * as coreData from './core-data.js';
+import * as navigation from './navigation.js';
 import * as boardManagement from './board-management.js';
+import * as boardRendering from './board-rendering.js';
 import * as taskManagement from './task-management.js';
 import * as weeklyPlanning from './weekly-planning.js';
 import * as templateSystem from './template-system.js';
+import * as templateLibrary from './template-library.js';
 import * as importExport from './import-export.js';
 import * as searchSystem from './search-system.js';
 import * as taggingSystem from './tagging-system.js';
@@ -19,16 +22,21 @@ import * as columnOperations from './column-operations.js';
 import * as groupOperations from './group-operations.js';
 import * as subtaskManagement from './subtask-management.js';
 import * as entitySystem from './entity-system.js';
+import * as dataMigration from './data-migration.js';
+import * as dragDrop from './drag-drop.js';
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
     // Make modules available globally for backward compatibility
     window.utilities = utilities;
     window.coreData = coreData;
+    window.navigation = navigation;
     window.boardManagement = boardManagement;
+    window.boardRendering = boardRendering;
     window.taskManagement = taskManagement;
     window.weeklyPlanning = weeklyPlanning;
     window.templateSystem = templateSystem;
+    window.templateLibrary = templateLibrary;
     window.importExport = importExport;
     window.searchSystem = searchSystem;
     window.taggingSystem = taggingSystem;
@@ -39,13 +47,17 @@ document.addEventListener('DOMContentLoaded', function() {
     window.groupOperations = groupOperations;
     window.subtaskManagement = subtaskManagement;
     window.entitySystem = entitySystem;
+    window.dataMigration = dataMigration;
+    window.dragDrop = dragDrop;
     
     // Load data first
     const { appData, boardData } = coreData.loadData();
     
     // Initialize utilities
     utilities.setupEventListeners();
-    utilities.initializeSidebar();
+    
+    // Initialize navigation system
+    navigation.initializeNavigation();
     
     // Initialize board management
     boardManagement.updateBoardTitle();
@@ -53,9 +65,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize weekly planning
     weeklyPlanning.initializeWeeklyPlanning();
+    weeklyPlanning.initializeWeeklyEventListeners();
     
     // Initialize templates (populate defaults if needed)
     templateSystem.populateDefaultTemplates();
+    
+    // Initialize template library (populate sample templates if needed)
+    templateLibrary.initializeSampleTemplates();
     
     // Initialize collections (populate defaults if needed)
     collections.initializeSampleCollections();
@@ -66,4 +82,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Export for potential external use
-export { utilities, coreData, boardManagement, taskManagement, weeklyPlanning, templateSystem, importExport, searchSystem, taggingSystem, collections, cardOperations, rowOperations, columnOperations, groupOperations, subtaskManagement };
+export { utilities, coreData, navigation, boardManagement, boardRendering, taskManagement, weeklyPlanning, templateSystem, templateLibrary, importExport, searchSystem, taggingSystem, collections, cardOperations, rowOperations, columnOperations, groupOperations, subtaskManagement, entitySystem, dataMigration, dragDrop };

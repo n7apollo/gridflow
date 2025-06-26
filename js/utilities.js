@@ -1,10 +1,113 @@
+import { getCurrentOutlineData } from './core-data.js';
+
 /**
  * GridFlow - Utilities Module
- * Cross-cutting utility functions for UI, clipboard, and event management
+ * Common utility functions and event handling
  */
 
-// Current outline data for clipboard operations
-let currentOutlineData = null;
+// Status message functionality
+export function showStatusMessage(message, type = 'info') {
+    const statusMessage = document.getElementById('statusMessage');
+    
+    // Remove any existing status classes
+    statusMessage.className = 'status-message';
+    
+    // Add the appropriate type class
+    statusMessage.classList.add(type);
+    
+    // Set the message text
+    statusMessage.textContent = message;
+    
+    // Show the message
+    statusMessage.style.display = 'block';
+    
+    // Auto-hide after 3 seconds
+    setTimeout(() => {
+        statusMessage.style.display = 'none';
+    }, 3000);
+}
+
+// ============================================
+// OUTLINE FUNCTIONS
+// ============================================
+
+/**
+ * Copy outline as formatted HTML/text
+ */
+export async function copyOutlineAsFormatted() {
+    try {
+        // Try to copy as HTML if supported
+        if (navigator.clipboard && navigator.clipboard.write) {
+            const htmlBlob = new Blob([getCurrentOutlineData().html], { type: 'text/html' });
+            const textBlob = new Blob([getCurrentOutlineData().plain], { type: 'text/plain' });
+            await navigator.clipboard.write([
+                new ClipboardItem({
+                    'text/html': htmlBlob,
+                    'text/plain': textBlob
+                })
+            ]);
+        } else {
+            // Fallback to plain text
+            await copyToClipboard(getCurrentOutlineData().plain);
+        }
+        showStatusMessage('Formatted outline copied to clipboard!', 'success');
+    } catch (err) {
+        console.error('Failed to copy formatted outline:', err);
+        showStatusMessage('Failed to copy outline', 'error');
+    }
+}
+
+/**
+ * Copy outline as plain text
+ */
+export async function copyOutlineAsPlain() {
+    try {
+        await copyToClipboard(getCurrentOutlineData().plain);
+        showStatusMessage('Plain text outline copied to clipboard!', 'success');
+    } catch (err) {
+        console.error('Failed to copy plain outline:', err);
+        showStatusMessage('Failed to copy outline', 'error');
+    }
+}
+
+/**
+ * Copy outline as markdown
+ */
+export async function copyOutlineAsMarkdown() {
+    try {
+        await copyToClipboard(getCurrentOutlineData().markdown);
+        showStatusMessage('Markdown outline copied to clipboard!', 'success');
+    } catch (err) {
+        console.error('Failed to copy markdown outline:', err);
+        showStatusMessage('Failed to copy outline', 'error');
+    }
+}
+
+/**
+ * Copy text to clipboard with fallback
+ */
+export async function copyToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+    } else {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+    }
+}
+
+// Make outline functions globally available for onclick handlers
+if (typeof window !== 'undefined') {
+    window.copyOutlineAsFormatted = copyOutlineAsFormatted;
+    window.copyOutlineAsPlain = copyOutlineAsPlain;
+    window.copyOutlineAsMarkdown = copyOutlineAsMarkdown;
+}
 
 /**
  * Display status messages to the user
@@ -88,66 +191,7 @@ export function setupEventListeners() {
     });
 }
 
-/**
- * Sidebar functionality
- */
-export function toggleSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    const mainContent = document.querySelector('.main-content');
-    const toggleIcon = document.querySelector('.toggle-icon');
-    
-    if (window.innerWidth <= 600) {
-        // Mobile: toggle sidebar visibility
-        sidebar.classList.toggle('open');
-    } else if (window.innerWidth <= 900) {
-        // Tablet: sidebar is always collapsed but visible
-        return;
-    } else {
-        // Desktop: toggle between full and collapsed
-        if (sidebar.style.width === '64px') {
-            sidebar.style.width = '260px';
-            mainContent.style.marginLeft = '260px';
-            toggleIcon.textContent = '‹';
-        } else {
-            sidebar.style.width = '64px';
-            mainContent.style.marginLeft = '64px';
-            toggleIcon.textContent = '›';
-        }
-    }
-}
-
-/**
- * Handle responsive sidebar behavior
- */
-export function handleSidebarResize() {
-    const sidebar = document.getElementById('sidebar');
-    const mainContent = document.querySelector('.main-content');
-    
-    if (window.innerWidth <= 600) {
-        // Mobile: sidebar off-canvas
-        sidebar.style.width = '';
-        mainContent.style.marginLeft = '';
-        sidebar.classList.remove('open');
-    } else if (window.innerWidth <= 900) {
-        // Tablet: collapsed sidebar
-        sidebar.style.width = '';
-        mainContent.style.marginLeft = '';
-    } else {
-        // Desktop: full sidebar (unless manually collapsed)
-        if (sidebar.style.width !== '64px') {
-            sidebar.style.width = '';
-            mainContent.style.marginLeft = '';
-        }
-    }
-}
-
-/**
- * Initialize sidebar on page load
- */
-export function initializeSidebar() {
-    handleSidebarResize();
-    window.addEventListener('resize', handleSidebarResize);
-}
+// Sidebar functionality moved to js/navigation.js
 
 /**
  * Outline modal functions
@@ -163,8 +207,8 @@ export async function copyOutlineAsFormatted() {
     try {
         // Try to copy as HTML if supported
         if (navigator.clipboard && navigator.clipboard.write) {
-            const htmlBlob = new Blob([currentOutlineData.html], { type: 'text/html' });
-            const textBlob = new Blob([currentOutlineData.plain], { type: 'text/plain' });
+            const htmlBlob = new Blob([getCurrentOutlineData().html], { type: 'text/html' });
+            const textBlob = new Blob([getCurrentOutlineData().plain], { type: 'text/plain' });
             await navigator.clipboard.write([
                 new ClipboardItem({
                     'text/html': htmlBlob,
@@ -173,7 +217,7 @@ export async function copyOutlineAsFormatted() {
             ]);
         } else {
             // Fallback to plain text
-            await copyToClipboard(currentOutlineData.plain);
+            await copyToClipboard(getCurrentOutlineData().plain);
         }
         showStatusMessage('Formatted outline copied to clipboard!', 'success');
     } catch (err) {
@@ -187,7 +231,7 @@ export async function copyOutlineAsFormatted() {
  */
 export async function copyOutlineAsPlain() {
     try {
-        await copyToClipboard(currentOutlineData.plain);
+        await copyToClipboard(getCurrentOutlineData().plain);
         showStatusMessage('Plain text outline copied to clipboard!', 'success');
     } catch (err) {
         console.error('Failed to copy plain outline:', err);
@@ -200,7 +244,7 @@ export async function copyOutlineAsPlain() {
  */
 export async function copyOutlineAsMarkdown() {
     try {
-        await copyToClipboard(currentOutlineData.markdown);
+        await copyToClipboard(getCurrentOutlineData().markdown);
         showStatusMessage('Markdown outline copied to clipboard!', 'success');
     } catch (err) {
         console.error('Failed to copy markdown outline:', err);
@@ -233,7 +277,7 @@ export async function copyToClipboard(text) {
  * @param {Object} outlineData - Outline data object with html, plain, markdown properties
  */
 export function setCurrentOutlineData(outlineData) {
-    currentOutlineData = outlineData;
+    getCurrentOutlineData() = outlineData;
 }
 
 /**
@@ -241,7 +285,7 @@ export function setCurrentOutlineData(outlineData) {
  * @returns {Object} Current outline data
  */
 export function getCurrentOutlineData() {
-    return currentOutlineData;
+    return getCurrentOutlineData();
 }
 
 /**
@@ -257,7 +301,7 @@ export function showColumnOutline(columnKey) {
     
     // Generate outline data
     const outlineData = generateColumnOutline(columnKey);
-    currentOutlineData = outlineData;
+    getCurrentOutlineData() = outlineData;
     
     // Display HTML outline
     document.getElementById('outlineContent').innerHTML = outlineData.html;
@@ -352,13 +396,9 @@ export function generateColumnOutline(columnKey) {
 }
 
 // Make functions available globally for backwards compatibility during transition
+window.escapeHtml = escapeHtml;
 window.showStatusMessage = showStatusMessage;
 window.setupEventListeners = setupEventListeners;
-window.toggleSidebar = toggleSidebar;
-window.initializeSidebar = initializeSidebar;
-window.copyOutlineAsFormatted = copyOutlineAsFormatted;
-window.copyOutlineAsPlain = copyOutlineAsPlain;
-window.copyOutlineAsMarkdown = copyOutlineAsMarkdown;
 window.closeOutlineModal = closeOutlineModal;
 window.showColumnOutline = showColumnOutline;
 window.generateColumnOutline = generateColumnOutline;

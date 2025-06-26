@@ -698,47 +698,7 @@ export function populateDefaultTemplates() {
     saveData();
 }
 
-/**
- * Toggle templates menu dropdown
- */
-export function toggleTemplatesMenu() {
-    const dropdown = document.getElementById('templatesDropdown');
-    const isOpen = dropdown.style.display === 'block';
-    
-    // Close all other dropdowns first
-    closeAllDropdowns();
-    
-    if (!isOpen) {
-        dropdown.style.display = 'block';
-        
-        // Close when clicking outside
-        setTimeout(() => {
-            document.addEventListener('click', handleTemplatesOutsideClick);
-        }, 0);
-    }
-}
-
-/**
- * Close templates menu dropdown
- */
-export function closeTemplatesMenu() {
-    const dropdown = document.getElementById('templatesDropdown');
-    dropdown.style.display = 'none';
-    document.removeEventListener('click', handleTemplatesOutsideClick);
-}
-
-/**
- * Handle clicks outside templates dropdown
- * @param {Event} event - Click event
- */
-function handleTemplatesOutsideClick(event) {
-    const dropdown = document.getElementById('templatesDropdown');
-    const button = document.getElementById('templatesBtn');
-    
-    if (!dropdown.contains(event.target) && !button.contains(event.target)) {
-        closeTemplatesMenu();
-    }
-}
+// Templates menu navigation functions moved to js/navigation.js
 
 /**
  * Close all dropdown menus

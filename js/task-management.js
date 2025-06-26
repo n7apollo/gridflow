@@ -9,43 +9,7 @@ import { showStatusMessage } from './utilities.js';
 // Current editing state
 let currentEditingTask = null;
 
-/**
- * Switch between different views (board, tasks, weekly)
- * @param {string} view - View to switch to ('board', 'tasks', 'weekly')
- */
-export function switchToView(view) {
-    // Hide all containers
-    document.getElementById('boardContainer').style.display = 'none';
-    document.getElementById('taskContainer').style.display = 'none';
-    document.getElementById('weeklyContainer').style.display = 'none';
-    
-    // Remove active class from all view buttons (header)
-    document.getElementById('boardViewBtn').classList.remove('active');
-    document.getElementById('taskViewBtn').classList.remove('active');
-    document.getElementById('weeklyViewBtn').classList.remove('active');
-    
-    // Remove active class from sidebar nav links
-    const sidebarLinks = document.querySelectorAll('.sidebar .nav-link');
-    sidebarLinks.forEach(link => link.classList.remove('active'));
-    
-    // Show selected view and activate buttons
-    if (view === 'board') {
-        document.getElementById('boardContainer').style.display = 'block';
-        document.getElementById('boardViewBtn').classList.add('active');
-        document.getElementById('sidebarBoardView').classList.add('active');
-        if (window.renderBoard) window.renderBoard();
-    } else if (view === 'tasks') {
-        document.getElementById('taskContainer').style.display = 'block';
-        document.getElementById('taskViewBtn').classList.add('active');
-        document.getElementById('sidebarTaskView').classList.add('active');
-        populateTaskView();
-    } else if (view === 'weekly') {
-        document.getElementById('weeklyContainer').style.display = 'block';
-        document.getElementById('weeklyViewBtn').classList.add('active');
-        document.getElementById('sidebarWeeklyView').classList.add('active');
-        if (window.switchToWeeklyView) window.switchToWeeklyView();
-    }
-}
+// View switching functionality moved to js/navigation.js
 
 /**
  * Initialize and populate the task view
@@ -698,7 +662,6 @@ export function toggleTaskCompletion(taskId, boardId, rowId, columnKey) {
 }
 
 // Make functions available globally for backwards compatibility during transition
-window.switchToView = switchToView;
 window.populateTaskView = populateTaskView;
 window.populateTaskBoardFilters = populateTaskBoardFilters;
 window.populateTaskFilters = populateTaskFilters;

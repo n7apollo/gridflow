@@ -313,55 +313,7 @@ export function generateUniqueBoardId(prefix = 'board') {
     return newId;
 }
 
-// Enhanced navigation functions
-/**
- * Toggle board dropdown
- */
-export function toggleBoardDropdown() {
-    const dropdown = document.getElementById('boardDropdown');
-    const isOpen = dropdown.style.display === 'block';
-    
-    if (isOpen) {
-        closeBoardDropdown();
-    } else {
-        populateBoardDropdown();
-        dropdown.style.display = 'block';
-        
-        // Focus search input
-        const searchInput = document.getElementById('boardSearchInput');
-        if (searchInput) {
-            searchInput.focus();
-            searchInput.value = '';
-        }
-        
-        // Close dropdown when clicking outside
-        setTimeout(() => {
-            document.addEventListener('click', handleOutsideClick);
-        }, 0);
-    }
-}
-
-/**
- * Close board dropdown
- */
-export function closeBoardDropdown() {
-    const dropdown = document.getElementById('boardDropdown');
-    dropdown.style.display = 'none';
-    document.removeEventListener('click', handleOutsideClick);
-}
-
-/**
- * Handle clicks outside dropdown to close it
- * @param {Event} event - Click event
- */
-function handleOutsideClick(event) {
-    const dropdown = document.getElementById('boardDropdown');
-    const button = document.getElementById('currentBoardBtn');
-    
-    if (!dropdown.contains(event.target) && !button.contains(event.target)) {
-        closeBoardDropdown();
-    }
-}
+// Board dropdown navigation functions moved to js/navigation.js
 
 /**
  * Populate board dropdown with recent and all boards

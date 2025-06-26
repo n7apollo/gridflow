@@ -8,6 +8,7 @@ import { showStatusMessage } from './utilities.js';
 
 // Current week key
 let currentWeekKey = null;
+let currentEditingWeeklyItem = null;
 
 /**
  * Get current week key in format YYYY-Www
@@ -716,5 +717,161 @@ window.weeklyPlanning = {
     removeCardFromWeeklyPlan,
     closeWeeklyItemModal,
     getCurrentWeek,
-    setCurrentWeek
+    setCurrentWeek,
+    collectChecklistItems,
+    addChecklistItem,
+    removeChecklistItem,
+    initializeWeeklyEventListeners
 };
+
+// ============================================
+// CHECKLIST HELPER FUNCTIONS
+// ============================================
+
+/**
+ * Collect checklist items from the weekly item form
+ */
+export function collectChecklistItems() {
+    const checklistBuilder = document.getElementById('checklistBuilder');
+    const items = [];
+    
+    const previews = checklistBuilder.querySelectorAll('.checklist-item-preview');
+    previews.forEach(preview => {
+        const text = preview.querySelector('.checklist-item-text').textContent;
+        if (text.trim()) {
+            items.push({ text: text.trim(), completed: false });
+        }
+    });
+    
+    return items;
+}
+
+/**
+ * Add checklist item to the weekly item form
+ */
+export function addChecklistItem() {
+    const input = document.querySelector('.checklist-input');
+    const text = input.value.trim();
+    
+    if (!text) return;
+    
+    const checklistBuilder = document.getElementById('checklistBuilder');
+    const preview = document.createElement('div');
+    preview.className = 'checklist-item-preview';
+    preview.innerHTML = `
+        <span class="checklist-item-text">${text}</span>
+        <button type="button" class="remove-item-btn" onclick="removeChecklistItem(this)">×</button>
+    `;
+    
+    // Insert before the input
+    const inputDiv = checklistBuilder.querySelector('.checklist-item-input');
+    checklistBuilder.insertBefore(preview, inputDiv);
+    
+    input.value = '';
+    input.focus();
+}
+
+/**
+ * Remove checklist item from the weekly item form
+ */
+export function removeChecklistItem(button) {
+    button.parentElement.remove();
+}
+
+// ============================================
+// WEEKLY PLANNING EVENT LISTENERS
+// ============================================
+
+/**
+ * Initialize weekly planning event listeners
+ */
+export function initializeWeeklyEventListeners() {
+    // Weekly item form submission
+    const weeklyItemForm = document.getElementById('weeklyItemForm');
+    if (weeklyItemForm) {
+        weeklyItemForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const appData = getAppData();
+            const itemType = document.querySelector('input[name="itemType"]:checked').value;
+            const day = currentEditingWeeklyItem?.day || 'general';
+            
+            let newItem = {
+                id: `weekly_${appData.nextWeeklyItemId++}`,
+                type: itemType,
+                day: day,
+                completed: document.getElementById('itemCompleted').checked,
+                createdAt: new Date().toISOString()
+            };
+            
+            if (itemType === 'note') {
+                newItem.title = document.getElementById('noteTitle').value.trim();
+                newItem.content = document.getElementById('noteContent').value.trim();
+            } else if (itemType === 'checklist') {
+                newItem.title = document.getElementById('checklistTitle').value.trim();
+                newItem.checklist = collectChecklistItems();
+            } else if (itemType === 'card') {
+                const cardSelect = document.getElementById('cardSelect');
+                const [boardId, cardId] = cardSelect.value.split('|');
+                newItem.cardId = cardId;
+                newItem.boardId = boardId;
+            }
+            
+            // Add to current week
+            if (!appData.weeklyPlans[currentWeekKey]) {
+                appData.weeklyPlans[currentWeekKey] = {
+                    weekStart: getWeekStart(currentWeekKey).toISOString(),
+                    goal: '',
+                    items: [],
+                    reflection: { wins: '', challenges: '', learnings: '', nextWeekFocus: '' }
+                };
+            }
+            
+            appData.weeklyPlans[currentWeekKey].items.push(newItem);
+            
+            renderWeeklyItems();
+            updateWeekProgress();
+            closeWeeklyItemModal();
+            saveData();
+            
+            showStatusMessage('Item added to weekly plan', 'success');
+        });
+    }
+
+    // Weekly reflection form submission
+    const weeklyReflectionForm = document.getElementById('weeklyReflectionForm');
+    if (weeklyReflectionForm) {
+        weeklyReflectionForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const appData = getAppData();
+            if (!appData.weeklyPlans[currentWeekKey]) {
+                appData.weeklyPlans[currentWeekKey] = {
+                    weekStart: getWeekStart(currentWeekKey).toISOString(),
+                    goal: '',
+                    items: [],
+                    reflection: { wins: '', challenges: '', learnings: '', nextWeekFocus: '' }
+                };
+            }
+            
+            appData.weeklyPlans[currentWeekKey].reflection = {
+                wins: document.getElementById('weeklyWins').value.trim(),
+                challenges: document.getElementById('weeklyChallenges').value.trim(),
+                learnings: document.getElementById('weeklyLearnings').value.trim(),
+                nextWeekFocus: document.getElementById('nextWeekFocus').value.trim()
+            };
+            
+            closeWeeklyReflectionModal();
+            saveData();
+            
+            showStatusMessage('Weekly reflection saved', 'success');
+        });
+    }
+}
+
+// Make functions globally available for onclick handlers
+if (typeof window !== 'undefined') {
+    window.collectChecklistItems = collectChecklistItems;
+    window.addChecklistItem = addChecklistItem;
+    window.removeChecklistItem = removeChecklistItem;
+}

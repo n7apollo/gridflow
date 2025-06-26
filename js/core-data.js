@@ -9,6 +9,36 @@ import { showStatusMessage } from './utilities.js';
 export let appData = {};
 export let boardData = {};
 
+// Global editing state variables (formerly in script.js)
+export let currentEditingCard = null;
+export let currentDetailCard = null;
+export let currentEditingBoard = null;
+export let currentEditingTask = null;
+export let selectedTemplateId = null;
+export let currentWeekKey = null;
+export let currentEditingWeeklyItem = null;
+export let currentOutlineData = { html: '', plain: '', markdown: '' };
+
+// Setters for global state management
+export function setCurrentEditingCard(card) { currentEditingCard = card; }
+export function setCurrentDetailCard(card) { currentDetailCard = card; }
+export function setCurrentEditingBoard(board) { currentEditingBoard = board; }
+export function setCurrentEditingTask(task) { currentEditingTask = task; }
+export function setSelectedTemplateId(id) { selectedTemplateId = id; }
+export function setCurrentWeekKey(key) { currentWeekKey = key; }
+export function setCurrentEditingWeeklyItem(item) { currentEditingWeeklyItem = item; }
+export function setCurrentOutlineData(data) { currentOutlineData = data; }
+
+// Getters for global state management
+export function getCurrentEditingCard() { return currentEditingCard; }
+export function getCurrentDetailCard() { return currentDetailCard; }
+export function getCurrentEditingBoard() { return currentEditingBoard; }
+export function getCurrentEditingTask() { return currentEditingTask; }
+export function getSelectedTemplateId() { return selectedTemplateId; }
+export function getCurrentWeekKey() { return currentWeekKey; }
+export function getCurrentEditingWeeklyItem() { return currentEditingWeeklyItem; }
+export function getCurrentOutlineData() { return currentOutlineData; }
+
 /**
  * Save application data to localStorage
  */
@@ -232,7 +262,10 @@ export function migrateToV4(data) {
         data.relationships = {
             entityTasks: {},
             cardToWeeklyPlans: {},
-            weeklyPlanToCards: {}
+            weeklyPlanToCards: {},
+            entityTags: {},
+            collectionEntities: {},
+            templateUsage: {}
         };
         data.nextTaskId = 1;
         data.nextNoteId = 1;
@@ -333,10 +366,14 @@ export function validateAndCleanData(data) {
         data.relationships = {
             entityTasks: {},
             cardToWeeklyPlans: {},
-            weeklyPlanToCards: {}
+            weeklyPlanToCards: {},
+            entityTags: {},
+            collectionEntities: {},
+            templateUsage: {}
         };
     }
     if (!data.collections) data.collections = {};
+    if (!data.tags) data.tags = {};
     
     // Ensure board structure is valid
     Object.keys(data.boards).forEach(boardId => {
@@ -395,6 +432,7 @@ export function validateAndCleanData(data) {
     if (!data.nextNoteId) data.nextNoteId = 1;
     if (!data.nextChecklistId) data.nextChecklistId = 1;
     if (!data.nextCollectionId) data.nextCollectionId = 1;
+    if (!data.nextTagId) data.nextTagId = 1;
     
     console.log('Data validation completed');
     return data;
@@ -421,15 +459,20 @@ export function initializeSampleData() {
         relationships: {
             entityTasks: {},
             cardToWeeklyPlans: {},
-            weeklyPlanToCards: {}
+            weeklyPlanToCards: {},
+            entityTags: {},
+            collectionEntities: {},
+            templateUsage: {}
         },
         collections: {},
+        tags: {},
         nextTemplateId: 1,
         nextWeeklyItemId: 1,
         nextTaskId: 1,
         nextNoteId: 1,
         nextChecklistId: 1,
         nextCollectionId: 1,
+        nextTagId: 1,
         version: '5.0'
     };
     
