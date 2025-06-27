@@ -328,9 +328,18 @@ export function migrateToV5(data) {
     if (!data.templateLibrary) {
         data.templateLibrary = {
             categories: ['Project Management', 'Personal', 'Business', 'Education'],
-            featured: []
+            featured: [],
+            taskSets: {},
+            checklists: {},
+            noteTemplates: {}
         };
     }
+    
+    // Ensure all template library sub-structures exist
+    if (!data.templateLibrary.taskSets) data.templateLibrary.taskSets = {};
+    if (!data.templateLibrary.checklists) data.templateLibrary.checklists = {};
+    if (!data.templateLibrary.noteTemplates) data.templateLibrary.noteTemplates = {};
+    if (!data.nextTemplateLibraryId) data.nextTemplateLibraryId = 1;
     
     // Initialize smart collections system
     if (!data.collections) {
@@ -374,6 +383,20 @@ export function validateAndCleanData(data) {
     }
     if (!data.collections) data.collections = {};
     if (!data.tags) data.tags = {};
+    
+    // Ensure template library structure exists
+    if (!data.templateLibrary) {
+        data.templateLibrary = {
+            categories: ['Project Management', 'Personal', 'Business', 'Education'],
+            featured: [],
+            taskSets: {},
+            checklists: {},
+            noteTemplates: {}
+        };
+    }
+    if (!data.templateLibrary.taskSets) data.templateLibrary.taskSets = {};
+    if (!data.templateLibrary.checklists) data.templateLibrary.checklists = {};
+    if (!data.templateLibrary.noteTemplates) data.templateLibrary.noteTemplates = {};
     
     // Ensure board structure is valid
     Object.keys(data.boards).forEach(boardId => {
@@ -427,6 +450,7 @@ export function validateAndCleanData(data) {
     
     // Ensure global ID counters exist
     if (!data.nextTemplateId) data.nextTemplateId = Math.max(1, ...(data.templates.map(t => t.id || 0))) + 1;
+    if (!data.nextTemplateLibraryId) data.nextTemplateLibraryId = 1;
     if (!data.nextWeeklyItemId) data.nextWeeklyItemId = 1;
     if (!data.nextTaskId) data.nextTaskId = Math.max(1, ...Object.keys(data.entities.tasks || {}).map(id => parseInt(id.replace('task_', '')) || 0)) + 1;
     if (!data.nextNoteId) data.nextNoteId = 1;
@@ -467,7 +491,15 @@ export function initializeSampleData() {
         },
         collections: {},
         tags: {},
+        templateLibrary: {
+            categories: ['Project Management', 'Personal', 'Business', 'Education'],
+            featured: [],
+            taskSets: {},
+            checklists: {},
+            noteTemplates: {}
+        },
         nextTemplateId: 1,
+        nextTemplateLibraryId: 1,
         nextWeeklyItemId: 1,
         nextTaskId: 1,
         nextNoteId: 1,
