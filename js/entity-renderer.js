@@ -47,7 +47,7 @@ export function renderEntity(entityId, contextType, contextData = {}) {
  * @param {Object} contextData - Board context data
  * @returns {HTMLElement} Card element
  */
-function renderEntityAsCard(entity, contextData) {
+function renderEntityAsCard(entity, contextData = {}) {
     const cardElement = document.createElement('div');
     cardElement.className = `card ${entity.type}-card ${entity.completed ? 'completed' : ''}`;
     cardElement.dataset.entityId = entity.id;
@@ -197,7 +197,7 @@ function renderEntityAsWeeklyItem(entity, contextData) {
  * @param {Object} contextData - Task list context data
  * @returns {HTMLElement} Task list item element
  */
-function renderEntityAsTaskItem(entity, contextData) {
+function renderEntityAsTaskItem(entity, contextData = {}) {
     const taskElement = document.createElement('div');
     taskElement.className = `task-item ${entity.type}-task ${entity.completed ? 'completed' : ''}`;
     taskElement.dataset.entityId = entity.id;
@@ -477,7 +477,7 @@ function getContextFromElement(element) {
 /**
  * Get context data from DOM element
  */
-function getContextDataFromElement(element) {
+function getContextDataFromElement() {
     // TODO: Extract context data from DOM
     return {};
 }
@@ -492,8 +492,3 @@ if (typeof window !== 'undefined') {
     };
 }
 
-export {
-    editEntity,
-    toggleCompletion,
-    removeFromWeekly
-};
