@@ -994,20 +994,6 @@ function deleteCurrentEntity() {
     }
 }
 
-/**
- * Format date for display
- * @param {string} dateString - ISO date string
- * @returns {string} Formatted date
- */
-function formatDate(dateString) {
-    if (!dateString) return '';
-    try {
-        return new Date(dateString).toLocaleDateString();
-    } catch (e) {
-        return dateString;
-    }
-}
-
 // Placeholder functions for missing functionality
 function addSubtaskToEntity() {
     showStatusMessage('Subtask functionality coming soon', 'info');
