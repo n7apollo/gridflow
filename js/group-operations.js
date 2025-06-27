@@ -28,10 +28,16 @@ let currentEditingGroup = null;
  */
 function addGroup() {
     currentEditingGroup = null;
-    document.getElementById('groupModalTitle').textContent = 'Add Group';
-    document.getElementById('groupName').value = '';
-    document.getElementById('groupColor').value = '#0079bf';
-    document.getElementById('groupModal').style.display = 'block';
+    
+    const modalTitle = document.getElementById('groupModalTitle');
+    const groupName = document.getElementById('groupName');
+    const groupColor = document.getElementById('groupColor');
+    const groupModal = document.getElementById('groupModal');
+    
+    if (modalTitle) modalTitle.textContent = 'Add Group';
+    if (groupName) groupName.value = '';
+    if (groupColor) groupColor.value = '#0079bf';
+    if (groupModal) groupModal.style.display = 'block';
 }
 
 /**
@@ -57,8 +63,13 @@ function editGroup(groupId) {
  */
 function saveGroup(event) {
     event.preventDefault();
-    const name = document.getElementById('groupName').value.trim();
-    const color = document.getElementById('groupColor').value;
+    const groupNameElement = document.getElementById('groupName');
+    const groupColorElement = document.getElementById('groupColor');
+    
+    if (!groupNameElement || !groupColorElement) return;
+    
+    const name = groupNameElement.value.trim();
+    const color = groupColorElement.value;
     
     if (!name) return;
     
@@ -176,7 +187,8 @@ function toggleGroup(groupId) {
  * Close the group modal and reset editing state
  */
 function closeGroupModal() {
-    document.getElementById('groupModal').style.display = 'none';
+    const groupModal = document.getElementById('groupModal');
+    if (groupModal) groupModal.style.display = 'none';
     currentEditingGroup = null;
 }
 

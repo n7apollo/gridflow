@@ -14,14 +14,21 @@ let currentEditingRow = null;
  */
 export function populateGroupSelect() {
     const select = document.getElementById('rowGroup');
+    if (!select) {
+        console.warn('Row group select element not found');
+        return;
+    }
+    
     select.innerHTML = '<option value="">No Group</option>';
     
-    boardData.groups.forEach(group => {
-        const option = document.createElement('option');
-        option.value = group.id;
-        option.textContent = group.name;
-        select.appendChild(option);
-    });
+    if (boardData && boardData.groups) {
+        boardData.groups.forEach(group => {
+            const option = document.createElement('option');
+            option.value = group.id;
+            option.textContent = group.name;
+            select.appendChild(option);
+        });
+    }
 }
 
 /**
@@ -29,12 +36,21 @@ export function populateGroupSelect() {
  */
 export function addRow() {
     currentEditingRow = null;
-    document.getElementById('rowModalTitle').textContent = 'Add Row';
-    document.getElementById('rowName').value = '';
-    document.getElementById('rowDescription').value = '';
+    
+    const modalTitle = document.getElementById('rowModalTitle');
+    const rowName = document.getElementById('rowName');
+    const rowDescription = document.getElementById('rowDescription');
+    const rowGroup = document.getElementById('rowGroup');
+    const rowModal = document.getElementById('rowModal');
+    
+    if (modalTitle) modalTitle.textContent = 'Add Row';
+    if (rowName) rowName.value = '';
+    if (rowDescription) rowDescription.value = '';
+    
     populateGroupSelect();
-    document.getElementById('rowGroup').value = '';
-    document.getElementById('rowModal').style.display = 'block';
+    
+    if (rowGroup) rowGroup.value = '';
+    if (rowModal) rowModal.style.display = 'block';
 }
 
 /**
@@ -72,9 +88,15 @@ export function deleteRow(rowId) {
  */
 export function saveRow(event) {
     event.preventDefault();
-    const name = document.getElementById('rowName').value.trim();
-    const description = document.getElementById('rowDescription').value.trim();
-    const groupId = document.getElementById('rowGroup').value ? parseInt(document.getElementById('rowGroup').value) : null;
+    const rowNameElement = document.getElementById('rowName');
+    const rowDescriptionElement = document.getElementById('rowDescription');
+    const rowGroupElement = document.getElementById('rowGroup');
+    
+    if (!rowNameElement || !rowDescriptionElement || !rowGroupElement) return;
+    
+    const name = rowNameElement.value.trim();
+    const description = rowDescriptionElement.value.trim();
+    const groupId = rowGroupElement.value ? parseInt(rowGroupElement.value) : null;
     
     if (!name) return;
     
@@ -184,7 +206,8 @@ export function moveRowToPosition(rowId, targetGroupId, insertIndex) {
  * Close the row modal
  */
 export function closeRowModal() {
-    document.getElementById('rowModal').style.display = 'none';
+    const rowModal = document.getElementById('rowModal');
+    if (rowModal) rowModal.style.display = 'none';
     currentEditingRow = null;
 }
 

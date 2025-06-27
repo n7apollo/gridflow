@@ -27,9 +27,14 @@ let currentEditingColumn = null;
  */
 function addColumn() {
     currentEditingColumn = null;
-    document.getElementById('columnModalTitle').textContent = 'Add Column';
-    document.getElementById('columnName').value = '';
-    document.getElementById('columnModal').style.display = 'block';
+    
+    const modalTitle = document.getElementById('columnModalTitle');
+    const columnName = document.getElementById('columnName');
+    const columnModal = document.getElementById('columnModal');
+    
+    if (modalTitle) modalTitle.textContent = 'Add Column';
+    if (columnName) columnName.value = '';
+    if (columnModal) columnModal.style.display = 'block';
 }
 
 /**
@@ -54,8 +59,10 @@ function editColumn(columnId) {
  */
 function saveColumn(event) {
     event.preventDefault();
-    const name = document.getElementById('columnName').value.trim();
+    const columnNameElement = document.getElementById('columnName');
+    if (!columnNameElement) return;
     
+    const name = columnNameElement.value.trim();
     if (!name) return;
     
     if (currentEditingColumn) {
@@ -178,7 +185,8 @@ function moveColumnDown(index) {
  * Resets the editing state and hides the modal
  */
 function closeColumnModal() {
-    document.getElementById('columnModal').style.display = 'none';
+    const columnModal = document.getElementById('columnModal');
+    if (columnModal) columnModal.style.display = 'none';
     currentEditingColumn = null;
 }
 

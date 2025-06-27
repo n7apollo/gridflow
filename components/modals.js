@@ -276,6 +276,12 @@ class GridFlowModals extends HTMLElement {
                 <label for="rowDescription">Description:</label>
                 <textarea id="rowDescription" name="rowDescription"></textarea>
             </div>
+            <div class="form-group">
+                <label for="rowGroup">Group:</label>
+                <select id="rowGroup" name="rowGroup">
+                    <option value="">No Group</option>
+                </select>
+            </div>
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary" data-action="saveRow">Save</button>
                 <button type="button" class="btn btn-secondary" data-action="closeRowModal">Cancel</button>
