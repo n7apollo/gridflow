@@ -37,18 +37,18 @@ export function renderColumnHeaders() {
         console.warn('boardHeader element not found');
         return;
     }
-    container.innerHTML = '<div class="row-label-header">Projects</div>';
+    container.innerHTML = '<div class="row-label-header font-bold bg-base-200 p-2 rounded-tl-lg">Projects</div>';
     
     boardData.columns.forEach((column, index) => {
         const headerDiv = document.createElement('div');
-        headerDiv.className = 'column-header';
+        headerDiv.className = 'column-header bg-base-200 font-semibold p-2 flex items-center justify-between border-b border-base-300';
         headerDiv.dataset.columnId = column.id;
         headerDiv.dataset.columnIndex = index;
         
         headerDiv.innerHTML = `
             <span class="column-title">${column.name}</span>
             <div class="column-actions">
-                <button class="btn btn-small btn-secondary" onclick="showColumnOutline('${column.key}')" title="Show outline for this column">📝 Outline</button>
+                <button class="btn btn-xs btn-outline btn-secondary" onclick="showColumnOutline('${column.key}')" title="Show outline for this column">📝 Outline</button>
             </div>
         `;
         
@@ -100,24 +100,21 @@ export function renderGroupsAndRows() {
  */
 export function createGroupElement(group) {
     const groupDiv = document.createElement('div');
-    groupDiv.className = 'group-header';
+    groupDiv.className = 'group-header flex items-center gap-2 bg-base-100 border-b-2 px-4 py-2 mt-4 rounded-t-lg';
     groupDiv.style.borderBottomColor = group.color;
-    // SortableJS will handle group dragging
     groupDiv.dataset.groupId = group.id;
     
     const groupRows = boardData.rows.filter(row => row.groupId === group.id);
     const toggleIcon = group.collapsed ? '▶' : '▼';
     
     groupDiv.innerHTML = `
-        <button class="group-toggle" onclick="toggleGroup(${group.id})">${toggleIcon}</button>
-        <span>${group.name} (${groupRows.length})</span>
-        <div class="group-actions">
-            <button class="btn btn-small btn-secondary" onclick="editGroup(${group.id})">Edit</button>
-            <button class="btn btn-small btn-danger" onclick="deleteGroup(${group.id})">Delete</button>
+        <button class="btn btn-xs btn-ghost group-toggle" onclick="toggleGroup(${group.id})">${toggleIcon}</button>
+        <span class="font-semibold">${group.name} <span class="badge badge-sm badge-outline ml-1">${groupRows.length}</span></span>
+        <div class="group-actions ml-auto flex gap-1">
+            <button class="btn btn-xs btn-outline btn-secondary" onclick="editGroup(${group.id})">Edit</button>
+            <button class="btn btn-xs btn-outline btn-error" onclick="deleteGroup(${group.id})">Delete</button>
         </div>
     `;
-    
-    // Group sorting will be setup separately
     return groupDiv;
 }
 
@@ -129,91 +126,73 @@ export function createGroupElement(group) {
  */
 export function createRowElement(row) {
     const rowDiv = document.createElement('div');
-    rowDiv.className = 'board-row';
+    rowDiv.className = 'board-row flex items-stretch bg-base-100 border-b border-base-200 hover:bg-base-200 transition-colors';
     rowDiv.dataset.rowId = row.id;
-    // SortableJS will handle row dragging
-    
     if (row.groupId) {
         rowDiv.classList.add('in-group');
         const group = boardData.groups.find(g => g.id === row.groupId);
         if (group) {
-            rowDiv.style.borderLeftColor = group.color;
+            rowDiv.style.borderLeft = `4px solid ${group.color}`;
         }
     }
-    
     // Row label
     const rowLabel = document.createElement('div');
-    rowLabel.className = 'row-label';
-    
-    const descriptionHtml = row.description ? `<div class="row-description">${row.description}</div>` : '';
-    
+    rowLabel.className = 'row-label flex flex-col justify-center min-w-[180px] max-w-[220px] p-2 border-r border-base-200 bg-base-100';
+    const descriptionHtml = row.description ? `<div class="row-description text-xs text-base-content/60 mt-1">${row.description}</div>` : '';
     rowLabel.innerHTML = `
-        <div class="row-title">
-            <div class="row-name">${row.name}</div>
+        <div class="row-title flex items-center gap-2">
+            <div class="row-name font-semibold">${row.name}</div>
             ${descriptionHtml}
         </div>
-        <div class="row-actions">
-            <button class="btn btn-small btn-secondary" onclick="editRow(${row.id})" title="Edit row">Edit</button>
-            <button class="btn btn-small btn-danger" onclick="deleteRow(${row.id})" title="Delete row">Delete</button>
+        <div class="row-actions mt-2 flex gap-1">
+            <button class="btn btn-xs btn-outline btn-secondary" onclick="editRow(${row.id})" title="Edit row">Edit</button>
+            <button class="btn btn-xs btn-outline btn-error" onclick="deleteRow(${row.id})" title="Delete row">Delete</button>
         </div>
     `;
     rowDiv.appendChild(rowLabel);
-    
     // Columns
     boardData.columns.forEach(column => {
         const columnElement = createColumnElement(row, column);
         rowDiv.appendChild(columnElement);
     });
-    
-    // Add mobile column headers (will be shown/hidden via CSS)
+    // Mobile columns (unchanged, but add DaisyUI classes)
     const mobileColumnsContainer = document.createElement('div');
-    mobileColumnsContainer.className = 'mobile-columns-container';
-    
+    mobileColumnsContainer.className = 'mobile-columns-container flex flex-col gap-2 md:hidden w-full';
     boardData.columns.forEach(column => {
         const mobileColumnSection = document.createElement('div');
-        mobileColumnSection.className = 'mobile-column-section';
-        
+        mobileColumnSection.className = 'mobile-column-section card bg-base-100 p-2';
         // Mobile column header
         const mobileColumnHeader = document.createElement('div');
-        mobileColumnHeader.className = 'mobile-column-header';
+        mobileColumnHeader.className = 'mobile-column-header flex items-center justify-between mb-1';
         mobileColumnHeader.innerHTML = `
-            <span class="mobile-column-title">${column.name}</span>
+            <span class="mobile-column-title font-semibold">${column.name}</span>
             <div class="mobile-column-actions">
-                <button class="btn btn-small btn-secondary" onclick="showColumnOutline('${column.key}')" title="Show outline for this column">📝 Outline</button>
+                <button class="btn btn-xs btn-outline btn-secondary" onclick="showColumnOutline('${column.key}')" title="Show outline for this column">📝 Outline</button>
             </div>
         `;
-        
         // Mobile column content
         const mobileColumnContent = document.createElement('div');
-        mobileColumnContent.className = 'mobile-column-content';
+        mobileColumnContent.className = 'mobile-column-content flex flex-col gap-2';
         mobileColumnContent.dataset.rowId = row.id;
         mobileColumnContent.dataset.columnKey = column.key;
-        
-        // Add cards to mobile column
         const cards = row.cards[column.key] || [];
         cards.forEach(card => {
             const cardElement = createCardElement(card, row.id, column.key);
             mobileColumnContent.appendChild(cardElement);
         });
-        
         // Add mobile add button
         const mobileAddButton = document.createElement('button');
-        mobileAddButton.className = 'add-card-btn mobile-add-btn';
+        mobileAddButton.className = 'btn btn-xs btn-outline btn-primary mt-2';
         mobileAddButton.textContent = '+ Add a card';
         mobileAddButton.onclick = () => openCardModal(row.id, column.key);
         mobileColumnContent.appendChild(mobileAddButton);
-        
         // Setup SortableJS for mobile column
         setupColumnSorting(mobileColumnContent, row.id, column.key);
-        
         mobileColumnSection.appendChild(mobileColumnHeader);
         mobileColumnSection.appendChild(mobileColumnContent);
         mobileColumnsContainer.appendChild(mobileColumnSection);
     });
-    
     rowDiv.appendChild(mobileColumnsContainer);
-    
-    // Row sorting will be setup separately
     return rowDiv;
 }
 
@@ -226,45 +205,34 @@ export function createRowElement(row) {
  */
 export function createColumnElement(row, column) {
     const columnDiv = document.createElement('div');
-    columnDiv.className = 'column';
+    columnDiv.className = 'column flex flex-col gap-2 p-2 min-w-[180px] max-w-[1fr]';
     columnDiv.dataset.rowId = row.id;
     columnDiv.dataset.columnKey = column.key;
-    
-    // Create dedicated cards container
+    // Cards container
     const cardsContainer = document.createElement('div');
-    cardsContainer.className = 'cards-container';
+    cardsContainer.className = 'cards-container flex flex-col gap-2';
     cardsContainer.dataset.rowId = row.id;
     cardsContainer.dataset.columnKey = column.key;
-    cardsContainer.style.cssText = 'flex: 1; min-height: 80px; display: flex; flex-direction: column; gap: 10px;';
-    
-    // Ensure cards array exists
+    cardsContainer.style.cssText = 'flex: 1; min-height: 80px;';
     if (!row.cards[column.key]) {
         row.cards[column.key] = [];
     }
-    
-    // Add cards to the cards container
     const cards = row.cards[column.key] || [];
     cards.forEach(card => {
         const cardElement = createCardElement(card, row.id, column.key);
         cardsContainer.appendChild(cardElement);
     });
-    
     columnDiv.appendChild(cardsContainer);
-    
-    // Add card button in separate footer
+    // Add card button in footer
     const addButton = document.createElement('button');
-    addButton.className = 'add-card-btn';
+    addButton.className = 'btn btn-xs btn-outline btn-primary w-full mt-2';
     addButton.textContent = '+ Add a card';
     addButton.onclick = () => openCardModal(row.id, column.key);
-    
     const columnFooter = document.createElement('div');
-    columnFooter.className = 'column-footer';
+    columnFooter.className = 'column-footer mt-auto';
     columnFooter.appendChild(addButton);
     columnDiv.appendChild(columnFooter);
-    
-    // Setup SortableJS for the cards container only
     setupColumnSorting(cardsContainer, row.id, column.key);
-    
     return columnDiv;
 }
 
@@ -290,8 +258,8 @@ export function createCardElement(card, rowId, columnKey) {
             console.warn('Entity not found for card:', entityId);
             // Create a placeholder card element
             const errorDiv = document.createElement('div');
-            errorDiv.className = 'card error-card';
-            errorDiv.innerHTML = '<div class="card-content">⚠️ Entity not found</div>';
+            errorDiv.className = 'card bg-error text-error-content p-2';
+            errorDiv.innerHTML = '<div class="card-body">⚠️ Entity not found</div>';
             return errorDiv;
         }
     } else {
@@ -315,8 +283,8 @@ export function createCardElement(card, rowId, columnKey) {
     if (!cardElement) {
         // Fallback if entity renderer fails
         const errorDiv = document.createElement('div');
-        errorDiv.className = 'card error-card';
-        errorDiv.innerHTML = '<div class="card-content">⚠️ Render failed</div>';
+        errorDiv.className = 'card bg-error text-error-content p-2';
+        errorDiv.innerHTML = '<div class="card-body">⚠️ Render failed</div>';
         return errorDiv;
     }
     
@@ -360,35 +328,33 @@ export function renderSubtasks() {
     const tasks = taskIds.map(taskId => appData.entities.tasks[taskId]).filter(Boolean);
     
     if (tasks.length === 0) {
-        subtasksList.innerHTML = '<div class="no-subtasks">No subtasks yet. Click "Add Subtask" to get started.</div>';
+        subtasksList.innerHTML = '<div class="no-subtasks text-base-content/60 italic">No subtasks yet. Click "Add Subtask" to get started.</div>';
         return;
     }
-    
     tasks.forEach((task, index) => {
         const subtaskElement = document.createElement('div');
-        subtaskElement.className = `subtask-item ${task.completed ? 'completed' : ''}`;
+        subtaskElement.className = `subtask-item flex items-center gap-2 p-2 rounded-lg ${task.completed ? 'bg-success/10' : 'bg-base-200'}`;
         subtaskElement.dataset.taskId = task.id;
         subtaskElement.dataset.index = index;
-        
         subtaskElement.innerHTML = `
-            <div class="subtask-content">
+            <div class="subtask-content flex items-center gap-2 flex-1">
                 <input type="checkbox" ${task.completed ? 'checked' : ''} 
-                       onchange="toggleSubtask('${task.id}')" class="subtask-checkbox">
-                <span class="subtask-text ${task.completed ? 'completed' : ''}" 
+                       onchange="toggleSubtask('${task.id}')" class="checkbox checkbox-xs">
+                <span class="subtask-text ${task.completed ? 'line-through text-base-content/40' : ''} cursor-pointer" 
                       onclick="startEditSubtask('${task.id}')">${task.text}</span>
             </div>
-            <div class="subtask-edit-form" style="display: none;">
-                <div class="subtask-input-group">
-                    <input type="text" class="subtask-edit-input" value="${task.text}">
-                    <div class="subtask-input-actions">
-                        <button onclick="saveEditSubtask('${task.id}')" class="btn btn-small btn-primary">Save</button>
-                        <button onclick="cancelEditSubtask('${task.id}')" class="btn btn-small btn-secondary">Cancel</button>
+            <div class="subtask-edit-form mt-2 hidden">
+                <div class="subtask-input-group flex gap-2">
+                    <input type="text" class="input input-bordered input-xs flex-1" value="${task.text}">
+                    <div class="subtask-input-actions flex gap-1">
+                        <button onclick="saveEditSubtask('${task.id}')" class="btn btn-xs btn-primary">Save</button>
+                        <button onclick="cancelEditSubtask('${task.id}')" class="btn btn-xs btn-secondary">Cancel</button>
                     </div>
                 </div>
             </div>
-            <div class="subtask-actions">
-                <button onclick="startEditSubtask('${task.id}')" title="Edit subtask">✏️</button>
-                <button onclick="deleteSubtask('${task.id}')" title="Delete subtask">🗑️</button>
+            <div class="subtask-actions flex gap-1">
+                <button onclick="startEditSubtask('${task.id}')" title="Edit subtask" class="btn btn-xs btn-ghost">✏️</button>
+                <button onclick="deleteSubtask('${task.id}')" title="Delete subtask" class="btn btn-xs btn-ghost">🗑️</button>
             </div>
         `;
         subtasksList.appendChild(subtaskElement);
