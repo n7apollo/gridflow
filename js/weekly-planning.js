@@ -187,6 +187,9 @@ export function renderWeeklyItems() {
  * @returns {HTMLElement} Item element
  */
 export function createWeeklyItemElement(item) {
+    // DEBUG: Log the full item object to console
+    console.log('Creating weekly item element for:', JSON.stringify(item, null, 2));
+    
     const itemElement = document.createElement('div');
     itemElement.className = `weekly-item ${item.type} ${item.completed ? 'completed' : ''}`;
     itemElement.dataset.itemId = item.id;
@@ -851,7 +854,8 @@ window.weeklyPlanning = {
     collectChecklistItems,
     addChecklistItem,
     removeChecklistItem,
-    initializeWeeklyEventListeners
+    initializeWeeklyEventListeners,
+    debugWeeklyData
 };
 
 // ============================================
@@ -1001,9 +1005,31 @@ export function initializeWeeklyEventListeners() {
     }
 }
 
+/**
+ * Debug function to show current weekly data in console
+ */
+export function debugWeeklyData() {
+    const appData = getAppData();
+    const currentWeek = appData.weeklyPlans[currentWeekKey];
+    
+    console.log('=== WEEKLY PLANNING DEBUG ===');
+    console.log('Current week key:', currentWeekKey);
+    console.log('Current week data:', JSON.stringify(currentWeek, null, 2));
+    
+    if (currentWeek && currentWeek.items) {
+        console.log('=== INDIVIDUAL ITEMS ===');
+        currentWeek.items.forEach((item, index) => {
+            console.log(`Item ${index + 1}:`, JSON.stringify(item, null, 2));
+        });
+    }
+    
+    return currentWeek;
+}
+
 // Make functions globally available for onclick handlers
 if (typeof window !== 'undefined') {
     window.collectChecklistItems = collectChecklistItems;
     window.addChecklistItem = addChecklistItem;
     window.removeChecklistItem = removeChecklistItem;
+    window.debugWeeklyData = debugWeeklyData;
 }
