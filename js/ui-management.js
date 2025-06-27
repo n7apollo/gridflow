@@ -291,6 +291,9 @@ function toggleMobileMenu() {
     const menu = document.getElementById('mobileMenu');
     const button = document.getElementById('mobileMenuBtn');
     
+    // Early return if elements don't exist
+    if (!menu || !overlay || !button) return;
+    
     if (menu.classList.contains('active')) {
         closeMobileMenu();
     } else {
@@ -308,9 +311,9 @@ function closeMobileMenu() {
     const menu = document.getElementById('mobileMenu');
     const button = document.getElementById('mobileMenuBtn');
     
-    overlay.classList.remove('active');
-    menu.classList.remove('active');
-    button.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
+    if (menu) menu.classList.remove('active');
+    if (button) button.classList.remove('active');
     
     // Restore body scroll
     document.body.style.overflow = '';

@@ -20,10 +20,14 @@ export function switchToView(view) {
     document.getElementById('taskContainer').style.display = 'none';
     document.getElementById('weeklyContainer').style.display = 'none';
     
-    // Remove active class from all view buttons (header)
-    document.getElementById('boardViewBtn').classList.remove('active');
-    document.getElementById('taskViewBtn').classList.remove('active');
-    document.getElementById('weeklyViewBtn').classList.remove('active');
+    // Remove active class from all view buttons (header) - check if they exist
+    const boardViewBtn = document.getElementById('boardViewBtn');
+    const taskViewBtn = document.getElementById('taskViewBtn');
+    const weeklyViewBtn = document.getElementById('weeklyViewBtn');
+    
+    if (boardViewBtn) boardViewBtn.classList.remove('active');
+    if (taskViewBtn) taskViewBtn.classList.remove('active');
+    if (weeklyViewBtn) weeklyViewBtn.classList.remove('active');
     
     // Remove active class from sidebar nav links
     const sidebarLinks = document.querySelectorAll('.sidebar .nav-link');
@@ -32,18 +36,21 @@ export function switchToView(view) {
     // Show selected view and activate buttons
     if (view === 'board') {
         document.getElementById('boardContainer').style.display = 'block';
-        document.getElementById('boardViewBtn').classList.add('active');
-        document.getElementById('sidebarBoardView').classList.add('active');
+        if (boardViewBtn) boardViewBtn.classList.add('active');
+        const sidebarBoardView = document.getElementById('sidebarBoardView');
+        if (sidebarBoardView) sidebarBoardView.classList.add('active');
         if (window.renderBoard) window.renderBoard();
     } else if (view === 'tasks') {
         document.getElementById('taskContainer').style.display = 'block';
-        document.getElementById('taskViewBtn').classList.add('active');
-        document.getElementById('sidebarTaskView').classList.add('active');
+        if (taskViewBtn) taskViewBtn.classList.add('active');
+        const sidebarTaskView = document.getElementById('sidebarTaskView');
+        if (sidebarTaskView) sidebarTaskView.classList.add('active');
         if (window.populateTaskView) window.populateTaskView();
     } else if (view === 'weekly') {
         document.getElementById('weeklyContainer').style.display = 'block';
-        document.getElementById('weeklyViewBtn').classList.add('active');
-        document.getElementById('sidebarWeeklyView').classList.add('active');
+        if (weeklyViewBtn) weeklyViewBtn.classList.add('active');
+        const sidebarWeeklyView = document.getElementById('sidebarWeeklyView');
+        if (sidebarWeeklyView) sidebarWeeklyView.classList.add('active');
         if (window.switchToWeeklyView) window.switchToWeeklyView();
     }
 }
@@ -122,6 +129,8 @@ export function initializeSidebar() {
  */
 export function toggleBoardDropdown() {
     const dropdown = document.getElementById('boardDropdown');
+    if (!dropdown) return; // Early return if element doesn't exist
+    
     const isOpen = dropdown.style.display === 'block';
     
     if (isOpen) {
@@ -149,7 +158,9 @@ export function toggleBoardDropdown() {
  */
 export function closeBoardDropdown() {
     const dropdown = document.getElementById('boardDropdown');
-    dropdown.style.display = 'none';
+    if (dropdown) {
+        dropdown.style.display = 'none';
+    }
     document.removeEventListener('click', handleBoardDropdownOutsideClick);
 }
 
@@ -161,7 +172,7 @@ function handleBoardDropdownOutsideClick(event) {
     const dropdown = document.getElementById('boardDropdown');
     const button = document.getElementById('currentBoardBtn');
     
-    if (!dropdown.contains(event.target) && !button.contains(event.target)) {
+    if (dropdown && button && !dropdown.contains(event.target) && !button.contains(event.target)) {
         closeBoardDropdown();
     }
 }
@@ -171,6 +182,8 @@ function handleBoardDropdownOutsideClick(event) {
  */
 export function filterBoards() {
     const searchInput = document.getElementById('boardSearchInput');
+    if (!searchInput) return; // Early return if element doesn't exist
+    
     const searchTerm = searchInput.value.toLowerCase();
     const boardItems = document.querySelectorAll('.board-item');
     
