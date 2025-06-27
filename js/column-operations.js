@@ -34,7 +34,7 @@ function addColumn() {
     
     if (modalTitle) modalTitle.textContent = 'Add Column';
     if (columnName) columnName.value = '';
-    if (columnModal) columnModal.style.display = 'block';
+    if (columnModal) columnModal.classList.add('modal-open');
 }
 
 /**
@@ -49,7 +49,7 @@ function editColumn(columnId) {
     currentEditingColumn = column;
     document.getElementById('columnModalTitle').textContent = 'Edit Column';
     document.getElementById('columnName').value = column.name;
-    document.getElementById('columnModal').style.display = 'block';
+    document.getElementById('columnModal').classList.add('modal-open');
 }
 
 /**
@@ -186,7 +186,7 @@ function moveColumnDown(index) {
  */
 function closeColumnModal() {
     const columnModal = document.getElementById('columnModal');
-    if (columnModal) columnModal.style.display = 'none';
+    if (columnModal) columnModal.classList.remove('modal-open');
     currentEditingColumn = null;
 }
 

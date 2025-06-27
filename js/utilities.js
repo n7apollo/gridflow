@@ -182,18 +182,19 @@ export function setupEventListeners() {
         const boardModal = document.getElementById('boardModal');
         const boardEditModal = document.getElementById('boardEditModal');
         
-        if (event.target === cardModal) window.closeModal();
-        if (event.target === taskModal) window.closeTaskModal();
-        if (event.target === weeklyReflectionModal) window.closeWeeklyReflectionModal();
-        if (event.target === rowModal) window.closeRowModal();
-        if (event.target === columnModal) window.closeColumnModal();
-        if (event.target === groupModal) window.closeGroupModal();
-        if (event.target === exportModal) window.closeExportModal();
-        if (event.target === dataManagementModal) window.closeDataManagementModal();
-        if (event.target === entityDetailModal) window.entityRenderer.closeEntityDetailModal();
-        if (event.target === outlineModal) closeOutlineModal();
-        if (event.target === boardModal) window.closeBoardModal();
-        if (event.target === boardEditModal) window.closeBoardEditModal();
+        // Close modals when clicking outside (on modal backdrop)
+        if (event.target === cardModal && cardModal.classList.contains('modal-open')) window.closeModal();
+        if (event.target === taskModal && taskModal.classList.contains('modal-open')) window.closeTaskModal();
+        if (event.target === weeklyReflectionModal && weeklyReflectionModal.classList.contains('modal-open')) window.closeWeeklyReflectionModal();
+        if (event.target === rowModal && rowModal.classList.contains('modal-open')) window.closeRowModal();
+        if (event.target === columnModal && columnModal.classList.contains('modal-open')) window.closeColumnModal();
+        if (event.target === groupModal && groupModal.classList.contains('modal-open')) window.closeGroupModal();
+        if (event.target === exportModal && exportModal.classList.contains('modal-open')) window.closeExportModal();
+        if (event.target === dataManagementModal && dataManagementModal.classList.contains('modal-open')) window.closeDataManagementModal();
+        if (event.target === entityDetailModal && entityDetailModal.classList.contains('modal-open')) window.entityRenderer.closeEntityDetailModal();
+        if (event.target === outlineModal && outlineModal.classList.contains('modal-open')) closeOutlineModal();
+        if (event.target === boardModal && boardModal.classList.contains('modal-open')) window.closeBoardModal();
+        if (event.target === boardEditModal && boardEditModal.classList.contains('modal-open')) window.closeBoardEditModal();
     });
     
     // Keyboard shortcuts

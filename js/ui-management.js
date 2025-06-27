@@ -6,7 +6,8 @@
 // ============================================
 
 function closeModal() {
-    document.getElementById('cardModal').style.display = 'none';
+    const cardModal = document.getElementById('cardModal');
+    if (cardModal) cardModal.classList.remove('modal-open');
     if (window.coreData && window.coreData.setCurrentEditingCard) {
         window.coreData.setCurrentEditingCard(null);
     }
@@ -18,7 +19,7 @@ function closeModal() {
 
 function showSettingsModal() {
     const modal = document.getElementById('settingsModal');
-    modal.style.display = 'block';
+    if (modal) modal.classList.add('modal-open');
     
     // Render content for all tabs
     if (window.renderColumnsListModal) window.renderColumnsListModal();
@@ -40,7 +41,7 @@ function showSettingsModal() {
 function closeSettingsModal() {
     const modal = document.getElementById('settingsModal');
     if (modal) {
-        modal.style.display = 'none';
+        modal.classList.remove('modal-open');
     } else {
         console.warn('Settings modal not found');
     }
@@ -131,7 +132,7 @@ function showMobileTabList() {
 // Handle window resize to switch between mobile and desktop modes
 function handleSettingsResize() {
     const modal = document.getElementById('settingsModal');
-    if (modal.style.display !== 'block') return;
+    if (!modal.classList.contains('modal-open')) return;
     
     const isMobile = window.innerWidth <= 768;
     const settingsTabs = document.querySelector('.settings-tabs');
@@ -511,11 +512,37 @@ if (typeof module !== 'undefined' && module.exports) {
     };
 }
 
+// Generic modal close functions
+function closeTaskModal() {
+    const modal = document.getElementById('taskModal');
+    if (modal) modal.classList.remove('modal-open');
+}
+
+function closeBoardModal() {
+    const modal = document.getElementById('boardModal');
+    if (modal) modal.classList.remove('modal-open');
+}
+
+function closeBoardEditModal() {
+    const modal = document.getElementById('boardEditModal');
+    if (modal) modal.classList.remove('modal-open');
+}
+
+function closeExportModal() {
+    const modal = document.getElementById('exportModal');
+    if (modal) modal.classList.remove('modal-open');
+}
+
 // Make functions globally available for onclick handlers
 if (typeof window !== 'undefined') {
     window.updateSettingsUI = updateSettingsUI;
     window.closeSettingsModal = closeSettingsModal;
     window.showSettingsModal = showSettingsModal;
+    window.closeModal = closeModal;
+    window.closeTaskModal = closeTaskModal;
+    window.closeBoardModal = closeBoardModal;
+    window.closeBoardEditModal = closeBoardEditModal;
+    window.closeExportModal = closeExportModal;
     window.addDailyItem = addDailyItem;
     window.showItemForm = showItemForm;
     window.toggleChecklistItem = toggleChecklistItem;

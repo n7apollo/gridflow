@@ -84,14 +84,20 @@ function updateIdCounters() {
  * Show data management modal
  */
 export function showDataManagementModal() {
-    document.getElementById('dataManagementModal').style.display = 'block';
+    const modal = document.getElementById('dataManagementModal');
+    if (modal) {
+        modal.classList.add('modal-open');
+    }
 }
 
 /**
  * Close data management modal
  */
 export function closeDataManagementModal() {
-    document.getElementById('dataManagementModal').style.display = 'none';
+    const modal = document.getElementById('dataManagementModal');
+    if (modal) {
+        modal.classList.remove('modal-open');
+    }
 }
 
 /**

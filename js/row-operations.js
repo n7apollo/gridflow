@@ -50,7 +50,7 @@ export function addRow() {
     populateGroupSelect();
     
     if (rowGroup) rowGroup.value = '';
-    if (rowModal) rowModal.style.display = 'block';
+    if (rowModal) rowModal.classList.add('modal-open');
 }
 
 /**
@@ -67,7 +67,7 @@ export function editRow(rowId) {
     document.getElementById('rowDescription').value = row.description || '';
     populateGroupSelect();
     document.getElementById('rowGroup').value = row.groupId || '';
-    document.getElementById('rowModal').style.display = 'block';
+    document.getElementById('rowModal').classList.add('modal-open');
 }
 
 /**
@@ -207,7 +207,7 @@ export function moveRowToPosition(rowId, targetGroupId, insertIndex) {
  */
 export function closeRowModal() {
     const rowModal = document.getElementById('rowModal');
-    if (rowModal) rowModal.style.display = 'none';
+    if (rowModal) rowModal.classList.remove('modal-open');
     currentEditingRow = null;
 }
 

@@ -37,7 +37,7 @@ function addGroup() {
     if (modalTitle) modalTitle.textContent = 'Add Group';
     if (groupName) groupName.value = '';
     if (groupColor) groupColor.value = '#0079bf';
-    if (groupModal) groupModal.style.display = 'block';
+    if (groupModal) groupModal.classList.add('modal-open');
 }
 
 /**
@@ -53,7 +53,7 @@ function editGroup(groupId) {
     document.getElementById('groupModalTitle').textContent = 'Edit Group';
     document.getElementById('groupName').value = group.name;
     document.getElementById('groupColor').value = group.color;
-    document.getElementById('groupModal').style.display = 'block';
+    document.getElementById('groupModal').classList.add('modal-open');
 }
 
 /**
@@ -188,7 +188,7 @@ function toggleGroup(groupId) {
  */
 function closeGroupModal() {
     const groupModal = document.getElementById('groupModal');
-    if (groupModal) groupModal.style.display = 'none';
+    if (groupModal) groupModal.classList.remove('modal-open');
     currentEditingGroup = null;
 }
 

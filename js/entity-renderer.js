@@ -476,7 +476,7 @@ export function showEntityDetail(entityId) {
     populateEntityDetailModal(entity);
     
     // Show modal
-    modal.style.display = 'block';
+    modal.classList.add('modal-open');
     
     // Add event listeners for modal interactions
     setupEntityDetailListeners();
@@ -539,7 +539,7 @@ function setupEntityEditModal(modal, entity) {
     }
     
     // Show modal
-    modal.style.display = 'block';
+    modal.classList.add('modal-open');
 }
 
 /**
@@ -577,7 +577,7 @@ function saveEntityFromModal(modal) {
     showStatusMessage(`${currentEditingEntity.type} updated`, 'success');
     
     // Close modal
-    modal.style.display = 'none';
+    modal.classList.remove('modal-open');
     currentEditingEntity = null;
     
     // Refresh displays
@@ -884,7 +884,7 @@ function handleEntityDetailInput(event) {
  */
 export function closeEntityDetailModal() {
     const modal = document.getElementById('entityDetailModal');
-    if (modal) modal.style.display = 'none';
+    if (modal) modal.classList.remove('modal-open');
     currentEditingEntity = null;
 }
 

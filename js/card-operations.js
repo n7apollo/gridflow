@@ -71,7 +71,7 @@ export function openCardModal(rowId, columnKey, cardId = null) {
     }
     
     const cardModal = document.getElementById('cardModal');
-    if (cardModal) cardModal.style.display = 'block';
+    if (cardModal) cardModal.classList.add('modal-open');
 }
 
 /**
@@ -298,14 +298,14 @@ export function showCardDetailModal(cardId, rowId, columnKey) {
     if (window.renderSubtasks) window.renderSubtasks();
     
     // Show modal
-    document.getElementById('cardDetailModal').style.display = 'block';
+    document.getElementById('cardDetailModal').classList.add('modal-open');
 }
 
 /**
  * Close the card detail modal
  */
 export function closeCardDetailModal() {
-    document.getElementById('cardDetailModal').style.display = 'none';
+    document.getElementById('cardDetailModal').classList.remove('modal-open');
     
     // Hide add subtask form if it's open
     if (window.hideAddSubtaskForm) window.hideAddSubtaskForm();

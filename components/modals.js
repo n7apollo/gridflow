@@ -23,8 +23,13 @@ class GridFlowModals extends HTMLElement {
             event.preventDefault();
             const modal = event.target.closest('.modal');
             if (modal) {
-                modal.style.display = 'none';
+                modal.classList.remove('modal-open');
             }
+        }
+        
+        // Handle modal backdrop clicks
+        if (event.target.classList.contains('modal') && event.target.classList.contains('modal-open')) {
+            event.target.classList.remove('modal-open');
         }
 
         // Handle action buttons
