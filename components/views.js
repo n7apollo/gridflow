@@ -133,18 +133,18 @@ class GridFlowViews extends HTMLElement {
             <div class="weekly-container" id="weeklyContainer" style="display: none;">
                 <div class="weekly-header">
                     <div class="weekly-navigation">
-                        <button class="btn btn-secondary" data-action="navigateWeek" data-params="-1" id="prevWeekBtn">← Previous Week</button>
+                        <button class="btn btn-secondary" data-action="navigateWeek" data-params="prev" id="prevWeekBtn">← Previous Week</button>
                         <div class="week-info">
                             <h2 class="week-title" id="weekTitle">Current Week</h2>
                             <div class="week-dates" id="weekDates">
                                 <!-- Week dates will be populated -->
                             </div>
                         </div>
-                        <button class="btn btn-secondary" data-action="navigateWeek" data-params="1" id="nextWeekBtn">Next Week →</button>
+                        <button class="btn btn-secondary" data-action="navigateWeek" data-params="next" id="nextWeekBtn">Next Week →</button>
                     </div>
                     <div class="weekly-actions">
                         <button class="btn btn-secondary" data-action="showWeeklyReflectionModal">✍️ Reflection</button>
-                        <button class="btn btn-primary" data-action="addWeeklyNote">+ Add Note</button>
+                        <button class="btn btn-primary" data-action="addWeeklyNote" data-params="monday">+ Add Note</button>
                     </div>
                 </div>
                 

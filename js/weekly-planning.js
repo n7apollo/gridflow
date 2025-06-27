@@ -196,11 +196,14 @@ export function createWeeklyItemElement(item) {
     if (item.type === 'note') {
         const noteTitle = item.title || '';
         const noteContent = item.content || '';
-        const displayText = noteTitle || noteContent || '<em>(No content)</em>';
+        const hasContent = noteTitle || noteContent;
+        
         content = `
             <div class="item-content">
-                ${noteTitle ? `<div class="item-title">${noteTitle}</div>` : ''}
-                ${noteContent && noteContent !== noteTitle ? `<div class="item-text">${noteContent}</div>` : noteTitle ? '' : `<div class="item-text">${displayText}</div>`}
+                ${hasContent ? (
+                    noteTitle ? `<div class="item-title">${noteTitle}</div>` : `<div class="item-text">${noteContent}</div>`
+                ) : '<div class="item-text"><em>(No content)</em></div>'}
+                ${noteTitle && noteContent && noteContent !== noteTitle ? `<div class="item-text">${noteContent}</div>` : ''}
             </div>
             <div class="item-actions">
                 <button class="btn btn-small" onclick="window.weeklyPlanning.editWeeklyItem('${item.id}')">Edit</button>
@@ -211,6 +214,7 @@ export function createWeeklyItemElement(item) {
         const checklistTitle = item.title || '';
         const checklistContent = item.content || '';
         const displayText = checklistTitle || checklistContent || '<em>(No content)</em>';
+        
         content = `
             <div class="item-content">
                 <div class="checklist-item">
@@ -218,7 +222,7 @@ export function createWeeklyItemElement(item) {
                            onchange="window.weeklyPlanning.toggleWeeklyItem('${item.id}')">
                     <span class="checklist-text">${displayText}</span>
                 </div>
-                ${checklistContent && checklistContent !== checklistTitle && checklistTitle ? `<div class="item-description">${checklistContent}</div>` : ''}
+                ${checklistTitle && checklistContent && checklistContent !== checklistTitle ? `<div class="item-description">${checklistContent}</div>` : ''}
             </div>
             <div class="item-actions">
                 <button class="btn btn-small" onclick="window.weeklyPlanning.editWeeklyItem('${item.id}')">Edit</button>
@@ -457,24 +461,29 @@ export function editWeeklyItem(itemId) {
     const item = currentWeek.items.find(i => i.id === itemId);
     if (!item) return;
     
-    // Use title if it exists, otherwise fall back to content
-    const currentContent = item.title || item.content || '';
-    const newContent = prompt(`Edit ${item.type}:`, currentContent);
+    // Set the current editing item for reference
+    currentEditingWeeklyItem = item;
     
-    if (newContent !== null && newContent.trim()) {
-        // Always update the title field for consistency
-        item.title = newContent.trim();
-        // Keep content as secondary field if it's different from title
-        if (!item.content || item.content === item.title) {
-            item.content = newContent.trim();
-        }
-        
-        setAppData(appData);
-        saveData();
-        renderWeeklyItems();
-        
-        showStatusMessage('Item updated', 'success');
-    }
+    // Open the modal and populate with current values
+    const modal = document.getElementById('weeklyItemModal');
+    if (!modal) return;
+    
+    // Update modal title
+    document.getElementById('weeklyItemModalTitle').textContent = `Edit ${item.type.charAt(0).toUpperCase() + item.type.slice(1)}`;
+    
+    // Populate form fields
+    const typeSelect = document.getElementById('weeklyItemType');
+    const titleInput = document.getElementById('weeklyItemTitle');
+    const contentInput = document.getElementById('weeklyItemContent');
+    const form = document.getElementById('weeklyItemForm');
+    
+    if (typeSelect) typeSelect.value = item.type;
+    if (titleInput) titleInput.value = item.title || '';
+    if (contentInput) contentInput.value = item.content || '';
+    if (form) form.dataset.day = item.day;
+    
+    // Show modal
+    modal.style.display = 'block';
 }
 
 /**
@@ -708,25 +717,40 @@ export function saveWeeklyItem() {
         };
     }
     
-    const newItem = {
-        id: `weekly_${appData.nextWeeklyItemId++}`,
-        type: type,
-        day: day,
-        title: title,
-        content: content,
-        completed: false,
-        createdAt: new Date().toISOString()
-    };
+    // Check if we're editing an existing item
+    if (currentEditingWeeklyItem) {
+        // Update existing item
+        currentEditingWeeklyItem.type = type;
+        currentEditingWeeklyItem.title = title;
+        currentEditingWeeklyItem.content = content;
+        currentEditingWeeklyItem.day = day;
+        
+        // Clear the editing reference
+        currentEditingWeeklyItem = null;
+        
+        showStatusMessage('Weekly item updated', 'success');
+    } else {
+        // Create new item
+        const newItem = {
+            id: `weekly_${appData.nextWeeklyItemId++}`,
+            type: type,
+            day: day,
+            title: title,
+            content: content,
+            completed: false,
+            createdAt: new Date().toISOString()
+        };
+        
+        appData.weeklyPlans[currentWeekKey].items.push(newItem);
+        showStatusMessage('Weekly item saved', 'success');
+    }
     
-    appData.weeklyPlans[currentWeekKey].items.push(newItem);
     setAppData(appData);
     saveData();
     
     closeWeeklyItemModal();
     renderWeeklyItems();
     updateWeekProgress();
-    
-    showStatusMessage('Weekly item saved', 'success');
 }
 
 /**
@@ -736,6 +760,15 @@ export function closeWeeklyItemModal() {
     const modal = document.getElementById('weeklyItemModal');
     if (modal) {
         modal.style.display = 'none';
+    }
+    
+    // Clear the editing reference
+    currentEditingWeeklyItem = null;
+    
+    // Reset modal title
+    const modalTitle = document.getElementById('weeklyItemModalTitle');
+    if (modalTitle) {
+        modalTitle.textContent = 'Add Weekly Item';
     }
 }
 
