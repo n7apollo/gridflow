@@ -835,16 +835,18 @@ export function initializeWeeklyEventListeners() {
             };
             
             if (itemType === 'note') {
-                newItem.title = document.getElementById('noteTitle').value.trim();
-                newItem.content = document.getElementById('noteContent').value.trim();
+                newItem.content = document.getElementById('weeklyItemContent').value.trim();
             } else if (itemType === 'checklist') {
-                newItem.title = document.getElementById('checklistTitle').value.trim();
-                newItem.checklist = collectChecklistItems();
+                newItem.title = document.getElementById('weeklyItemTitle').value.trim();
+                // Optionally: newItem.content = document.getElementById('weeklyItemContent').value.trim();
+                // Optionally: newItem.checklist = collectChecklistItems();
             } else if (itemType === 'card') {
                 const cardSelect = document.getElementById('cardSelect');
-                const [boardId, cardId] = cardSelect.value.split('|');
-                newItem.cardId = cardId;
-                newItem.boardId = boardId;
+                if (cardSelect && cardSelect.value) {
+                    const [boardId, cardId] = cardSelect.value.split('|');
+                    newItem.cardId = cardId;
+                    newItem.boardId = boardId;
+                }
             }
             
             // Add to current week
