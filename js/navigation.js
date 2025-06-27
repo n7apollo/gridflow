@@ -231,6 +231,54 @@ function handleTemplatesOutsideClick(event) {
 }
 
 // ============================================
+// BOARD EXPORT MENU
+// ============================================
+
+/**
+ * Toggle board export menu dropdown
+ */
+export function toggleBoardExportMenu() {
+    const dropdown = document.getElementById('boardExportDropdown');
+    const isOpen = dropdown.style.display === 'block';
+    
+    // Close all other dropdowns first
+    closeAllDropdowns();
+    
+    if (!isOpen) {
+        dropdown.style.display = 'block';
+        
+        // Close when clicking outside
+        setTimeout(() => {
+            document.addEventListener('click', handleBoardExportOutsideClick);
+        }, 0);
+    }
+}
+
+/**
+ * Close board export menu dropdown
+ */
+export function closeBoardExportMenu() {
+    const dropdown = document.getElementById('boardExportDropdown');
+    if (dropdown) {
+        dropdown.style.display = 'none';
+        document.removeEventListener('click', handleBoardExportOutsideClick);
+    }
+}
+
+/**
+ * Handle clicks outside board export dropdown
+ * @param {Event} event - Click event
+ */
+function handleBoardExportOutsideClick(event) {
+    const dropdown = document.getElementById('boardExportDropdown');
+    const button = document.getElementById('boardExportBtn');
+    
+    if (dropdown && button && !dropdown.contains(event.target) && !button.contains(event.target)) {
+        closeBoardExportMenu();
+    }
+}
+
+// ============================================
 // WEEKLY PLANNING NAVIGATION
 // ============================================
 
@@ -263,6 +311,7 @@ export function switchToWeeklyView() {
 export function closeAllDropdowns() {
     closeBoardDropdown();
     closeTemplatesMenu();
+    closeBoardExportMenu();
     if (window.closeMoreMenu) window.closeMoreMenu();
 }
 
@@ -271,11 +320,22 @@ export function closeAllDropdowns() {
 // ============================================
 
 /**
- * Toggle settings modal (alias for backward compatibility)
+ * Toggle board settings panel
  */
 export function toggleSettings() {
-    if (window.closeSettingsModal) {
-        window.closeSettingsModal();
+    const settingsPanel = document.getElementById('settingsPanel');
+    if (settingsPanel) {
+        settingsPanel.classList.toggle('active');
+    }
+}
+
+/**
+ * Hide board settings panel
+ */
+export function hideSettings() {
+    const settingsPanel = document.getElementById('settingsPanel');
+    if (settingsPanel) {
+        settingsPanel.classList.remove('active');
     }
 }
 
@@ -344,7 +404,10 @@ if (typeof window !== 'undefined') {
     window.filterBoards = filterBoards;
     window.toggleTemplatesMenu = toggleTemplatesMenu;
     window.closeTemplatesMenu = closeTemplatesMenu;
+    window.toggleBoardExportMenu = toggleBoardExportMenu;
+    window.closeBoardExportMenu = closeBoardExportMenu;
     window.navigateWeek = navigateWeek;
     window.closeAllDropdowns = closeAllDropdowns;
     window.toggleSettings = toggleSettings;
+    window.hideSettings = hideSettings;
 }

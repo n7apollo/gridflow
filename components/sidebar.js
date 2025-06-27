@@ -76,31 +76,6 @@ class GridFlowSidebar extends HTMLElement {
                         </nav>
                     </div>
                     
-                    <div class="sidebar-section">
-                        <div class="sidebar-section-title">ACTIONS</div>
-                        <nav class="sidebar-nav">
-                            <ul>
-                                <li class="nav-item">
-                                    <a href="#" class="nav-link" data-action="addRow">
-                                        <span class="nav-icon">➕</span>
-                                        <span class="nav-text">Add Row</span>
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a href="#" class="nav-link" data-action="addGroup">
-                                        <span class="nav-icon">📁</span>
-                                        <span class="nav-text">Add Group</span>
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a href="#" class="nav-link" data-action="showApplyTemplateModal">
-                                        <span class="nav-icon">📋</span>
-                                        <span class="nav-text">Templates</span>
-                                    </a>
-                                </li>
-                            </ul>
-                        </nav>
-                    </div>
                     
                     <div class="sidebar-section">
                         <div class="sidebar-section-title">SETTINGS</div>
@@ -113,9 +88,9 @@ class GridFlowSidebar extends HTMLElement {
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="#" class="nav-link" data-action="showExportModal">
-                                        <span class="nav-icon">📤</span>
-                                        <span class="nav-text">Export</span>
+                                    <a href="#" class="nav-link" data-action="showDataManagementModal">
+                                        <span class="nav-icon">💾</span>
+                                        <span class="nav-text">Data Management</span>
                                     </a>
                                 </li>
                             </ul>

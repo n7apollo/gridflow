@@ -164,6 +164,7 @@ export function setupEventListeners() {
         const columnModal = document.getElementById('columnModal');
         const groupModal = document.getElementById('groupModal');
         const exportModal = document.getElementById('exportModal');
+        const dataManagementModal = document.getElementById('dataManagementModal');
         const outlineModal = document.getElementById('outlineModal');
         const boardModal = document.getElementById('boardModal');
         const boardEditModal = document.getElementById('boardEditModal');
@@ -175,6 +176,7 @@ export function setupEventListeners() {
         if (event.target === columnModal) window.closeColumnModal();
         if (event.target === groupModal) window.closeGroupModal();
         if (event.target === exportModal) window.closeExportModal();
+        if (event.target === dataManagementModal) window.closeDataManagementModal();
         if (event.target === outlineModal) closeOutlineModal();
         if (event.target === boardModal) window.closeBoardModal();
         if (event.target === boardEditModal) window.closeBoardEditModal();
@@ -190,6 +192,7 @@ export function setupEventListeners() {
             window.closeColumnModal();
             window.closeGroupModal();
             window.closeExportModal();
+            window.closeDataManagementModal();
             closeOutlineModal();
             window.closeBoardModal();
             window.closeBoardEditModal();

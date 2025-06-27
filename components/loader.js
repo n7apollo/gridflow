@@ -6,7 +6,6 @@ class ComponentLoader {
     constructor() {
         this.components = [
             'sidebar.js',
-            'header.js', 
             'views.js',
             'modals.js'
         ];
@@ -40,7 +39,6 @@ class ComponentLoader {
         // Wait for custom elements to be defined
         Promise.all([
             customElements.whenDefined('gridflow-sidebar'),
-            customElements.whenDefined('gridflow-header'),
             customElements.whenDefined('gridflow-views'),
             customElements.whenDefined('gridflow-modals')
         ]).then(() => {

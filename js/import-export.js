@@ -81,17 +81,31 @@ function updateIdCounters() {
 }
 
 /**
- * Show export modal
+ * Show data management modal
  */
-export function showExportModal() {
-    document.getElementById('exportModal').style.display = 'block';
+export function showDataManagementModal() {
+    document.getElementById('dataManagementModal').style.display = 'block';
 }
 
 /**
- * Close export modal
+ * Close data management modal
+ */
+export function closeDataManagementModal() {
+    document.getElementById('dataManagementModal').style.display = 'none';
+}
+
+/**
+ * Show export modal (legacy compatibility)
+ */
+export function showExportModal() {
+    showDataManagementModal();
+}
+
+/**
+ * Close export modal (legacy compatibility)
  */
 export function closeExportModal() {
-    document.getElementById('exportModal').style.display = 'none';
+    closeDataManagementModal();
 }
 
 /**
@@ -133,7 +147,6 @@ export async function exportToPDF() {
         console.error('PDF export failed:', error);
         showStatusMessage('PDF export failed', 'error');
     }
-    closeExportModal();
 }
 
 /**
@@ -164,7 +177,6 @@ export async function exportToPNG() {
         console.error('PNG export failed:', error);
         showStatusMessage('PNG export failed', 'error');
     }
-    closeExportModal();
 }
 
 /**
@@ -252,7 +264,6 @@ export function exportToExcel() {
         console.error('Excel export failed:', error);
         showStatusMessage('Excel export failed', 'error');
     }
-    closeExportModal();
 }
 
 /**
@@ -291,7 +302,7 @@ export function exportToJSON() {
         console.error('JSON export failed:', error);
         showStatusMessage('JSON export failed', 'error');
     }
-    closeExportModal();
+    closeDataManagementModal();
 }
 
 /**
@@ -303,8 +314,8 @@ export function importFromJSON() {
     
     if (!file) return;
     
-    // Close export modal and show progress modal
-    closeExportModal();
+    // Close data management modal and show progress modal
+    closeDataManagementModal();
     showImportProgressModal();
     
     const reader = new FileReader();
@@ -857,6 +868,8 @@ export function clearAllData() {
 
 // Make functions available globally for backward compatibility
 if (typeof window !== 'undefined') {
+    window.showDataManagementModal = showDataManagementModal;
+    window.closeDataManagementModal = closeDataManagementModal;
     window.showExportModal = showExportModal;
     window.closeExportModal = closeExportModal;
     window.exportToPDF = exportToPDF;

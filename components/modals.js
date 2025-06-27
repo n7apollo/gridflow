@@ -412,20 +412,20 @@ class GridFlowModals extends HTMLElement {
     </div>
 </div>
 
-            <!-- Export Modal -->
-            <div class="modal" id="exportModal">
+            <!-- Data Management Modal -->
+            <div class="modal" id="dataManagementModal">
                 <div class="modal-content">
-                    <span class="close" data-action="closeExportModal">&times;</span>
-                    <h2>Export Options</h2>
-                    <div class="export-options">
-                        <button class="btn btn-primary export-btn" data-action="exportToPDF">📄 Export as PDF</button>
-                        <button class="btn btn-primary export-btn" data-action="exportToPNG">🖼️ Export as PNG</button>
-                        <button class="btn btn-primary export-btn" data-action="exportToExcel">📊 Export as Excel</button>
-                        <button class="btn btn-secondary export-btn" data-action="exportToJSON">💾 Backup Data (JSON)</button>
+                    <span class="close" data-action="closeDataManagementModal">&times;</span>
+                    <h2>Data Management</h2>
+                    
+                    <div class="data-section">
+                        <h3>📤 Backup Data</h3>
+                        <p>Export all your GridFlow data as a JSON backup file:</p>
+                        <button class="btn btn-primary export-btn" data-action="exportToJSON">💾 Download Backup (JSON)</button>
                     </div>
                     
                     <div class="import-section">
-                        <h3>Import Data</h3>
+                        <h3>📥 Import Data</h3>
                         <p>Select a JSON backup file to import:</p>
                         <div class="file-input-wrapper">
                             <input type="file" id="importFile" accept=".json" onchange="importFromJSON()">

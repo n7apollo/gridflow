@@ -46,23 +46,93 @@ class GridFlowViews extends HTMLElement {
         return `
             <!-- Board View -->
             <div class="board-container" id="boardContainer">
+                <!-- Board Header Section -->
+                <div class="board-view-header">
+                    <div class="board-header-left">
+                        <div class="board-selector-enhanced">
+                            <button class="current-board-btn" data-action="toggleBoardDropdown" id="currentBoardBtn">
+                                <span class="current-board-name" id="currentBoardName">Loading...</span>
+                                <span class="dropdown-arrow">▼</span>
+                            </button>
+                            <div class="board-dropdown" id="boardDropdown">
+                                <div class="board-search">
+                                    <input type="text" placeholder="Search boards..." id="boardSearchInput">
+                                </div>
+                                <div class="board-list" id="boardList">
+                                    <!-- Populated dynamically -->
+                                </div>
+                                <div class="board-actions">
+                                    <button class="board-action-btn" data-action="createNewBoard">
+                                        <span class="action-icon">+</span>
+                                        <span class="action-text">New Board</span>
+                                    </button>
+                                    <button class="board-action-btn" data-action="showBoardModal">
+                                        <span class="action-icon">⚙️</span>
+                                        <span class="action-text">Manage Boards</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="board-header-center">
+                        <button class="btn btn-primary" data-action="addRow">+ Add Row</button>
+                        <button class="btn btn-secondary" data-action="addGroup">+ Add Group</button>
+                        <button class="btn btn-secondary" data-action="addColumn">+ Add Column</button>
+                    </div>
+                    
+                    <div class="board-header-right">
+                        <div class="templates-menu">
+                            <button class="btn btn-secondary dropdown-trigger" data-action="toggleTemplatesMenu" id="templatesBtn">
+                                📋 Templates
+                                <span class="dropdown-arrow">▼</span>
+                            </button>
+                            <div class="dropdown-menu" id="templatesDropdown">
+                                <button class="dropdown-item" data-action="showApplyTemplateModal">
+                                    <span class="item-icon">📥</span>
+                                    <span class="item-text">Apply Template</span>
+                                </button>
+                                <button class="dropdown-item" data-action="showSaveAsTemplateModal">
+                                    <span class="item-icon">💾</span>
+                                    <span class="item-text">Save as Template</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="board-export-menu">
+                            <button class="btn btn-secondary dropdown-trigger" data-action="toggleBoardExportMenu" id="boardExportBtn">
+                                📤 Export Board
+                                <span class="dropdown-arrow">▼</span>
+                            </button>
+                            <div class="dropdown-menu" id="boardExportDropdown">
+                                <button class="dropdown-item" data-action="exportToPDF">
+                                    <span class="item-icon">📄</span>
+                                    <span class="item-text">Export as PDF</span>
+                                </button>
+                                <button class="dropdown-item" data-action="exportToPNG">
+                                    <span class="item-icon">🖼️</span>
+                                    <span class="item-text">Export as PNG</span>
+                                </button>
+                                <button class="dropdown-item" data-action="exportToExcel">
+                                    <span class="item-icon">📊</span>
+                                    <span class="item-text">Export as Excel</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="more-menu">
+                            <button class="btn btn-secondary dropdown-trigger" data-action="toggleMoreMenu" id="moreBtn">
+                                ⋯
+                            </button>
+                            <div class="dropdown-menu" id="moreDropdown">
+                                <button class="dropdown-item" data-action="toggleSettings">
+                                    <span class="item-icon">🔧</span>
+                                    <span class="item-text">Board Settings</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="settings-panel" id="settingsPanel">
-                    <div class="settings-content">
-                        <div class="settings-row">
-                            <button class="btn btn-small btn-primary" data-action="addColumn">+ Add Column</button>
-                        </div>
-                    </div>
-                    <div class="settings-content">
-                        <div class="settings-row">
-                            <button class="btn btn-small btn-primary" data-action="addGroup">+ Add Group</button>
-                        </div>
-                    </div>
-                    <div class="settings-content">
-                        <div class="settings-row">
-                            <button class="btn btn-small btn-primary" data-action="showCreateTemplateModal">+ Create Template</button>
-                            <button class="btn btn-small btn-secondary" data-action="showApplyTemplateModal">Apply Template</button>
-                        </div>
-                    </div>
                     <div class="settings-content">
                         <div class="settings-row">
                             <input type="checkbox" id="showCheckboxes" onchange="toggleCheckboxes()">
