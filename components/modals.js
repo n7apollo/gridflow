@@ -436,6 +436,12 @@ class GridFlowModals extends HTMLElement {
                             Export your current data first if you want to preserve it.
                         </p>
                     </div>
+                    
+                    <div class="danger-section">
+                        <h3>⚠️ Danger Zone</h3>
+                        <p>Clear all data and start fresh. This action cannot be undone.</p>
+                        <button class="btn btn-danger" data-action="clearAllData">🗑️ Clear All Data</button>
+                    </div>
                 </div>
             </div>
 

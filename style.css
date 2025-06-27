@@ -1127,6 +1127,27 @@ body {
     display: inline-block;
 }
 
+/* Danger Section Styles */
+.danger-section {
+    border-top: 2px solid #eb5a46;
+    padding-top: 20px;
+    margin-top: 30px;
+    background: #ffeaea;
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.danger-section h3 {
+    margin-bottom: 10px;
+    color: #c53929;
+    font-weight: bold;
+}
+
+.danger-section p {
+    margin-bottom: 15px;
+    color: #8b0000;
+}
+
 /* Outline Modal Styles */
 .outline-modal {
     max-width: 600px;

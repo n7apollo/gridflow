@@ -420,6 +420,58 @@ export function mergeImportedData(importedData) {
     updateIdCounters();
 }
 
+/**
+ * Clear all application data and reset to default state
+ */
+export function clearAllData() {
+    // Show confirmation dialog
+    const confirmed = confirm(
+        'Are you sure you want to clear ALL data?\n\n' +
+        'This will delete:\n' +
+        '• All boards and cards\n' +
+        '• All templates\n' +
+        '• All weekly plans\n' +
+        '• All entities and tasks\n' +
+        '• All settings\n\n' +
+        'This action cannot be undone!\n\n' +
+        'Consider exporting your data first as a backup.'
+    );
+    
+    if (!confirmed) {
+        return;
+    }
+    
+    // Second confirmation for safety
+    const doubleConfirmed = confirm(
+        'FINAL WARNING: This will permanently delete all your data.\n\n' +
+        'Are you absolutely sure you want to continue?'
+    );
+    
+    if (!doubleConfirmed) {
+        return;
+    }
+    
+    try {
+        // Clear localStorage
+        localStorage.removeItem('gridflow_data');
+        
+        // Clear any backup data
+        localStorage.removeItem('gridflow_data_pre_entity_migration');
+        
+        // Show success message
+        showStatusMessage('All data cleared successfully. Refreshing page...', 'success');
+        
+        // Reload the page after a short delay to reinitialize with fresh data
+        setTimeout(() => {
+            window.location.reload();
+        }, 1500);
+        
+    } catch (error) {
+        console.error('Error clearing data:', error);
+        showStatusMessage('Error clearing data: ' + error.message, 'error');
+    }
+}
+
 // Make functions available globally for backward compatibility
 if (typeof window !== 'undefined') {
     window.showExportModal = showExportModal;
@@ -430,4 +482,5 @@ if (typeof window !== 'undefined') {
     window.exportToJSON = exportToJSON;
     window.importFromJSON = importFromJSON;
     window.mergeImportedData = mergeImportedData;
+    window.clearAllData = clearAllData;
 }
