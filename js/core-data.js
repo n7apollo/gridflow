@@ -357,6 +357,12 @@ export function migrateToV5(data) {
         if (data.entities.tasks) {
             Object.keys(data.entities.tasks).forEach(taskId => {
                 const task = data.entities.tasks[taskId];
+                // Skip if task is already a string (entity ID) or null/undefined
+                if (typeof task !== 'object' || task === null) {
+                    console.warn(`Skipping task ${taskId} - invalid or already migrated`);
+                    return;
+                }
+                
                 newEntities[taskId] = {
                     id: taskId,
                     type: 'task',
@@ -379,6 +385,12 @@ export function migrateToV5(data) {
         if (data.entities.notes) {
             Object.keys(data.entities.notes).forEach(noteId => {
                 const note = data.entities.notes[noteId];
+                // Skip if note is already a string (entity ID) or null/undefined
+                if (typeof note !== 'object' || note === null) {
+                    console.warn(`Skipping note ${noteId} - invalid or already migrated`);
+                    return;
+                }
+                
                 newEntities[noteId] = {
                     id: noteId,
                     type: 'note',
@@ -398,6 +410,12 @@ export function migrateToV5(data) {
         if (data.entities.checklists) {
             Object.keys(data.entities.checklists).forEach(checklistId => {
                 const checklist = data.entities.checklists[checklistId];
+                // Skip if checklist is already a string (entity ID) or null/undefined
+                if (typeof checklist !== 'object' || checklist === null) {
+                    console.warn(`Skipping checklist ${checklistId} - invalid or already migrated`);
+                    return;
+                }
+                
                 newEntities[checklistId] = {
                     id: checklistId,
                     type: 'checklist',
@@ -422,6 +440,18 @@ export function migrateToV5(data) {
     if (data.boards) {
         console.log('Converting board cards to entity references...');
         let cardsConverted = 0;
+        
+        // Ensure ID counters are set based on existing entities
+        if (!data.nextTaskId && data.entities) {
+            const existingTaskIds = Object.keys(data.entities).filter(id => id.startsWith('task_'))
+                .map(id => parseInt(id.replace('task_', '')) || 0);
+            data.nextTaskId = existingTaskIds.length > 0 ? Math.max(...existingTaskIds) + 1 : 1;
+        }
+        if (!data.nextNoteId && data.entities) {
+            const existingNoteIds = Object.keys(data.entities).filter(id => id.startsWith('note_'))
+                .map(id => parseInt(id.replace('note_', '')) || 0);
+            data.nextNoteId = existingNoteIds.length > 0 ? Math.max(...existingNoteIds) + 1 : 1;
+        }
         
         Object.keys(data.boards).forEach(boardId => {
             const board = data.boards[boardId];
