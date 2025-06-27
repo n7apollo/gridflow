@@ -418,6 +418,104 @@ export function migrateToV5(data) {
         console.log(`Migrated ${Object.keys(newEntities).length} entities to unified format`);
     }
     
+    // Migrate board cards to entity references
+    if (data.boards) {
+        console.log('Converting board cards to entity references...');
+        let cardsConverted = 0;
+        
+        Object.keys(data.boards).forEach(boardId => {
+            const board = data.boards[boardId];
+            if (!board.rows) return;
+            
+            board.rows.forEach(row => {
+                if (!row.cards) return;
+                
+                Object.keys(row.cards).forEach(columnKey => {
+                    const cards = row.cards[columnKey];
+                    const newCardList = [];
+                    
+                    cards.forEach(card => {
+                        // Skip if already an entity ID
+                        if (typeof card === 'string' && card.startsWith('entity_')) {
+                            newCardList.push(card);
+                            return;
+                        }
+                        
+                        // Convert card object to entity
+                        if (typeof card === 'object' && card.id) {
+                            try {
+                                // Determine entity type
+                                let entityType = 'task'; // default
+                                if (card.subtasks && card.subtasks.length > 0) {
+                                    entityType = 'task';
+                                } else if (card.priority || card.dueDate) {
+                                    entityType = 'task';
+                                } else {
+                                    entityType = 'note';
+                                }
+                                
+                                // Create entity ID using sequential format
+                                let entityId;
+                                if (entityType === 'task') {
+                                    if (!data.nextTaskId) data.nextTaskId = 1;
+                                    entityId = `task_${data.nextTaskId++}`;
+                                } else if (entityType === 'note') {
+                                    if (!data.nextNoteId) data.nextNoteId = 1;
+                                    entityId = `note_${data.nextNoteId++}`;
+                                } else {
+                                    // Fallback
+                                    entityId = `${entityType}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                                }
+                                
+                                // Create entity
+                                const entity = {
+                                    id: entityId,
+                                    type: entityType,
+                                    title: card.title || 'Untitled',
+                                    content: card.description || '',
+                                    completed: card.completed || false,
+                                    priority: card.priority || 'medium',
+                                    dueDate: card.dueDate || null,
+                                    tags: card.tags || [],
+                                    createdAt: card.createdAt || new Date().toISOString(),
+                                    updatedAt: new Date().toISOString()
+                                };
+                                
+                                // Add task-specific fields
+                                if (entityType === 'task' && card.subtasks) {
+                                    entity.subtasks = card.subtasks;
+                                }
+                                
+                                // Store entity
+                                if (!data.entities) data.entities = {};
+                                data.entities[entityId] = entity;
+                                
+                                // Replace card with entity ID
+                                newCardList.push(entityId);
+                                cardsConverted++;
+                                
+                                console.log(`Converted card "${card.title}" to entity ${entityId}`);
+                                
+                            } catch (error) {
+                                console.error('Failed to convert card:', card, error);
+                                // Keep original card as fallback
+                                newCardList.push(card);
+                            }
+                        } else {
+                            // Keep non-object cards as-is
+                            newCardList.push(card);
+                        }
+                    });
+                    
+                    // Replace card list with entity IDs
+                    row.cards[columnKey] = newCardList;
+                });
+            });
+        });
+        
+        console.log(`Converted ${cardsConverted} board cards to entity references`);
+    }
+    
     data.version = '5.0';
     return data;
 }

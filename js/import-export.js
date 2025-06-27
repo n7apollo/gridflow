@@ -370,9 +370,11 @@ function resetImportProgress() {
     // Clear migration log
     clearMigrationLog();
     
-    // Hide actions
+    // Hide actions and choice section
     const actions = document.getElementById('importActions');
+    const choiceSection = document.getElementById('importChoiceSection');
     if (actions) actions.style.display = 'none';
+    if (choiceSection) choiceSection.style.display = 'none';
 }
 
 /**
@@ -532,19 +534,16 @@ async function performImportWithProgress(fileContent, fileName) {
     await delay(200);
     
     try {
-        // Ask user if they want to merge or replace data
+        // Check if user needs to choose import mode
         const hasExistingData = Object.keys(appData.boards).length > 0;
-        let shouldMerge = false;
         
         if (hasExistingData) {
-            const choice = confirm(
-                'You have existing data. How would you like to import?\n\n' +
-                'OK = Merge with existing data\n' +
-                'Cancel = Replace all data\n\n' +
-                'Note: Merging will add new boards and preserve existing ones.'
-            );
-            shouldMerge = choice;
+            // Show choice section and wait for user decision
+            await showImportChoice();
         }
+        
+        // Get user's choice
+        const shouldMerge = !hasExistingData || getImportChoice() === 'merge';
         
         if (shouldMerge) {
             mergeImportedData(migratedData);
@@ -680,6 +679,77 @@ function analyzeImportData(data) {
     }
     
     return stats;
+}
+
+/**
+ * Show import choice section and wait for user decision
+ */
+function showImportChoice() {
+    return new Promise((resolve, reject) => {
+        const choiceSection = document.getElementById('importChoiceSection');
+        if (!choiceSection) {
+            reject(new Error('Import choice section not found'));
+            return;
+        }
+        
+        // Show the choice section
+        choiceSection.style.display = 'block';
+        
+        // Update progress to indicate waiting for user input
+        updateProgress(65, 'Waiting for import mode selection...');
+        updateImportStep('merge', 'active', 'Awaiting choice...');
+        
+        // Add event listeners
+        const continueBtn = document.getElementById('continueImportBtn');
+        const cancelBtn = document.getElementById('cancelImportBtn');
+        
+        const handleContinue = () => {
+            // Hide choice section
+            choiceSection.style.display = 'none';
+            
+            // Clean up listeners
+            continueBtn.removeEventListener('click', handleContinue);
+            cancelBtn.removeEventListener('click', handleCancel);
+            
+            // Resume import
+            updateProgress(75, 'Merging with existing data...');
+            resolve();
+        };
+        
+        const handleCancel = () => {
+            // Hide choice section
+            choiceSection.style.display = 'none';
+            
+            // Clean up listeners
+            continueBtn.removeEventListener('click', handleContinue);
+            cancelBtn.removeEventListener('click', handleCancel);
+            
+            // Cancel import
+            updateImportStep('merge', 'error', 'Cancelled');
+            addMigrationLog('Import cancelled by user', 'warning');
+            reject(new Error('Import cancelled by user'));
+        };
+        
+        continueBtn.addEventListener('click', handleContinue);
+        cancelBtn.addEventListener('click', handleCancel);
+    });
+}
+
+/**
+ * Get user's import choice
+ */
+function getImportChoice() {
+    const mergeRadio = document.querySelector('input[name="importMode"][value="merge"]');
+    const replaceRadio = document.querySelector('input[name="importMode"][value="replace"]');
+    
+    if (mergeRadio && mergeRadio.checked) {
+        return 'merge';
+    } else if (replaceRadio && replaceRadio.checked) {
+        return 'replace';
+    }
+    
+    // Default to merge
+    return 'merge';
 }
 
 /**

@@ -488,6 +488,32 @@ class GridFlowModals extends HTMLElement {
                             </div>
                         </div>
                         
+                        <!-- Import Mode Choice (shown when needed) -->
+                        <div class="import-choice-section" id="importChoiceSection" style="display: none;">
+                            <h4>Import Mode</h4>
+                            <p>You have existing data. How would you like to import?</p>
+                            <div class="import-choice-options">
+                                <label class="choice-option">
+                                    <input type="radio" name="importMode" value="merge" checked>
+                                    <div class="choice-content">
+                                        <div class="choice-title">🔄 Merge Data</div>
+                                        <div class="choice-description">Add imported boards and preserve existing ones. Recommended for most cases.</div>
+                                    </div>
+                                </label>
+                                <label class="choice-option">
+                                    <input type="radio" name="importMode" value="replace">
+                                    <div class="choice-content">
+                                        <div class="choice-title">🔄 Replace All Data</div>
+                                        <div class="choice-description">Delete all existing data and replace with imported data. Cannot be undone!</div>
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="import-choice-actions">
+                                <button class="btn btn-primary" id="continueImportBtn">Continue Import</button>
+                                <button class="btn btn-secondary" id="cancelImportBtn">Cancel</button>
+                            </div>
+                        </div>
+                        
                         <div class="import-details">
                             <div class="detail-section">
                                 <h4>Import Summary</h4>
