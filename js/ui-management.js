@@ -38,7 +38,12 @@ function showSettingsModal() {
 }
 
 function closeSettingsModal() {
-    document.getElementById('settingsModal').style.display = 'none';
+    const modal = document.getElementById('settingsModal');
+    if (modal) {
+        modal.style.display = 'none';
+    } else {
+        console.warn('Settings modal not found');
+    }
 }
 
 function switchTab(tabName) {
@@ -53,8 +58,21 @@ function switchTab(tabName) {
         document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
         
-        document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
-        document.getElementById(`${tabName}-tab`).classList.add('active');
+        // Add null checks to prevent errors
+        const tabButton = document.querySelector(`[data-tab="${tabName}"]`);
+        const tabContent = document.getElementById(`${tabName}-tab`);
+        
+        if (tabButton) {
+            tabButton.classList.add('active');
+        } else {
+            console.warn(`Tab button not found for: ${tabName}`);
+        }
+        
+        if (tabContent) {
+            tabContent.classList.add('active');
+        } else {
+            console.warn(`Tab content not found for: ${tabName}-tab`);
+        }
     }
 }
 
@@ -62,28 +80,47 @@ function showMobileTabContent(tabName) {
     const settingsTabs = document.querySelector('.settings-tabs');
     const contentArea = document.querySelector('.settings-content-area');
     
-    // Hide tab list and show content area
-    settingsTabs.classList.add('mobile-hidden');
-    contentArea.classList.add('mobile-active');
+    // Hide tab list and show content area (with null checks)
+    if (settingsTabs) {
+        settingsTabs.classList.add('mobile-hidden');
+    }
+    if (contentArea) {
+        contentArea.classList.add('mobile-active');
+    }
     
     // Show only the selected tab content
     document.querySelectorAll('.tab-content').forEach(content => {
         content.classList.remove('mobile-current');
     });
-    document.getElementById(`${tabName}-tab`).classList.add('mobile-current');
+    
+    const targetTabContent = document.getElementById(`${tabName}-tab`);
+    if (targetTabContent) {
+        targetTabContent.classList.add('mobile-current');
+    } else {
+        console.warn(`Mobile tab content not found for: ${tabName}-tab`);
+    }
     
     // Update active tab button
     document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-    document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+    const activeTabButton = document.querySelector(`[data-tab="${tabName}"]`);
+    if (activeTabButton) {
+        activeTabButton.classList.add('active');
+    } else {
+        console.warn(`Mobile tab button not found for: ${tabName}`);
+    }
 }
 
 function showMobileTabList() {
     const settingsTabs = document.querySelector('.settings-tabs');
     const contentArea = document.querySelector('.settings-content-area');
     
-    // Show tab list and hide content area
-    settingsTabs.classList.remove('mobile-hidden');
-    contentArea.classList.remove('mobile-active');
+    // Show tab list and hide content area (with null checks)
+    if (settingsTabs) {
+        settingsTabs.classList.remove('mobile-hidden');
+    }
+    if (contentArea) {
+        contentArea.classList.remove('mobile-active');
+    }
     
     // Clear current mobile content
     document.querySelectorAll('.tab-content').forEach(content => {
@@ -235,8 +272,13 @@ function closeMoreMenu() {
 }
 
 function closeAllDropdowns() {
-    closeBoardDropdown();
-    closeTemplatesMenu();
+    // Access functions from navigation module via window object
+    if (window.navigation?.closeBoardDropdown) {
+        window.navigation.closeBoardDropdown();
+    }
+    if (window.navigation?.closeTemplatesMenu) {
+        window.navigation.closeTemplatesMenu();
+    }
     closeMoreMenu();
 }
 
@@ -291,17 +333,21 @@ function initializeEnhancedNavigation() {
         const moreMenu = document.querySelector('.more-menu');
         
         // Close board dropdown if clicked outside
-        if (!boardSelector.contains(event.target)) {
-            closeBoardDropdown();
+        if (boardSelector && !boardSelector.contains(event.target)) {
+            if (window.navigation?.closeBoardDropdown) {
+                window.navigation.closeBoardDropdown();
+            }
         }
         
         // Close templates dropdown if clicked outside
-        if (!templatesMenu.contains(event.target)) {
-            closeTemplatesMenu();
+        if (templatesMenu && !templatesMenu.contains(event.target)) {
+            if (window.navigation?.closeTemplatesMenu) {
+                window.navigation.closeTemplatesMenu();
+            }
         }
         
         // Close more dropdown if clicked outside
-        if (!moreMenu.contains(event.target)) {
+        if (moreMenu && !moreMenu.contains(event.target)) {
             closeMoreMenu();
         }
     });
@@ -340,29 +386,54 @@ function addDailyItem(day) {
         window.coreData.setCurrentEditingWeeklyItem({ day: day });
     }
     
-    document.getElementById('weeklyItemModalTitle').textContent = `Add ${day.charAt(0).toUpperCase() + day.slice(1)} Item`;
+    // Update modal title with null check
+    const modalTitle = document.getElementById('weeklyItemModalTitle');
+    if (modalTitle) {
+        modalTitle.textContent = `Add ${day.charAt(0).toUpperCase() + day.slice(1)} Item`;
+    }
     
-    // Reset form
-    document.getElementById('weeklyItemForm').reset();
-    document.querySelector('input[value="note"]').checked = true;
+    // Reset form with null check
+    const form = document.getElementById('weeklyItemForm');
+    if (form) {
+        form.reset();
+    }
+    
+    // Set default note type with null check
+    const noteRadio = document.querySelector('input[value="note"]');
+    if (noteRadio) {
+        noteRadio.checked = true;
+    } else {
+        console.warn('Note radio button not found');
+    }
+    
     showItemForm('note');
     
-    document.getElementById('weeklyItemModal').style.display = 'block';
+    // Show modal with null check
+    const modal = document.getElementById('weeklyItemModal');
+    if (modal) {
+        modal.style.display = 'block';
+    } else {
+        console.warn('Weekly item modal not found');
+    }
 }
 
 function showItemForm(type) {
-    // Hide all forms
-    document.getElementById('noteForm').style.display = 'none';
-    document.getElementById('checklistForm').style.display = 'none';
-    document.getElementById('cardForm').style.display = 'none';
+    // Hide all forms with null checks
+    const noteForm = document.getElementById('noteForm');
+    const checklistForm = document.getElementById('checklistForm');
+    const cardForm = document.getElementById('cardForm');
     
-    // Show selected form
-    if (type === 'note') {
-        document.getElementById('noteForm').style.display = 'block';
-    } else if (type === 'checklist') {
-        document.getElementById('checklistForm').style.display = 'block';
-    } else if (type === 'card') {
-        document.getElementById('cardForm').style.display = 'block';
+    if (noteForm) noteForm.style.display = 'none';
+    if (checklistForm) checklistForm.style.display = 'none';
+    if (cardForm) cardForm.style.display = 'none';
+    
+    // Show selected form with null checks
+    if (type === 'note' && noteForm) {
+        noteForm.style.display = 'block';
+    } else if (type === 'checklist' && checklistForm) {
+        checklistForm.style.display = 'block';
+    } else if (type === 'card' && cardForm) {
+        cardForm.style.display = 'block';
         if (window.populateCardOptions) window.populateCardOptions();
     }
 }
@@ -442,4 +513,8 @@ if (typeof window !== 'undefined') {
     window.updateSettingsUI = updateSettingsUI;
     window.closeSettingsModal = closeSettingsModal;
     window.showSettingsModal = showSettingsModal;
+    window.addDailyItem = addDailyItem;
+    window.showItemForm = showItemForm;
+    window.toggleChecklistItem = toggleChecklistItem;
+    window.cancelGoalEdit = cancelGoalEdit;
 }

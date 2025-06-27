@@ -435,7 +435,7 @@ export function rollbackMigration() {
  * Create a backup before migration
  * @returns {boolean} Success
  */
-export function createMigrationBackup() {
+function createMigrationBackup() {
     try {
         const currentData = localStorage.getItem('gridflow_data');
         if (!currentData) {
@@ -461,7 +461,8 @@ if (typeof window !== 'undefined') {
         migrateToEntitySystem,
         isMigrationNeeded,
         getMigrationStatus,
-        rollbackMigration
+        rollbackMigration,
+        createMigrationBackup
     };
 }
 
