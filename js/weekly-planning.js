@@ -5,8 +5,8 @@
 
 import { getAppData, setAppData, saveData } from './core-data.js';
 import { showStatusMessage } from './utilities.js';
-import { renderEntity, CONTEXT_TYPES } from './entity-renderer.js';
-import { getEntity } from './entity-core.js';
+import { renderEntity } from './entity-renderer.js';
+import { getEntity, CONTEXT_TYPES } from './entity-core.js';
 
 // Current week key
 let currentWeekKey = null;

@@ -7,8 +7,8 @@
 import { saveData, appData, boardData } from './core-data.js';
 import { initializeAllSorting, setupColumnSorting, setupRowSorting } from './drag-drop.js';
 import { getCurrentDetailCard } from './card-operations.js';
-import { renderEntity, CONTEXT_TYPES } from './entity-renderer.js';
-import { getEntity } from './entity-core.js';
+import { renderEntity } from './entity-renderer.js';
+import { getEntity, CONTEXT_TYPES } from './entity-core.js';
 
 /**
  * Render the entire board
