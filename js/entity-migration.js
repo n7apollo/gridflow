@@ -15,12 +15,19 @@ import { showStatusMessage } from './utilities.js';
 export function migrateToEntitySystem() {
     console.log('Starting migration to unified entity system...');
     
+    // Create backup before migration
+    const backupCreated = createMigrationBackup();
+    if (!backupCreated) {
+        console.warn('Failed to create backup, but continuing with migration');
+    }
+    
     const appData = getAppData();
     const results = {
         cardsConverted: 0,
         weeklyItemsConverted: 0,
         entitiesCreated: 0,
-        errors: []
+        errors: [],
+        backupCreated: backupCreated
     };
     
     try {
@@ -370,10 +377,82 @@ export function getMigrationStatus() {
  * @returns {boolean} Success
  */
 export function rollbackMigration() {
-    // TODO: Implement rollback functionality
-    console.warn('Rollback not implemented yet');
-    showStatusMessage('Rollback not available', 'error');
-    return false;
+    try {
+        // Check if there's a backup in localStorage
+        const backupKey = 'gridflow_data_pre_entity_migration';
+        const backup = localStorage.getItem(backupKey);
+        
+        if (!backup) {
+            console.warn('No migration backup found');
+            showStatusMessage('No backup available for rollback', 'error');
+            return false;
+        }
+        
+        // Confirm with user
+        const confirmed = confirm(
+            'This will restore your data to the state before entity migration. ' +
+            'Any changes made after migration will be lost. Continue?'
+        );
+        
+        if (!confirmed) {
+            return false;
+        }
+        
+        // Parse and restore backup data
+        const backupData = JSON.parse(backup);
+        
+        // Validate backup data
+        if (!backupData || typeof backupData !== 'object') {
+            throw new Error('Invalid backup data format');
+        }
+        
+        // Restore the data
+        localStorage.setItem('gridflow_data', backup);
+        
+        // Remove the backup to prevent accidental multiple rollbacks
+        localStorage.removeItem(backupKey);
+        
+        console.log('Successfully rolled back to pre-migration data');
+        showStatusMessage('Data restored to pre-migration state. Please refresh the page.', 'success');
+        
+        // Suggest page refresh
+        setTimeout(() => {
+            if (confirm('Data has been restored. Refresh the page to see changes?')) {
+                window.location.reload();
+            }
+        }, 2000);
+        
+        return true;
+        
+    } catch (error) {
+        console.error('Rollback failed:', error);
+        showStatusMessage('Rollback failed: ' + error.message, 'error');
+        return false;
+    }
+}
+
+/**
+ * Create a backup before migration
+ * @returns {boolean} Success
+ */
+export function createMigrationBackup() {
+    try {
+        const currentData = localStorage.getItem('gridflow_data');
+        if (!currentData) {
+            console.warn('No data to backup');
+            return false;
+        }
+        
+        const backupKey = 'gridflow_data_pre_entity_migration';
+        localStorage.setItem(backupKey, currentData);
+        
+        console.log('Created migration backup');
+        return true;
+        
+    } catch (error) {
+        console.error('Failed to create backup:', error);
+        return false;
+    }
 }
 
 // Make functions available globally for debugging
@@ -389,5 +468,6 @@ if (typeof window !== 'undefined') {
 export {
     isMigrationNeeded,
     getMigrationStatus,
-    rollbackMigration
+    rollbackMigration,
+    createMigrationBackup
 };

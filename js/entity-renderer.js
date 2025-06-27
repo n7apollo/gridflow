@@ -6,8 +6,11 @@
  * appearance based on entity type.
  */
 
-import { getEntity, updateEntity, toggleEntityCompletion, ENTITY_TYPES, CONTEXT_TYPES } from './entity-core.js';
+import { getEntity, updateEntity, toggleEntityCompletion, removeEntityFromContext, ENTITY_TYPES, CONTEXT_TYPES } from './entity-core.js';
 import { showStatusMessage } from './utilities.js';
+
+// Global variable to track entity being edited
+let currentEditingEntity = null;
 
 /**
  * Render an entity in a specific context
@@ -412,16 +415,116 @@ export function editEntity(entityId) {
     const entity = getEntity(entityId);
     if (!entity) return;
     
-    // TODO: Open entity edit modal
-    // For now, use simple prompt
-    const newTitle = prompt(`Edit ${entity.type} title:`, entity.title);
-    if (newTitle !== null && newTitle.trim()) {
-        updateEntity(entityId, { title: newTitle.trim() });
-        showStatusMessage(`${entity.type} updated`, 'success');
-        
-        // Refresh UI
-        refreshEntityDisplays(entityId);
+    // Check if there's already an entity edit modal, if not use existing card modal
+    const modal = document.getElementById('cardModal') || document.getElementById('weeklyItemModal');
+    if (!modal) {
+        // Fallback to prompt if no modal available
+        const newTitle = prompt(`Edit ${entity.type} title:`, entity.title);
+        if (newTitle !== null && newTitle.trim()) {
+            updateEntity(entityId, { title: newTitle.trim() });
+            showStatusMessage(`${entity.type} updated`, 'success');
+            refreshEntityDisplays(entityId);
+        }
+        return;
     }
+    
+    // Set up modal for entity editing
+    setupEntityEditModal(modal, entity);
+}
+
+/**
+ * Set up modal for editing an entity
+ * @param {HTMLElement} modal - Modal element
+ * @param {Object} entity - Entity to edit
+ */
+function setupEntityEditModal(modal, entity) {
+    currentEditingEntity = entity;
+    
+    // Update modal title
+    const modalTitle = modal.querySelector('h2');
+    if (modalTitle) {
+        modalTitle.textContent = `Edit ${entity.type.charAt(0).toUpperCase() + entity.type.slice(1)}`;
+    }
+    
+    // Populate form fields based on entity type
+    const titleInput = modal.querySelector('#cardTitle, #weeklyItemTitle');
+    const descriptionInput = modal.querySelector('#cardDescription, #weeklyItemContent');
+    const typeSelect = modal.querySelector('#weeklyItemType');
+    const prioritySelect = modal.querySelector('#cardPriority');
+    const dueDateInput = modal.querySelector('#cardDueDate');
+    
+    if (titleInput) titleInput.value = entity.title || '';
+    if (descriptionInput) descriptionInput.value = entity.content || '';
+    if (typeSelect) typeSelect.value = entity.type;
+    if (prioritySelect && entity.priority) prioritySelect.value = entity.priority;
+    if (dueDateInput && entity.dueDate) dueDateInput.value = entity.dueDate;
+    
+    // Override the save function to handle entity updates
+    const saveButton = modal.querySelector('button[data-action="saveCard"], button[data-action="saveWeeklyItem"]');
+    if (saveButton) {
+        // Store original onclick
+        const originalOnClick = saveButton.onclick;
+        
+        saveButton.onclick = function() {
+            saveEntityFromModal(modal);
+        };
+        
+        // Restore original onclick when modal closes
+        const closeButtons = modal.querySelectorAll('.close, button[data-action="closeModal"], button[data-action="closeWeeklyItemModal"]');
+        closeButtons.forEach(btn => {
+            const originalClose = btn.onclick;
+            btn.onclick = function() {
+                if (originalOnClick) saveButton.onclick = originalOnClick;
+                currentEditingEntity = null;
+                if (originalClose) originalClose();
+            };
+        });
+    }
+    
+    // Show modal
+    modal.style.display = 'block';
+}
+
+/**
+ * Save entity from modal form
+ * @param {HTMLElement} modal - Modal element
+ */
+function saveEntityFromModal(modal) {
+    if (!currentEditingEntity) return;
+    
+    const titleInput = modal.querySelector('#cardTitle, #weeklyItemTitle');
+    const descriptionInput = modal.querySelector('#cardDescription, #weeklyItemContent');
+    const prioritySelect = modal.querySelector('#cardPriority');
+    const dueDateInput = modal.querySelector('#cardDueDate');
+    
+    const updates = {};
+    
+    if (titleInput && titleInput.value.trim()) {
+        updates.title = titleInput.value.trim();
+    }
+    
+    if (descriptionInput) {
+        updates.content = descriptionInput.value.trim();
+    }
+    
+    if (prioritySelect && prioritySelect.value) {
+        updates.priority = prioritySelect.value;
+    }
+    
+    if (dueDateInput && dueDateInput.value) {
+        updates.dueDate = dueDateInput.value;
+    }
+    
+    // Update the entity
+    updateEntity(currentEditingEntity.id, updates);
+    showStatusMessage(`${currentEditingEntity.type} updated`, 'success');
+    
+    // Close modal
+    modal.style.display = 'none';
+    currentEditingEntity = null;
+    
+    // Refresh displays
+    refreshEntityDisplays(currentEditingEntity?.id);
 }
 
 /**
@@ -441,9 +544,30 @@ export function toggleCompletion(entityId) {
  * Remove entity from weekly planning
  */
 export function removeFromWeekly(entityId, weekKey) {
-    // TODO: Implement removeEntityFromContext
-    console.log('Remove from weekly:', entityId, weekKey);
-    showStatusMessage('Removed from weekly plan', 'success');
+    const success = removeEntityFromContext(entityId, CONTEXT_TYPES.WEEKLY, { weekKey });
+    
+    if (success) {
+        showStatusMessage('Removed from weekly plan', 'success');
+        
+        // Remove the DOM element
+        const weeklyItem = document.querySelector(`[data-entity-id="${entityId}"][data-week-key="${weekKey}"]`);
+        if (weeklyItem) {
+            weeklyItem.style.opacity = '0.5';
+            weeklyItem.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => {
+                if (weeklyItem.parentNode) {
+                    weeklyItem.parentNode.removeChild(weeklyItem);
+                }
+            }, 300);
+        }
+        
+        // Update weekly progress
+        if (typeof window.weeklyPlanning?.updateWeekProgress === 'function') {
+            window.weeklyPlanning.updateWeekProgress();
+        }
+    } else {
+        showStatusMessage('Failed to remove from weekly plan', 'error');
+    }
 }
 
 /**
@@ -477,9 +601,54 @@ function getContextFromElement(element) {
 /**
  * Get context data from DOM element
  */
-function getContextDataFromElement() {
-    // TODO: Extract context data from DOM
-    return {};
+function getContextDataFromElement(element) {
+    const contextData = {};
+    
+    // Extract data attributes directly from element
+    if (element.dataset.boardId) contextData.boardId = element.dataset.boardId;
+    if (element.dataset.rowId) contextData.rowId = element.dataset.rowId;
+    if (element.dataset.columnKey) contextData.columnKey = element.dataset.columnKey;
+    if (element.dataset.weekKey) contextData.weekKey = element.dataset.weekKey;
+    if (element.dataset.day) contextData.day = element.dataset.day;
+    if (element.dataset.weeklyItemId) contextData.weeklyItemId = element.dataset.weeklyItemId;
+    
+    // Try to determine from parent containers
+    const boardContainer = element.closest('[data-board-id]');
+    if (boardContainer && !contextData.boardId) {
+        contextData.boardId = boardContainer.dataset.boardId;
+    }
+    
+    const rowContainer = element.closest('[data-row-id]');
+    if (rowContainer && !contextData.rowId) {
+        contextData.rowId = rowContainer.dataset.rowId;
+    }
+    
+    const columnContainer = element.closest('[data-column-key]');
+    if (columnContainer && !contextData.columnKey) {
+        contextData.columnKey = columnContainer.dataset.columnKey;
+    }
+    
+    const weeklyContainer = element.closest('[data-week-key]');
+    if (weeklyContainer && !contextData.weekKey) {
+        contextData.weekKey = weeklyContainer.dataset.weekKey;
+    }
+    
+    const dayColumn = element.closest('[data-day]');
+    if (dayColumn && !contextData.day) {
+        contextData.day = dayColumn.dataset.day;
+    }
+    
+    // For weekly planning, try to get current week from global state
+    if (!contextData.weekKey && typeof window.weeklyPlanning?.getCurrentWeek === 'function') {
+        contextData.weekKey = window.weeklyPlanning.getCurrentWeek();
+    }
+    
+    // For board view, try to get current board from global state
+    if (!contextData.boardId && typeof window.boardData?.id !== 'undefined') {
+        contextData.boardId = window.boardData.id;
+    }
+    
+    return contextData;
 }
 
 // Make functions available globally
