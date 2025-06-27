@@ -24,15 +24,23 @@
 </head>
 <body>
     <!-- Status Message -->
-    <div id="statusMessage" class="status-message"></div>
+    <div id="statusMessage" class="alert alert-info fixed top-4 right-4 w-auto max-w-md z-50 hidden"></div>
     
-    <!-- Sidebar Component -->
-    <gridflow-sidebar></gridflow-sidebar>
-    
-    <!-- Main App Layout -->
-    <div class="app-container main-content">
-        <!-- Main Views Component -->
-        <gridflow-views></gridflow-views>
+    <!-- Main App Layout using DaisyUI Drawer -->
+    <div class="drawer lg:drawer-open">
+        <input id="drawer-toggle" type="checkbox" class="drawer-toggle" />
+        
+        <!-- Drawer Content (Main Area) -->
+        <div class="drawer-content flex flex-col">
+            <!-- Main Views Component -->
+            <gridflow-views></gridflow-views>
+        </div>
+        
+        <!-- Drawer Side (Sidebar) -->
+        <div class="drawer-side">
+            <label for="drawer-toggle" aria-label="close sidebar" class="drawer-overlay"></label>
+            <gridflow-sidebar></gridflow-sidebar>
+        </div>
     </div>
     
     <!-- Modals Component -->

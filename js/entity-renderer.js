@@ -303,11 +303,11 @@ function renderNoteCardContent(entity) {
     let content = '';
     
     if (entity.content) {
-        content += `<div class="card-content">${entity.content}</div>`;
+        content += `<p class="text-sm text-base-content/70 line-clamp-3 mb-3">${entity.content}</p>`;
     }
     
     if (entity.tags && entity.tags.length > 0) {
-        content += `<div class="note-tags">${entity.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}</div>`;
+        content += `<div class="flex flex-wrap gap-1">${entity.tags.map(tag => `<span class="badge badge-outline badge-xs">${tag}</span>`).join('')}</div>`;
     }
     
     return content;
@@ -320,7 +320,7 @@ function renderChecklistCardContent(entity) {
     let content = '';
     
     if (entity.content) {
-        content += `<div class="card-description">${entity.content}</div>`;
+        content += `<p class="text-sm text-base-content/70 mb-3">${entity.content}</p>`;
     }
     
     if (entity.items && entity.items.length > 0) {
@@ -328,24 +328,28 @@ function renderChecklistCardContent(entity) {
         const progress = (completedItems / entity.items.length) * 100;
         
         content += `
-            <div class="checklist-progress">
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: ${progress}%"></div>
+            <div class="mb-3">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-xs text-base-content/60">Progress</span>
+                    <span class="text-xs font-medium">${completedItems}/${entity.items.length}</span>
                 </div>
-                <span class="progress-text">${completedItems}/${entity.items.length} completed</span>
+                <progress class="progress progress-primary w-full h-2" value="${progress}" max="100"></progress>
             </div>
         `;
         
         // Show first few items
         const previewItems = entity.items.slice(0, 3);
-        content += '<ul class="checklist-preview">';
+        content += '<div class="space-y-1">';
         previewItems.forEach(item => {
-            content += `<li class="${item.completed ? 'completed' : ''}">${item.text}</li>`;
+            content += `<div class="flex items-center gap-2 text-xs">
+                            <input type="checkbox" class="checkbox checkbox-xs" ${item.completed ? 'checked' : ''} disabled>
+                            <span class="${item.completed ? 'line-through text-base-content/50' : ''}">${item.text}</span>
+                        </div>`;
         });
         if (entity.items.length > 3) {
-            content += `<li class="more-items">... and ${entity.items.length - 3} more</li>`;
+            content += `<div class="text-xs text-base-content/50 italic">... and ${entity.items.length - 3} more items</div>`;
         }
-        content += '</ul>';
+        content += '</div>';
     }
     
     return content;
@@ -358,24 +362,29 @@ function renderProjectCardContent(entity) {
     let content = '';
     
     if (entity.content) {
-        content += `<div class="card-description">${entity.content}</div>`;
+        content += `<p class="text-sm text-base-content/70 line-clamp-2 mb-3">${entity.content}</p>`;
     }
     
-    content += '<div class="project-metadata">';
+    content += '<div class="flex flex-wrap gap-2 mb-2">';
     
     if (entity.status) {
-        content += `<span class="status-badge status-${entity.status}">${entity.status}</span>`;
-    }
-    
-    if (entity.startDate && entity.endDate) {
-        content += `<span class="project-dates">${formatDate(entity.startDate)} - ${formatDate(entity.endDate)}</span>`;
+        const statusClass = entity.status === 'active' ? 'badge-success' : 
+                           entity.status === 'planning' ? 'badge-warning' : 
+                           entity.status === 'completed' ? 'badge-primary' : 'badge-outline';
+        content += `<span class="badge ${statusClass} badge-sm">${entity.status}</span>`;
     }
     
     if (entity.team && entity.team.length > 0) {
-        content += `<span class="team-size">${entity.team.length} team members</span>`;
+        content += `<span class="badge badge-outline badge-sm">👥 ${entity.team.length}</span>`;
     }
     
     content += '</div>';
+    
+    if (entity.startDate && entity.endDate) {
+        content += `<div class="text-xs text-base-content/60">
+                        📅 ${formatDate(entity.startDate)} - ${formatDate(entity.endDate)}
+                    </div>`;
+    }
     
     return content;
 }

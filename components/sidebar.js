@@ -38,14 +38,14 @@ class GridFlowSidebar extends HTMLElement {
 
     getTemplate() {
         return `
-            <aside class="drawer-side w-64 min-h-screen bg-base-200 shadow-lg" id="sidebar">
+            <aside class="w-64 min-h-screen bg-base-200 shadow-lg" id="sidebar">
                 <div class="flex items-center justify-between p-4 border-b border-base-300">
                     <div class="flex items-center gap-2">
                         <span class="text-2xl">⚡</span>
                         <span class="font-bold text-lg">GridFlow</span>
                     </div>
-                    <button class="btn btn-square btn-ghost" data-action="toggleSidebar" title="Toggle Sidebar">
-                        <span class="text-xl">‹</span>
+                    <button class="btn btn-square btn-ghost lg:hidden" onclick="document.getElementById('drawer-toggle').checked = false" title="Close Sidebar">
+                        <span class="text-xl">✕</span>
                     </button>
                 </div>
                 

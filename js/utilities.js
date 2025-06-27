@@ -9,21 +9,33 @@ import { getCurrentOutlineData } from './core-data.js';
 export function showStatusMessage(message, type = 'info') {
     const statusMessage = document.getElementById('statusMessage');
     
-    // Remove any existing status classes
-    statusMessage.className = 'status-message';
+    // Remove any existing alert classes
+    statusMessage.className = 'alert fixed top-4 right-4 w-auto max-w-md z-50';
     
-    // Add the appropriate type class
-    statusMessage.classList.add(type);
+    // Add the appropriate DaisyUI alert type class
+    switch(type) {
+        case 'success':
+            statusMessage.classList.add('alert-success');
+            break;
+        case 'error':
+            statusMessage.classList.add('alert-error');
+            break;
+        case 'warning':
+            statusMessage.classList.add('alert-warning');
+            break;
+        default:
+            statusMessage.classList.add('alert-info');
+    }
     
     // Set the message text
     statusMessage.textContent = message;
     
     // Show the message
-    statusMessage.style.display = 'block';
+    statusMessage.classList.remove('hidden');
     
     // Auto-hide after 3 seconds
     setTimeout(() => {
-        statusMessage.style.display = 'none';
+        statusMessage.classList.add('hidden');
     }, 3000);
 }
 

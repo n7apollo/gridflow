@@ -49,6 +49,10 @@ class GridFlowViews extends HTMLElement {
                 <!-- Board Header Section -->
                 <div class="board-view-header flex flex-col md:flex-row items-center justify-between gap-4 mb-4">
                     <div class="board-header-left flex items-center gap-2">
+                        <!-- Mobile Menu Button -->
+                        <button class="btn btn-square btn-ghost lg:hidden" onclick="document.getElementById('drawer-toggle').checked = true" title="Open Menu">
+                            <span class="text-xl">☰</span>
+                        </button>
                         <div class="dropdown dropdown-bottom">
                             <button class="btn btn-outline btn-primary flex items-center gap-2" data-action="toggleBoardDropdown" id="currentBoardBtn">
                                 <span class="current-board-name" id="currentBoardName">Loading...</span>
