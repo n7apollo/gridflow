@@ -639,8 +639,16 @@ export function validateAndCleanData(data) {
             board.columns.forEach(column => {
                 if (!row.cards[column.key]) row.cards[column.key] = [];
                 row.cards[column.key].forEach(card => {
-                    if (!card.id) card.id = maxCardId + 1;
-                    maxCardId = Math.max(maxCardId, card.id);
+                    // Skip entity ID strings (new unified system)
+                    if (typeof card === 'string') {
+                        return; // Entity IDs don't need ID validation
+                    }
+                    
+                    // Handle legacy card objects
+                    if (typeof card === 'object' && card !== null) {
+                        if (!card.id) card.id = maxCardId + 1;
+                        maxCardId = Math.max(maxCardId, card.id);
+                    }
                 });
             });
         });
