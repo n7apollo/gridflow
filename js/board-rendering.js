@@ -37,19 +37,22 @@ export function renderColumnHeaders() {
         console.warn('boardHeader element not found');
         return;
     }
-    // Use grid for column headers, matching the number of columns
+    // Set a fixed width for kanban columns and enable horizontal scrolling if needed
     const columnCount = boardData.columns.length;
     container.innerHTML = '';
-    container.className = `grid grid-cols-[200px_repeat(${columnCount},minmax(180px,1fr))] gap-0 bg-base-200 rounded-t-lg`; // 200px for row label, rest for columns
+    container.className = 'kanban-header-scroll w-full overflow-x-auto';
+    // Create a grid container inside for the actual columns
+    const grid = document.createElement('div');
+    grid.className = `grid grid-cols-[200px_repeat(${columnCount},240px)] min-w-full`;
     // Row label header
     const rowLabelHeader = document.createElement('div');
     rowLabelHeader.className = 'row-label-header font-bold flex items-center justify-center p-2 border-b border-base-300';
     rowLabelHeader.textContent = 'Projects';
-    container.appendChild(rowLabelHeader);
+    grid.appendChild(rowLabelHeader);
     // Column headers
     boardData.columns.forEach((column, index) => {
         const headerDiv = document.createElement('div');
-        headerDiv.className = 'column-header font-semibold p-2 flex items-center justify-between border-b border-base-300 min-w-[180px]';
+        headerDiv.className = 'column-header font-semibold p-2 flex items-center justify-between border-b border-base-300 w-[240px] min-w-[240px] max-w-[240px]';
         headerDiv.dataset.columnId = column.id;
         headerDiv.dataset.columnIndex = index;
         headerDiv.innerHTML = `
@@ -58,8 +61,9 @@ export function renderColumnHeaders() {
                 <button class="btn btn-xs btn-outline btn-secondary" onclick="showColumnOutline('${column.key}')" title="Show outline for this column">📝 Outline</button>
             </div>
         `;
-        container.appendChild(headerDiv);
+        grid.appendChild(headerDiv);
     });
+    container.appendChild(grid);
 }
 
 /**
@@ -130,13 +134,16 @@ export function createGroupElement(group) {
  */
 export function createRowElement(row, columnCount) {
     const rowDiv = document.createElement('div');
-    rowDiv.className = `board-row grid grid-cols-[200px_repeat(${columnCount},minmax(180px,1fr))] items-stretch bg-base-100 border-b border-base-200 hover:bg-base-200 transition-colors`;
+    rowDiv.className = 'kanban-row-scroll w-full overflow-x-auto';
+    // Create a grid container inside for the actual row
+    const grid = document.createElement('div');
+    grid.className = `board-row grid grid-cols-[200px_repeat(${columnCount},240px)] items-stretch bg-base-100 border-b border-base-200 hover:bg-base-200 transition-colors min-w-full`;
     rowDiv.dataset.rowId = row.id;
     if (row.groupId) {
-        rowDiv.classList.add('in-group');
+        grid.classList.add('in-group');
         const group = boardData.groups.find(g => g.id === row.groupId);
         if (group) {
-            rowDiv.style.borderLeft = `4px solid ${group.color}`;
+            grid.style.borderLeft = `4px solid ${group.color}`;
         }
     }
     // Row label
@@ -146,18 +153,18 @@ export function createRowElement(row, columnCount) {
     rowLabel.innerHTML = `
         <div class="row-title flex items-center gap-2">
             <div class="row-name font-semibold">${row.name}</div>
-            ${descriptionHtml}
         </div>
+        ${descriptionHtml}
         <div class="row-actions mt-2 flex gap-1">
             <button class="btn btn-xs btn-outline btn-secondary" onclick="editRow(${row.id})" title="Edit row">Edit</button>
             <button class="btn btn-xs btn-outline btn-error" onclick="deleteRow(${row.id})" title="Delete row">Delete</button>
         </div>
     `;
-    rowDiv.appendChild(rowLabel);
+    grid.appendChild(rowLabel);
     // Columns
     boardData.columns.forEach(column => {
         const columnElement = createColumnElement(row, column);
-        rowDiv.appendChild(columnElement);
+        grid.appendChild(columnElement);
     });
     // Mobile columns (unchanged, but add DaisyUI classes)
     const mobileColumnsContainer = document.createElement('div');
@@ -196,7 +203,8 @@ export function createRowElement(row, columnCount) {
         mobileColumnSection.appendChild(mobileColumnContent);
         mobileColumnsContainer.appendChild(mobileColumnSection);
     });
-    rowDiv.appendChild(mobileColumnsContainer);
+    rowDiv.appendChild(grid);
+    // ...mobile columns unchanged...
     return rowDiv;
 }
 
@@ -209,7 +217,7 @@ export function createRowElement(row, columnCount) {
  */
 export function createColumnElement(row, column) {
     const columnDiv = document.createElement('div');
-    columnDiv.className = 'column flex flex-col gap-2 p-2 min-w-[180px]';
+    columnDiv.className = 'column flex flex-col gap-2 p-2 w-[240px] min-w-[240px] max-w-[240px]';
     columnDiv.dataset.rowId = row.id;
     columnDiv.dataset.columnKey = column.key;
     // Cards container
@@ -307,15 +315,7 @@ export function createCardElement(card, rowId, columnKey) {
 export function updateCSSGridColumns() {
     const columnCount = boardData.columns.length;
     document.documentElement.style.setProperty('--column-count', columnCount);
-    const headers = document.getElementById('boardHeader');
-    const rows = document.querySelectorAll('.board-row');
-    // Set grid template columns for headers and rows
-    if (headers) {
-        headers.style.gridTemplateColumns = `200px repeat(${columnCount}, minmax(180px, 1fr))`;
-    }
-    rows.forEach(row => {
-        row.style.gridTemplateColumns = `200px repeat(${columnCount}, minmax(180px, 1fr))`;
-    });
+    // No need to update gridTemplateColumns, as grid classes and widths are now fixed
 }
 
 /**
