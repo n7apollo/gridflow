@@ -5,6 +5,8 @@
 
 import { getAppData, setAppData, saveData } from './core-data.js';
 import { showStatusMessage } from './utilities.js';
+import { renderEntity, CONTEXT_TYPES } from './entity-renderer.js';
+import { getEntity } from './entity-core.js';
 
 // Current week key
 let currentWeekKey = null;
@@ -190,104 +192,146 @@ export function createWeeklyItemElement(item) {
     // DEBUG: Log the full item object to console
     console.log('Creating weekly item element for:', JSON.stringify(item, null, 2));
     
-    // Handle migrated data: resolve entity references to get title/content
-    if (item.entityId && !item.title && !item.content) {
-        const appData = getAppData();
-        const entity = appData.entities?.notes?.[item.entityId];
-        if (entity) {
-            // Temporarily add title/content to item for display
-            item.title = entity.title;
-            item.content = entity.content;
-            console.log('Resolved entity data for item:', item.id, entity);
+    // Handle both legacy items and new entity-based items
+    if (item.entityId) {
+        // New entity-based system
+        const entity = getEntity(item.entityId);
+        if (!entity) {
+            console.warn('Entity not found for weekly item:', item.entityId);
+            // Create error element
+            const errorElement = document.createElement('div');
+            errorElement.className = 'weekly-item error-item';
+            errorElement.innerHTML = '<div class="item-content">⚠️ Entity not found</div>';
+            return errorElement;
         }
-    }
-    
-    const itemElement = document.createElement('div');
-    itemElement.className = `weekly-item ${item.type} ${item.completed ? 'completed' : ''}`;
-    itemElement.dataset.itemId = item.id;
-    
-    let content = '';
-    
-    if (item.type === 'note') {
-        const noteTitle = item.title || '';
-        const noteContent = item.content || '';
-        const hasContent = noteTitle || noteContent;
         
-        content = `
-            <div class="item-content">
-                ${hasContent ? (
-                    noteTitle ? `<div class="item-title">${noteTitle}</div>` : `<div class="item-text">${noteContent}</div>`
-                ) : '<div class="item-text"><em>(No content)</em></div>'}
-                ${noteTitle && noteContent && noteContent !== noteTitle ? `<div class="item-text">${noteContent}</div>` : ''}
-            </div>
-            <div class="item-actions">
-                <button class="btn btn-small" onclick="window.weeklyPlanning.editWeeklyItem('${item.id}')">Edit</button>
-                <button class="btn btn-small btn-danger" onclick="window.weeklyPlanning.deleteWeeklyItem('${item.id}')">Delete</button>
-            </div>
-        `;
-    } else if (item.type === 'checklist') {
-        // Handle migrated checklist data
+        // Use unified entity renderer for weekly context
+        const contextData = {
+            weekKey: currentWeekKey,
+            day: item.day,
+            weeklyItemId: item.id
+        };
+        
+        const itemElement = renderEntity(item.entityId, CONTEXT_TYPES.WEEKLY, contextData);
+        
+        if (!itemElement) {
+            console.warn('Entity renderer failed for weekly item:', item.entityId);
+            const errorElement = document.createElement('div');
+            errorElement.className = 'weekly-item error-item';
+            errorElement.innerHTML = '<div class="item-content">⚠️ Render failed</div>';
+            return errorElement;
+        }
+        
+        // Add weekly-specific data attributes
+        itemElement.dataset.itemId = item.id;
+        itemElement.dataset.entityId = item.entityId;
+        itemElement.dataset.day = item.day;
+        
+        return itemElement;
+        
+    } else {
+        // Legacy weekly item system (should be rare after migration)
+        console.warn('Using legacy weekly item format:', item);
+        
+        // Handle migrated data: resolve entity references to get title/content
         if (item.entityId && !item.title && !item.content) {
             const appData = getAppData();
-            const entity = appData.entities?.checklists?.[item.entityId];
+            const entity = appData.entities?.notes?.[item.entityId];
             if (entity) {
+                // Temporarily add title/content to item for display
                 item.title = entity.title;
-                item.content = entity.description || entity.content;
-                console.log('Resolved checklist entity data for item:', item.id, entity);
+                item.content = entity.content;
+                console.log('Resolved entity data for item:', item.id, entity);
             }
         }
         
-        const checklistTitle = item.title || '';
-        const checklistContent = item.content || '';
-        const displayText = checklistTitle || checklistContent || '<em>(No content)</em>';
+        const itemElement = document.createElement('div');
+        itemElement.className = `weekly-item ${item.type} ${item.completed ? 'completed' : ''}`;
+        itemElement.dataset.itemId = item.id;
         
-        content = `
-            <div class="item-content">
-                <div class="checklist-item">
-                    <input type="checkbox" ${item.completed ? 'checked' : ''} 
-                           onchange="window.weeklyPlanning.toggleWeeklyItem('${item.id}')">
-                    <span class="checklist-text">${displayText}</span>
-                </div>
-                ${checklistTitle && checklistContent && checklistContent !== checklistTitle ? `<div class="item-description">${checklistContent}</div>` : ''}
-            </div>
-            <div class="item-actions">
-                <button class="btn btn-small" onclick="window.weeklyPlanning.editWeeklyItem('${item.id}')">Edit</button>
-                <button class="btn btn-small btn-danger" onclick="window.weeklyPlanning.deleteWeeklyItem('${item.id}')">Delete</button>
-            </div>
-        `;
-    } else if (item.type === 'card') {
-        const card = findCardById(item.cardId, item.boardId);
-        if (card) {
+        let content = '';
+        
+        if (item.type === 'note') {
+            const noteTitle = item.title || '';
+            const noteContent = item.content || '';
+            const hasContent = noteTitle || noteContent;
+            
             content = `
                 <div class="item-content">
-                    <div class="linked-card">
-                        <div class="card-title">${card.title}</div>
-                        <div class="card-meta">
-                            <span class="board-name">${item.boardName}</span>
-                            <span class="row-name">${item.rowName}</span>
+                    ${hasContent ? (
+                        noteTitle ? `<div class="item-title">${noteTitle}</div>` : `<div class="item-text">${noteContent}</div>`
+                    ) : '<div class="item-text"><em>(No content)</em></div>'}
+                    ${noteTitle && noteContent && noteContent !== noteTitle ? `<div class="item-text">${noteContent}</div>` : ''}
+                </div>
+                <div class="item-actions">
+                    <button class="btn btn-small" onclick="window.weeklyPlanning.editWeeklyItem('${item.id}')">Edit</button>
+                    <button class="btn btn-small btn-danger" onclick="window.weeklyPlanning.deleteWeeklyItem('${item.id}')">Delete</button>
+                </div>
+            `;
+        } else if (item.type === 'checklist') {
+            // Handle migrated checklist data
+            if (item.entityId && !item.title && !item.content) {
+                const appData = getAppData();
+                const entity = appData.entities?.checklists?.[item.entityId];
+                if (entity) {
+                    item.title = entity.title;
+                    item.content = entity.description || entity.content;
+                    console.log('Resolved checklist entity data for item:', item.id, entity);
+                }
+            }
+            
+            const checklistTitle = item.title || '';
+            const checklistContent = item.content || '';
+            const displayText = checklistTitle || checklistContent || '<em>(No content)</em>';
+            
+            content = `
+                <div class="item-content">
+                    <div class="checklist-item">
+                        <input type="checkbox" ${item.completed ? 'checked' : ''} 
+                               onchange="window.weeklyPlanning.toggleWeeklyItem('${item.id}')">
+                        <span class="checklist-text">${displayText}</span>
+                    </div>
+                    ${checklistTitle && checklistContent && checklistContent !== checklistTitle ? `<div class="item-description">${checklistContent}</div>` : ''}
+                </div>
+                <div class="item-actions">
+                    <button class="btn btn-small" onclick="window.weeklyPlanning.editWeeklyItem('${item.id}')">Edit</button>
+                    <button class="btn btn-small btn-danger" onclick="window.weeklyPlanning.deleteWeeklyItem('${item.id}')">Delete</button>
+                </div>
+            `;
+        } else if (item.type === 'card') {
+            const card = findCardById(item.cardId, item.boardId);
+            if (card) {
+                content = `
+                    <div class="item-content">
+                        <div class="linked-card">
+                            <div class="card-title">${card.title}</div>
+                            <div class="card-meta">
+                                <span class="board-name">${item.boardName}</span>
+                                <span class="row-name">${item.rowName}</span>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="item-actions">
-                    <button class="btn btn-small btn-danger" onclick="window.weeklyPlanning.removeCardFromWeeklyPlan('${item.id}')">Remove</button>
-                </div>
-            `;
-        } else {
-            content = `
-                <div class="item-content">
-                    <div class="linked-card missing">
-                        <div class="card-title">Card not found</div>
+                    <div class="item-actions">
+                        <button class="btn btn-small btn-danger" onclick="window.weeklyPlanning.removeCardFromWeeklyPlan('${item.id}')">Remove</button>
                     </div>
-                </div>
-                <div class="item-actions">
-                    <button class="btn btn-small btn-danger" onclick="window.weeklyPlanning.deleteWeeklyItem('${item.id}')">Remove</button>
-                </div>
-            `;
+                `;
+            } else {
+                content = `
+                    <div class="item-content">
+                        <div class="linked-card missing">
+                            <div class="card-title">Card not found</div>
+                        </div>
+                    </div>
+                    <div class="item-actions">
+                        <button class="btn btn-small btn-danger" onclick="window.weeklyPlanning.deleteWeeklyItem('${item.id}')">Remove</button>
+                    </div>
+                `;
+            }
         }
+        
+        itemElement.innerHTML = content;
+        return itemElement;
     }
-    
-    itemElement.innerHTML = content;
-    return itemElement;
 }
 
 /**

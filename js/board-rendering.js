@@ -7,6 +7,8 @@
 import { saveData, appData, boardData } from './core-data.js';
 import { initializeAllSorting, setupColumnSorting, setupRowSorting } from './drag-drop.js';
 import { getCurrentDetailCard } from './card-operations.js';
+import { renderEntity, CONTEXT_TYPES } from './entity-renderer.js';
+import { getEntity } from './entity-core.js';
 
 /**
  * Render the entire board
@@ -275,103 +277,55 @@ export function createColumnElement(row, column) {
  * @returns {HTMLElement} The card element
  */
 export function createCardElement(card, rowId, columnKey) {
-    const cardDiv = document.createElement('div');
-    cardDiv.className = 'card';
-    // Remove draggable attribute - SortableJS will handle this
-    cardDiv.dataset.cardId = card.id;
-    cardDiv.dataset.rowId = rowId;
-    cardDiv.dataset.columnKey = columnKey;
+    // Handle both old format (card objects) and new format (entity IDs)
+    let entityId;
+    let entity;
     
-    if (card.completed) {
-        cardDiv.classList.add('completed');
-    }
-    
-    const checkboxHtml = boardData.settings.showCheckboxes ? `
-        <div class="card-checkbox">
-            <input type="checkbox" ${card.completed ? 'checked' : ''} 
-                   onchange="toggleCardCompletion(${card.id}, ${rowId}, '${columnKey}')">
-            <span>Completed</span>
-        </div>
-    ` : '';
-    
-    // Generate subtask progress using unified entity system
-    let progressHtml = '';
-    if (boardData.settings.showSubtaskProgress && card.taskIds && card.taskIds.length > 0) {
-        const tasks = card.taskIds.map(taskId => appData.entities.tasks[taskId]).filter(Boolean);
-        if (tasks.length > 0) {
-            const completed = tasks.filter(task => task.completed).length;
-            const total = tasks.length;
-            const percentage = Math.round((completed / total) * 100);
-            
-            progressHtml = `
-                <div class="card-progress">
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: ${percentage}%"></div>
-                    </div>
-                    <span class="progress-text">${completed}/${total} subtasks</span>
-                </div>
-            `;
+    if (typeof card === 'string') {
+        // New format: card is an entity ID
+        entityId = card;
+        entity = getEntity(entityId);
+        
+        if (!entity) {
+            console.warn('Entity not found for card:', entityId);
+            // Create a placeholder card element
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'card error-card';
+            errorDiv.innerHTML = '<div class="card-content">⚠️ Entity not found</div>';
+            return errorDiv;
         }
+    } else {
+        // Old format: card is an object - this shouldn't happen after migration
+        console.warn('Using legacy card object format:', card);
+        entity = card;
+        entityId = card.id;
     }
     
-    // Generate due date display
-    let dueDateHtml = '';
-    if (card.dueDate) {
-        const dueDate = new Date(card.dueDate);
-        const today = new Date();
-        const isOverdue = dueDate < today;
-        const isToday = dueDate.toDateString() === today.toDateString();
-        
-        let dueDateClass = 'card-due-date';
-        if (isOverdue) dueDateClass += ' overdue';
-        else if (isToday) dueDateClass += ' today';
-        
-        dueDateHtml = `
-            <div class="${dueDateClass}">
-                📅 ${dueDate.toLocaleDateString()}
-            </div>
-        `;
+    // Use the unified entity renderer for board context
+    const contextData = {
+        boardId: boardData.id,
+        rowId: rowId,
+        columnKey: columnKey,
+        showCheckboxes: boardData.settings.showCheckboxes,
+        showSubtaskProgress: boardData.settings.showSubtaskProgress
+    };
+    
+    const cardElement = renderEntity(entityId, CONTEXT_TYPES.BOARD, contextData);
+    
+    if (!cardElement) {
+        // Fallback if entity renderer fails
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'card error-card';
+        errorDiv.innerHTML = '<div class="card-content">⚠️ Render failed</div>';
+        return errorDiv;
     }
     
-    // Generate priority display
-    let priorityHtml = '';
-    if (card.priority && card.priority !== 'medium') {
-        const priorityIcons = {
-            'low': '🔵',
-            'high': '🔴',
-            'urgent': '⚡'
-        };
-        const priorityColors = {
-            'low': '#4CAF50',
-            'high': '#FF9800', 
-            'urgent': '#F44336'
-        };
-        
-        priorityHtml = `
-            <div class="card-priority priority-${card.priority}" style="color: ${priorityColors[card.priority]}">
-                ${priorityIcons[card.priority]} ${card.priority.toUpperCase()}
-            </div>
-        `;
-    }
-
-    cardDiv.innerHTML = `
-        <div class="card-actions">
-            <button onclick="editCard(${card.id}, ${rowId}, '${columnKey}')" title="Edit">✏️</button>
-            <button onclick="deleteCard(${card.id}, ${rowId}, '${columnKey}')" title="Delete">🗑️</button>
-        </div>
-        <div class="card-content" onclick="showCardDetailModal(${card.id}, ${rowId}, '${columnKey}')">
-            <div class="card-title">${card.title}</div>
-            <div class="card-description">${card.description}</div>
-            ${dueDateHtml}
-            ${priorityHtml}
-            ${progressHtml}
-        </div>
-        ${checkboxHtml}
-    `;
+    // Add board-specific data attributes
+    cardElement.dataset.cardId = entityId;
+    cardElement.dataset.rowId = rowId;
+    cardElement.dataset.columnKey = columnKey;
     
-    // SortableJS will handle drag events
-    
-    return cardDiv;
+    return cardElement;
 }
 
 /**

@@ -22,6 +22,10 @@ import * as columnOperations from './column-operations.js';
 import * as groupOperations from './group-operations.js';
 import * as subtaskManagement from './subtask-management.js';
 import * as entitySystem from './entity-system.js';
+import * as entityCore from './entity-core.js';
+import * as entityRenderer from './entity-renderer.js';
+import * as entityMigration from './entity-migration.js';
+import * as entitySync from './entity-sync.js';
 import * as dataMigration from './data-migration.js';
 import * as dragDrop from './drag-drop.js';
 
@@ -47,11 +51,34 @@ function initializeGridFlow() {
     window.groupOperations = groupOperations;
     window.subtaskManagement = subtaskManagement;
     window.entitySystem = entitySystem;
+    window.entityCore = entityCore;
+    window.entityRenderer = entityRenderer;
+    window.entityMigration = entityMigration;
+    window.entitySync = entitySync;
     window.dataMigration = dataMigration;
     window.dragDrop = dragDrop;
     
     // Load data first
     const { appData, boardData } = coreData.loadData();
+    
+    // Check if entity migration is needed
+    if (entityMigration.isMigrationNeeded()) {
+        console.log('Entity migration needed, starting migration...');
+        const migrationResult = entityMigration.migrateToEntitySystem();
+        console.log('Migration completed:', migrationResult);
+        
+        // Show migration status to user
+        const status = entityMigration.getMigrationStatus();
+        utilities.showStatusMessage(
+            `Migration completed: ${status.entities.total} entities, ${status.cards.migrated} cards migrated`, 
+            'success'
+        );
+    } else {
+        console.log('Entity system already up to date');
+    }
+    
+    // Initialize entity synchronization system
+    entitySync.initializeEntitySync();
     
     // Initialize utilities (will now handle missing DOM elements gracefully)
     utilities.setupEventListeners();
