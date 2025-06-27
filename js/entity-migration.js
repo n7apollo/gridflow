@@ -12,7 +12,7 @@ import { showStatusMessage } from './utilities.js';
  * Migrate all existing data to unified entity system
  * @returns {Object} Migration results
  */
-export function migrateToEntitySystem() {
+function migrateToEntitySystem() {
     console.log('Starting migration to unified entity system...');
     
     // Create backup before migration
@@ -276,7 +276,7 @@ function convertWeeklyItemToEntityData(item) {
  * Check if migration is needed
  * @returns {boolean} True if migration is needed
  */
-export function isMigrationNeeded() {
+function isMigrationNeeded() {
     const appData = getAppData();
     
     // Check if entities structure exists
@@ -315,7 +315,7 @@ export function isMigrationNeeded() {
  * Get migration status report
  * @returns {Object} Migration status
  */
-export function getMigrationStatus() {
+function getMigrationStatus() {
     const appData = getAppData();
     
     let totalCards = 0;
@@ -376,7 +376,7 @@ export function getMigrationStatus() {
  * Rollback migration (restore from backup if available)
  * @returns {boolean} Success
  */
-export function rollbackMigration() {
+function rollbackMigration() {
     try {
         // Check if there's a backup in localStorage
         const backupKey = 'gridflow_data_pre_entity_migration';
