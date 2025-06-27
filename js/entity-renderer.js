@@ -394,42 +394,55 @@ function setupCardEventListeners(cardElement, entity) {
         cardElement.classList.remove('dragging');
     });
     
-    // Add click handler for card selection
+    // Add click handler for card detail view
     cardElement.addEventListener('click', (e) => {
         if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') {
             return; // Don't handle card click if button/input was clicked
         }
         
-        // Highlight selected card
-        document.querySelectorAll('.card.selected').forEach(card => {
-            card.classList.remove('selected');
-        });
-        cardElement.classList.add('selected');
+        // Open entity detail modal
+        showEntityDetail(entity.id);
     });
 }
 
 /**
  * Edit entity (opens appropriate modal)
  */
-export function editEntity(entityId) {
+/**
+ * Show comprehensive entity detail modal
+ * @param {string} entityId - Entity ID to display
+ */
+export function showEntityDetail(entityId) {
     const entity = getEntity(entityId);
-    if (!entity) return;
-    
-    // Check if there's already an entity edit modal, if not use existing card modal
-    const modal = document.getElementById('cardModal') || document.getElementById('weeklyItemModal');
-    if (!modal) {
-        // Fallback to prompt if no modal available
-        const newTitle = prompt(`Edit ${entity.type} title:`, entity.title);
-        if (newTitle !== null && newTitle.trim()) {
-            updateEntity(entityId, { title: newTitle.trim() });
-            showStatusMessage(`${entity.type} updated`, 'success');
-            refreshEntityDisplays(entityId);
-        }
+    if (!entity) {
+        console.warn('Entity not found:', entityId);
         return;
     }
     
-    // Set up modal for entity editing
-    setupEntityEditModal(modal, entity);
+    const modal = document.getElementById('entityDetailModal');
+    if (!modal) {
+        console.warn('Entity detail modal not found');
+        return;
+    }
+    
+    // Store current entity for modal operations
+    currentEditingEntity = entity;
+    
+    // Populate modal with entity data
+    populateEntityDetailModal(entity);
+    
+    // Show modal
+    modal.style.display = 'block';
+    
+    // Add event listeners for modal interactions
+    setupEntityDetailListeners();
+}
+
+/**
+ * Legacy editEntity function for backward compatibility
+ */
+export function editEntity(entityId) {
+    showEntityDetail(entityId);
 }
 
 /**
@@ -651,13 +664,368 @@ function getContextDataFromElement(element) {
     return contextData;
 }
 
+/**
+ * Populate the entity detail modal with entity data
+ * @param {Object} entity - Entity object
+ */
+function populateEntityDetailModal(entity) {
+    // Get all the modal elements
+    const elements = {
+        icon: document.getElementById('entityIcon'),
+        title: document.getElementById('entityDetailTitle'),
+        typeBadge: document.getElementById('entityTypeBadge'),
+        idDisplay: document.getElementById('entityIdDisplay'),
+        completed: document.getElementById('entityCompleted'),
+        description: document.getElementById('entityDescription'),
+        priority: document.getElementById('entityPriority'),
+        dueDate: document.getElementById('entityDueDate'),
+        projectStatus: document.getElementById('projectStatus'),
+        projectTeam: document.getElementById('projectTeam'),
+        created: document.getElementById('entityCreated'),
+        modified: document.getElementById('entityModified'),
+        board: document.getElementById('entityBoard')
+    };
+    
+    // Populate basic information
+    if (elements.icon) elements.icon.textContent = getEntityTypeIcon(entity.type);
+    if (elements.title) elements.title.textContent = entity.title || 'Untitled';
+    if (elements.typeBadge) elements.typeBadge.textContent = entity.type.charAt(0).toUpperCase() + entity.type.slice(1);
+    if (elements.idDisplay) elements.idDisplay.textContent = entity.id;
+    if (elements.completed) elements.completed.checked = entity.completed || false;
+    if (elements.description) elements.description.value = entity.content || '';
+    
+    // Populate task-specific fields
+    if (entity.type === ENTITY_TYPES.TASK) {
+        if (elements.priority) elements.priority.value = entity.priority || 'medium';
+        if (elements.dueDate) elements.dueDate.value = entity.dueDate || '';
+    }
+    
+    // Populate project-specific fields
+    if (entity.type === ENTITY_TYPES.PROJECT) {
+        if (elements.projectStatus) elements.projectStatus.value = entity.status || 'planning';
+        if (elements.projectTeam) elements.projectTeam.value = entity.team || '';
+    }
+    
+    // Show/hide type-specific sections
+    showTypeSpecificSections(entity.type);
+    
+    // Populate metadata
+    if (elements.created) elements.created.textContent = formatDate(entity.createdAt) || 'Unknown';
+    if (elements.modified) elements.modified.textContent = formatDate(entity.updatedAt) || 'Unknown';
+    
+    // Populate weekly planning status
+    updateWeeklyPlanningStatus(entity);
+    
+    // Populate tags
+    populateEntityTags(entity);
+    
+    // Populate subtasks
+    populateSubtasks(entity);
+    
+    // Populate checklist items if checklist
+    if (entity.type === ENTITY_TYPES.CHECKLIST) {
+        populateChecklistItems(entity);
+    }
+}
+
+/**
+ * Show/hide sections based on entity type
+ * @param {string} entityType - Type of entity
+ */
+function showTypeSpecificSections(entityType) {
+    // Hide all type-specific sections first
+    const taskSection = document.getElementById('taskSpecificSection');
+    const checklistSection = document.getElementById('checklistSection');
+    const projectSection = document.getElementById('projectSection');
+    
+    if (taskSection) taskSection.style.display = 'none';
+    if (checklistSection) checklistSection.style.display = 'none';
+    if (projectSection) projectSection.style.display = 'none';
+    
+    // Show relevant section
+    switch (entityType) {
+        case ENTITY_TYPES.TASK:
+            if (taskSection) taskSection.style.display = 'block';
+            break;
+        case ENTITY_TYPES.CHECKLIST:
+            if (checklistSection) checklistSection.style.display = 'block';
+            break;
+        case ENTITY_TYPES.PROJECT:
+            if (projectSection) projectSection.style.display = 'block';
+            break;
+    }
+}
+
+/**
+ * Setup event listeners for entity detail modal
+ */
+function setupEntityDetailListeners() {
+    // Remove existing listeners to prevent duplicates
+    const modal = document.getElementById('entityDetailModal');
+    if (!modal) return;
+    
+    // Clone and replace to remove all event listeners
+    const newModal = modal.cloneNode(true);
+    modal.parentNode.replaceChild(newModal, modal);
+    
+    // Add fresh event listeners
+    newModal.addEventListener('click', handleEntityDetailClick);
+    newModal.addEventListener('change', handleEntityDetailChange);
+    newModal.addEventListener('input', handleEntityDetailInput);
+}
+
+/**
+ * Handle clicks in entity detail modal
+ * @param {Event} event - Click event
+ */
+function handleEntityDetailClick(event) {
+    const action = event.target.dataset.action;
+    if (!action || !currentEditingEntity) return;
+    
+    event.preventDefault();
+    
+    switch (action) {
+        case 'closeEntityDetailModal':
+            closeEntityDetailModal();
+            break;
+        case 'saveEntityChanges':
+            saveEntityChanges();
+            break;
+        case 'addToWeeklyPlan':
+            addEntityToWeeklyPlan(currentEditingEntity.id);
+            break;
+        case 'duplicateEntity':
+            duplicateCurrentEntity();
+            break;
+        case 'deleteEntity':
+            deleteCurrentEntity();
+            break;
+        case 'addSubtask':
+            addSubtaskToEntity();
+            break;
+        case 'addChecklistItem':
+            addChecklistItemToEntity();
+            break;
+    }
+}
+
+/**
+ * Handle input changes in entity detail modal
+ * @param {Event} event - Change event
+ */
+function handleEntityDetailChange(event) {
+    if (!currentEditingEntity) return;
+    
+    const element = event.target;
+    const id = element.id;
+    
+    // Auto-save certain changes
+    switch (id) {
+        case 'entityCompleted':
+            toggleEntityCompletion(currentEditingEntity.id);
+            break;
+    }
+}
+
+/**
+ * Handle text input in entity detail modal
+ * @param {Event} event - Input event
+ */
+function handleEntityDetailInput(event) {
+    // Could add auto-save functionality here
+}
+
+/**
+ * Close entity detail modal
+ */
+export function closeEntityDetailModal() {
+    const modal = document.getElementById('entityDetailModal');
+    if (modal) modal.style.display = 'none';
+    currentEditingEntity = null;
+}
+
+/**
+ * Save changes from entity detail modal
+ */
+function saveEntityChanges() {
+    if (!currentEditingEntity) return;
+    
+    const elements = {
+        title: document.getElementById('entityDetailTitle'),
+        description: document.getElementById('entityDescription'),
+        priority: document.getElementById('entityPriority'),
+        dueDate: document.getElementById('entityDueDate'),
+        projectStatus: document.getElementById('projectStatus'),
+        projectTeam: document.getElementById('projectTeam')
+    };
+    
+    const updates = {};
+    
+    // Collect changes
+    if (elements.title) updates.title = elements.title.textContent.trim();
+    if (elements.description) updates.content = elements.description.value.trim();
+    
+    if (currentEditingEntity.type === ENTITY_TYPES.TASK) {
+        if (elements.priority) updates.priority = elements.priority.value;
+        if (elements.dueDate) updates.dueDate = elements.dueDate.value || null;
+    }
+    
+    if (currentEditingEntity.type === ENTITY_TYPES.PROJECT) {
+        if (elements.projectStatus) updates.status = elements.projectStatus.value;
+        if (elements.projectTeam) updates.team = elements.projectTeam.value;
+    }
+    
+    // Update entity
+    updateEntity(currentEditingEntity.id, updates);
+    refreshEntityDisplays(currentEditingEntity.id);
+    showStatusMessage('Entity updated successfully', 'success');
+    
+    closeEntityDetailModal();
+}
+
+/**
+ * Add entity to weekly plan
+ * @param {string} entityId - Entity ID
+ */
+function addEntityToWeeklyPlan(entityId) {
+    if (window.weeklyPlanning && window.weeklyPlanning.addEntityToCurrentWeek) {
+        window.weeklyPlanning.addEntityToCurrentWeek(entityId);
+        updateWeeklyPlanningStatus(getEntity(entityId));
+        showStatusMessage('Added to weekly plan', 'success');
+    } else {
+        showStatusMessage('Weekly planning not available', 'warning');
+    }
+}
+
+/**
+ * Update weekly planning status in modal
+ * @param {Object} entity - Entity object
+ */
+function updateWeeklyPlanningStatus(entity) {
+    const statusContainer = document.getElementById('weeklyStatus');
+    if (!statusContainer) return;
+    
+    // Check if entity is in weekly plans
+    // This would need to be implemented based on your weekly planning system
+    statusContainer.innerHTML = '<p class="no-weekly">Not in any weekly plan</p>';
+}
+
+/**
+ * Populate entity tags
+ * @param {Object} entity - Entity object
+ */
+function populateEntityTags(entity) {
+    const tagsContainer = document.getElementById('entityTags');
+    if (!tagsContainer) return;
+    
+    tagsContainer.innerHTML = '';
+    
+    if (entity.tags && entity.tags.length > 0) {
+        entity.tags.forEach(tag => {
+            const tagElement = document.createElement('span');
+            tagElement.className = 'tag';
+            tagElement.textContent = tag;
+            tagsContainer.appendChild(tagElement);
+        });
+    }
+}
+
+/**
+ * Populate subtasks
+ * @param {Object} entity - Entity object
+ */
+function populateSubtasks(entity) {
+    const subtasksList = document.getElementById('subtasksList');
+    if (!subtasksList) return;
+    
+    subtasksList.innerHTML = '';
+    
+    // This would integrate with the relationships system
+    // For now, show placeholder
+    subtasksList.innerHTML = '<p class="empty-state">No subtasks yet</p>';
+}
+
+/**
+ * Populate checklist items
+ * @param {Object} entity - Entity object
+ */
+function populateChecklistItems(entity) {
+    const checklistItems = document.getElementById('checklistItems');
+    if (!checklistItems || entity.type !== ENTITY_TYPES.CHECKLIST) return;
+    
+    checklistItems.innerHTML = '';
+    
+    if (entity.items && entity.items.length > 0) {
+        entity.items.forEach((item, index) => {
+            const itemElement = document.createElement('div');
+            itemElement.className = 'checklist-item';
+            itemElement.innerHTML = `
+                <input type="checkbox" ${item.completed ? 'checked' : ''} 
+                       onchange="toggleChecklistItem('${entity.id}', ${index})">
+                <span class="item-text ${item.completed ? 'completed' : ''}">${item.text}</span>
+                <button class="btn btn-small btn-danger" onclick="removeChecklistItem('${entity.id}', ${index})">×</button>
+            `;
+            checklistItems.appendChild(itemElement);
+        });
+    } else {
+        checklistItems.innerHTML = '<p class="empty-state">No items yet</p>';
+    }
+}
+
+/**
+ * Duplicate current entity
+ */
+function duplicateCurrentEntity() {
+    if (!currentEditingEntity) return;
+    
+    // Implementation would depend on your entity creation system
+    showStatusMessage('Duplicate functionality coming soon', 'info');
+}
+
+/**
+ * Delete current entity
+ */
+function deleteCurrentEntity() {
+    if (!currentEditingEntity) return;
+    
+    if (confirm(`Are you sure you want to delete this ${currentEditingEntity.type}?`)) {
+        // Implementation would depend on your entity deletion system
+        showStatusMessage('Delete functionality coming soon', 'info');
+    }
+}
+
+/**
+ * Format date for display
+ * @param {string} dateString - ISO date string
+ * @returns {string} Formatted date
+ */
+function formatDate(dateString) {
+    if (!dateString) return '';
+    try {
+        return new Date(dateString).toLocaleDateString();
+    } catch (e) {
+        return dateString;
+    }
+}
+
+// Placeholder functions for missing functionality
+function addSubtaskToEntity() {
+    showStatusMessage('Subtask functionality coming soon', 'info');
+}
+
+function addChecklistItemToEntity() {
+    showStatusMessage('Add checklist item functionality coming soon', 'info');
+}
+
 // Make functions available globally
 if (typeof window !== 'undefined') {
     window.entityRenderer = {
         renderEntity,
         editEntity,
+        showEntityDetail,
         toggleCompletion,
-        removeFromWeekly
+        removeFromWeekly,
+        closeEntityDetailModal
     };
 }
 

@@ -71,6 +71,163 @@ class GridFlowModals extends HTMLElement {
 
     getTemplate() {
         return `
+            <!-- Entity Detail View Modal -->
+            <div class="modal modal-large" id="entityDetailModal">
+                <div class="modal-content entity-detail-content">
+                    <div class="modal-header">
+                        <div class="entity-header">
+                            <div class="entity-icon" id="entityIcon">📋</div>
+                            <div class="entity-title-section">
+                                <h2 id="entityDetailTitle" class="entity-title" contenteditable="true">Entity Title</h2>
+                                <div class="entity-meta">
+                                    <span class="entity-type-badge" id="entityTypeBadge">Task</span>
+                                    <span class="entity-id" id="entityIdDisplay">task_1</span>
+                                </div>
+                            </div>
+                            <div class="entity-status">
+                                <label class="completion-toggle">
+                                    <input type="checkbox" id="entityCompleted">
+                                    <span class="completion-label">Complete</span>
+                                </label>
+                            </div>
+                        </div>
+                        <button class="close-btn" data-action="closeEntityDetailModal">&times;</button>
+                    </div>
+
+                    <div class="modal-body entity-detail-body">
+                        <div class="entity-content-grid">
+                            <!-- Left Column - Main Content -->
+                            <div class="entity-main-content">
+                                <!-- Description Section -->
+                                <div class="content-section">
+                                    <h3>Description</h3>
+                                    <div class="content-editor">
+                                        <textarea id="entityDescription" placeholder="Add a description..." rows="4"></textarea>
+                                    </div>
+                                </div>
+
+                                <!-- Task-specific sections -->
+                                <div class="content-section task-only" id="taskSpecificSection">
+                                    <h3>Task Details</h3>
+                                    <div class="task-properties">
+                                        <div class="property-row">
+                                            <label for="entityPriority">Priority:</label>
+                                            <select id="entityPriority">
+                                                <option value="low">🟢 Low</option>
+                                                <option value="medium">🟡 Medium</option>
+                                                <option value="high">🔴 High</option>
+                                            </select>
+                                        </div>
+                                        <div class="property-row">
+                                            <label for="entityDueDate">Due Date:</label>
+                                            <input type="date" id="entityDueDate">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Checklist-specific section -->
+                                <div class="content-section checklist-only" id="checklistSection">
+                                    <h3>Checklist Items</h3>
+                                    <div class="checklist-items" id="checklistItems">
+                                        <!-- Checklist items will be populated here -->
+                                    </div>
+                                    <button class="btn btn-secondary btn-small" data-action="addChecklistItem">+ Add Item</button>
+                                </div>
+
+                                <!-- Project-specific section -->
+                                <div class="content-section project-only" id="projectSection">
+                                    <h3>Project Details</h3>
+                                    <div class="project-properties">
+                                        <div class="property-row">
+                                            <label for="projectStatus">Status:</label>
+                                            <select id="projectStatus">
+                                                <option value="planning">📋 Planning</option>
+                                                <option value="active">🚀 Active</option>
+                                                <option value="on-hold">⏸️ On Hold</option>
+                                                <option value="completed">✅ Completed</option>
+                                            </select>
+                                        </div>
+                                        <div class="property-row">
+                                            <label for="projectTeam">Team:</label>
+                                            <input type="text" id="projectTeam" placeholder="Team members...">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Subtasks Section -->
+                                <div class="content-section" id="subtasksSection">
+                                    <h3>Subtasks</h3>
+                                    <div class="subtasks-list" id="subtasksList">
+                                        <!-- Subtasks will be populated here -->
+                                    </div>
+                                    <button class="btn btn-secondary btn-small" data-action="addSubtask">+ Add Subtask</button>
+                                </div>
+                            </div>
+
+                            <!-- Right Column - Sidebar -->
+                            <div class="entity-sidebar">
+                                <!-- Actions Section -->
+                                <div class="sidebar-section">
+                                    <h4>Actions</h4>
+                                    <div class="action-buttons">
+                                        <button class="btn btn-primary btn-block" data-action="addToWeeklyPlan">📅 Add to Weekly Plan</button>
+                                        <button class="btn btn-secondary btn-block" data-action="duplicateEntity">📋 Duplicate</button>
+                                        <button class="btn btn-secondary btn-block" data-action="moveToBoard">🔀 Move to Board</button>
+                                    </div>
+                                </div>
+
+                                <!-- Weekly Planning Section -->
+                                <div class="sidebar-section" id="weeklyPlanSection">
+                                    <h4>Weekly Planning</h4>
+                                    <div class="weekly-status" id="weeklyStatus">
+                                        <p class="no-weekly">Not in any weekly plan</p>
+                                    </div>
+                                </div>
+
+                                <!-- Tags Section -->
+                                <div class="sidebar-section">
+                                    <h4>Tags</h4>
+                                    <div class="tags-container" id="entityTags">
+                                        <!-- Tags will be populated here -->
+                                    </div>
+                                    <input type="text" id="newTagInput" placeholder="Add tag..." class="tag-input">
+                                </div>
+
+                                <!-- Metadata Section -->
+                                <div class="sidebar-section">
+                                    <h4>Details</h4>
+                                    <div class="metadata">
+                                        <div class="meta-item">
+                                            <span class="meta-label">Created:</span>
+                                            <span class="meta-value" id="entityCreated">-</span>
+                                        </div>
+                                        <div class="meta-item">
+                                            <span class="meta-label">Modified:</span>
+                                            <span class="meta-value" id="entityModified">-</span>
+                                        </div>
+                                        <div class="meta-item">
+                                            <span class="meta-label">Board:</span>
+                                            <span class="meta-value" id="entityBoard">-</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Danger Zone -->
+                                <div class="sidebar-section danger-zone">
+                                    <h4>Danger Zone</h4>
+                                    <button class="btn btn-danger btn-block" data-action="deleteEntity">🗑️ Delete</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button class="btn btn-primary" data-action="saveEntityChanges">Save Changes</button>
+                        <button class="btn btn-secondary" data-action="closeEntityDetailModal">Close</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Card Modal -->
             <div class="modal" id="cardModal">
                 <div class="modal-content">
