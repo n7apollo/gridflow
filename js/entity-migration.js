@@ -467,6 +467,7 @@ if (typeof window !== 'undefined') {
 }
 
 export {
+    migrateToEntitySystem,
     isMigrationNeeded,
     getMigrationStatus,
     rollbackMigration,
