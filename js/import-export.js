@@ -303,77 +303,390 @@ export function importFromJSON() {
     
     if (!file) return;
     
+    // Close export modal and show progress modal
+    closeExportModal();
+    showImportProgressModal();
+    
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = async function(e) {
         try {
-            const importedData = JSON.parse(e.target.result);
-            
-            // Use the migration system to handle any version of data
-            console.log('Starting import process...');
-            const migratedData = migrateData(importedData);
-            
-            // Ask user if they want to merge or replace data
-            const hasExistingData = Object.keys(appData.boards).length > 0;
-            let shouldMerge = false;
-            
-            if (hasExistingData) {
-                const choice = confirm(
-                    'You have existing data. How would you like to import?\n\n' +
-                    'OK = Merge with existing data\n' +
-                    'Cancel = Replace all data\n\n' +
-                    'Note: Merging will add new boards and preserve existing ones.'
-                );
-                shouldMerge = choice;
-            }
-            
-            if (shouldMerge) {
-                // Merge imported data with existing data
-                mergeImportedData(migratedData);
-            } else {
-                // Replace all data
-                Object.assign(appData, migratedData);
-            }
-            
-            // Ensure current board exists and is set
-            if (!appData.boards[appData.currentBoardId]) {
-                appData.currentBoardId = Object.keys(appData.boards)[0] || 'default';
-            }
-            
-            // Update boardData reference
-            const currentBoard = appData.boards[appData.currentBoardId];
-            Object.assign(boardData, currentBoard);
-            
-            // Update UI - these functions need to be called from window if they exist
-            if (window.updateBoardTitle) window.updateBoardTitle();
-            if (window.updateBoardSelector) window.updateBoardSelector();
-            if (window.renderBoard) window.renderBoard();
-            if (window.updateSettingsUI) window.updateSettingsUI();
-            saveData();
-            
-            // Show success message
-            const boardCount = Object.keys(appData.boards).length;
-            const importDate = importedData.exportedAt ? 
-                new Date(importedData.exportedAt).toLocaleDateString() : 'Unknown date';
-            const importVersion = importedData.version || 'Unknown';
-            
-            showStatusMessage(
-                `Import successful! ${boardCount} boards available. ` +
-                `(Version ${importVersion} data from ${importDate})`, 
-                'success'
-            );
-            
-            fileInput.value = '';
-            closeExportModal();
-            
+            await performImportWithProgress(e.target.result, file.name);
         } catch (error) {
             console.error('Import failed:', error);
-            showStatusMessage(
-                `Import failed: ${error.message || 'Invalid file format'}`, 
-                'error'
-            );
+            updateImportStep('parse', 'error', 'Failed');
+            addMigrationLog(`Import failed: ${error.message}`, 'error');
+        } finally {
+            // Clear file input
+            fileInput.value = '';
         }
     };
     reader.readAsText(file);
+}
+
+/**
+ * Show the import progress modal
+ */
+export function showImportProgressModal() {
+    const modal = document.getElementById('importProgressModal');
+    if (modal) {
+        modal.style.display = 'block';
+        resetImportProgress();
+    }
+}
+
+/**
+ * Close the import progress modal
+ */
+export function closeImportProgress() {
+    const modal = document.getElementById('importProgressModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+/**
+ * Refresh page after import
+ */
+export function refreshAfterImport() {
+    window.location.reload();
+}
+
+/**
+ * Reset import progress to initial state
+ */
+function resetImportProgress() {
+    // Reset progress bar
+    updateProgress(0, 'Analyzing file...');
+    
+    // Reset steps
+    const steps = ['parse', 'validate', 'migrate', 'merge', 'save'];
+    steps.forEach(step => {
+        updateImportStep(step, 'pending', '');
+    });
+    
+    // Reset stats
+    updateImportStats({});
+    
+    // Clear migration log
+    clearMigrationLog();
+    
+    // Hide actions
+    const actions = document.getElementById('importActions');
+    if (actions) actions.style.display = 'none';
+}
+
+/**
+ * Update progress bar and label
+ */
+function updateProgress(percentage, label) {
+    const progressFill = document.getElementById('importProgressFill');
+    const progressLabel = document.querySelector('.progress-label');
+    const progressPercentage = document.querySelector('.progress-percentage');
+    
+    if (progressFill) progressFill.style.width = `${percentage}%`;
+    if (progressLabel) progressLabel.textContent = label;
+    if (progressPercentage) progressPercentage.textContent = `${Math.round(percentage)}%`;
+}
+
+/**
+ * Update import step status
+ */
+function updateImportStep(stepId, status, statusText) {
+    const step = document.getElementById(`step-${stepId}`);
+    if (!step) return;
+    
+    // Remove existing status classes
+    step.classList.remove('pending', 'active', 'completed', 'error');
+    
+    // Add new status class
+    step.classList.add(status);
+    
+    // Update icon based on status
+    const icon = step.querySelector('.step-icon');
+    const statusEl = step.querySelector('.step-status');
+    
+    if (icon) {
+        switch (status) {
+            case 'active':
+                icon.textContent = '⏳';
+                break;
+            case 'completed':
+                icon.textContent = '✅';
+                break;
+            case 'error':
+                icon.textContent = '❌';
+                break;
+            default:
+                icon.textContent = '⏳';
+        }
+    }
+    
+    if (statusEl) {
+        statusEl.textContent = statusText;
+    }
+}
+
+/**
+ * Update import statistics
+ */
+function updateImportStats(stats) {
+    const elements = {
+        'stat-boards': stats.boards || '-',
+        'stat-cards': stats.cards || '-',
+        'stat-templates': stats.templates || '-',
+        'stat-weekly': stats.weeklyItems || '-',
+        'stat-entities': stats.entities || '-'
+    };
+    
+    Object.keys(elements).forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = elements[id];
+    });
+}
+
+/**
+ * Add entry to migration log
+ */
+function addMigrationLog(message, type = 'info') {
+    const log = document.getElementById('migrationLog');
+    if (!log) return;
+    
+    const entry = document.createElement('div');
+    entry.className = `log-entry ${type}`;
+    entry.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+    
+    log.appendChild(entry);
+    log.scrollTop = log.scrollHeight;
+}
+
+/**
+ * Clear migration log
+ */
+function clearMigrationLog() {
+    const log = document.getElementById('migrationLog');
+    if (log) log.innerHTML = '';
+}
+
+/**
+ * Perform import with progress updates
+ */
+async function performImportWithProgress(fileContent, fileName) {
+    addMigrationLog(`Starting import of ${fileName}`);
+    
+    // Step 1: Parse JSON
+    updateProgress(10, 'Parsing JSON file...');
+    updateImportStep('parse', 'active', 'Processing...');
+    
+    await delay(300); // Give UI time to update
+    
+    let importedData;
+    try {
+        importedData = JSON.parse(fileContent);
+        updateImportStep('parse', 'completed', 'Complete');
+        addMigrationLog('JSON parsing successful', 'success');
+    } catch (error) {
+        updateImportStep('parse', 'error', 'Failed');
+        addMigrationLog(`JSON parsing failed: ${error.message}`, 'error');
+        throw error;
+    }
+    
+    // Step 2: Validate data structure
+    updateProgress(25, 'Validating data structure...');
+    updateImportStep('validate', 'active', 'Checking...');
+    
+    await delay(200);
+    
+    try {
+        const stats = analyzeImportData(importedData);
+        updateImportStats(stats);
+        updateImportStep('validate', 'completed', 'Valid');
+        addMigrationLog(`Data validation complete: ${stats.boards} boards, ${stats.cards} cards`, 'success');
+    } catch (error) {
+        updateImportStep('validate', 'error', 'Invalid');
+        addMigrationLog(`Data validation failed: ${error.message}`, 'error');
+        throw error;
+    }
+    
+    // Step 3: Migrate data format
+    updateProgress(50, 'Migrating data format...');
+    updateImportStep('migrate', 'active', 'Converting...');
+    
+    await delay(300);
+    
+    let migratedData;
+    try {
+        const originalVersion = importedData.version || detectVersion(importedData);
+        migratedData = migrateData(importedData);
+        updateImportStep('migrate', 'completed', 'Migrated');
+        addMigrationLog(`Migrated from version ${originalVersion} to ${migratedData.version}`, 'success');
+    } catch (error) {
+        updateImportStep('migrate', 'error', 'Failed');
+        addMigrationLog(`Migration failed: ${error.message}`, 'error');
+        throw error;
+    }
+    
+    // Step 4: Merge with existing data
+    updateProgress(75, 'Merging with existing data...');
+    updateImportStep('merge', 'active', 'Merging...');
+    
+    await delay(200);
+    
+    try {
+        // Ask user if they want to merge or replace data
+        const hasExistingData = Object.keys(appData.boards).length > 0;
+        let shouldMerge = false;
+        
+        if (hasExistingData) {
+            const choice = confirm(
+                'You have existing data. How would you like to import?\n\n' +
+                'OK = Merge with existing data\n' +
+                'Cancel = Replace all data\n\n' +
+                'Note: Merging will add new boards and preserve existing ones.'
+            );
+            shouldMerge = choice;
+        }
+        
+        if (shouldMerge) {
+            mergeImportedData(migratedData);
+            addMigrationLog('Data merged with existing workspace', 'success');
+        } else {
+            Object.assign(appData, migratedData);
+            addMigrationLog('Data replaced existing workspace', 'success');
+        }
+        
+        updateImportStep('merge', 'completed', 'Merged');
+    } catch (error) {
+        updateImportStep('merge', 'error', 'Failed');
+        addMigrationLog(`Merge failed: ${error.message}`, 'error');
+        throw error;
+    }
+    
+    // Step 5: Save to storage
+    updateProgress(90, 'Saving to storage...');
+    updateImportStep('save', 'active', 'Saving...');
+    
+    await delay(200);
+    
+    try {
+        // Ensure current board exists and is set
+        if (!appData.boards[appData.currentBoardId]) {
+            appData.currentBoardId = Object.keys(appData.boards)[0] || 'default';
+        }
+        
+        // Update boardData reference
+        const currentBoard = appData.boards[appData.currentBoardId];
+        Object.assign(boardData, currentBoard);
+        
+        // Save data
+        saveData();
+        
+        updateImportStep('save', 'completed', 'Saved');
+        addMigrationLog('Data saved to localStorage', 'success');
+    } catch (error) {
+        updateImportStep('save', 'error', 'Failed');
+        addMigrationLog(`Save failed: ${error.message}`, 'error');
+        throw error;
+    }
+    
+    // Complete!
+    updateProgress(100, 'Import completed successfully!');
+    addMigrationLog('Import process completed successfully', 'success');
+    
+    // Update UI
+    try {
+        if (window.updateBoardTitle) window.updateBoardTitle();
+        if (window.updateBoardSelector) window.updateBoardSelector();
+        if (window.renderBoard) window.renderBoard();
+        if (window.updateSettingsUI) window.updateSettingsUI();
+        
+        addMigrationLog('UI updated successfully', 'success');
+    } catch (error) {
+        addMigrationLog(`UI update warning: ${error.message}`, 'warning');
+    }
+    
+    // Show completion actions
+    const actions = document.getElementById('importActions');
+    if (actions) actions.style.display = 'flex';
+    
+    // Show final success message
+    const boardCount = Object.keys(appData.boards).length;
+    const importDate = importedData.exportedAt ? 
+        new Date(importedData.exportedAt).toLocaleDateString() : 'Unknown date';
+    const importVersion = importedData.version || 'Unknown';
+    
+    showStatusMessage(
+        `Import successful! ${boardCount} boards available. ` +
+        `(Version ${importVersion} data from ${importDate})`, 
+        'success'
+    );
+}
+
+/**
+ * Analyze import data to provide statistics
+ */
+function analyzeImportData(data) {
+    const stats = {
+        boards: 0,
+        cards: 0,
+        templates: 0,
+        weeklyItems: 0,
+        entities: 0
+    };
+    
+    // Count boards and cards
+    if (data.boards) {
+        stats.boards = Object.keys(data.boards).length;
+        
+        Object.values(data.boards).forEach(board => {
+            if (board.rows) {
+                board.rows.forEach(row => {
+                    if (row.cards) {
+                        Object.values(row.cards).forEach(cardList => {
+                            stats.cards += cardList.length;
+                        });
+                    }
+                });
+            }
+        });
+    }
+    
+    // Count templates
+    if (data.templates) {
+        stats.templates = data.templates.length;
+    }
+    
+    // Count weekly items
+    if (data.weeklyPlans) {
+        Object.values(data.weeklyPlans).forEach(plan => {
+            if (plan.items) {
+                stats.weeklyItems += plan.items.length;
+            }
+        });
+    }
+    
+    // Count entities
+    if (data.entities) {
+        if (typeof data.entities === 'object') {
+            if (data.entities.tasks || data.entities.notes || data.entities.checklists) {
+                // v4 format
+                stats.entities = Object.keys(data.entities.tasks || {}).length +
+                                Object.keys(data.entities.notes || {}).length +
+                                Object.keys(data.entities.checklists || {}).length;
+            } else {
+                // v5 format
+                stats.entities = Object.keys(data.entities).length;
+            }
+        }
+    }
+    
+    return stats;
+}
+
+/**
+ * Utility function to add delays for better UX
+ */
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 /**
@@ -483,4 +796,7 @@ if (typeof window !== 'undefined') {
     window.importFromJSON = importFromJSON;
     window.mergeImportedData = mergeImportedData;
     window.clearAllData = clearAllData;
+    window.showImportProgressModal = showImportProgressModal;
+    window.closeImportProgress = closeImportProgress;
+    window.refreshAfterImport = refreshAfterImport;
 }

@@ -445,6 +445,92 @@ class GridFlowModals extends HTMLElement {
                 </div>
             </div>
 
+            <!-- Import Progress Modal -->
+            <div class="modal" id="importProgressModal">
+                <div class="modal-content import-progress-content">
+                    <h2>Import Progress</h2>
+                    <div class="import-progress-container">
+                        <div class="progress-section">
+                            <div class="progress-header">
+                                <span class="progress-label">Analyzing file...</span>
+                                <span class="progress-percentage">0%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="importProgressFill"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="import-steps">
+                            <div class="import-step" id="step-parse">
+                                <span class="step-icon">⏳</span>
+                                <span class="step-text">Parsing JSON file</span>
+                                <span class="step-status"></span>
+                            </div>
+                            <div class="import-step" id="step-validate">
+                                <span class="step-icon">⏳</span>
+                                <span class="step-text">Validating data structure</span>
+                                <span class="step-status"></span>
+                            </div>
+                            <div class="import-step" id="step-migrate">
+                                <span class="step-icon">⏳</span>
+                                <span class="step-text">Migrating data format</span>
+                                <span class="step-status"></span>
+                            </div>
+                            <div class="import-step" id="step-merge">
+                                <span class="step-icon">⏳</span>
+                                <span class="step-text">Merging with existing data</span>
+                                <span class="step-status"></span>
+                            </div>
+                            <div class="import-step" id="step-save">
+                                <span class="step-icon">⏳</span>
+                                <span class="step-text">Saving to storage</span>
+                                <span class="step-status"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="import-details">
+                            <div class="detail-section">
+                                <h4>Import Summary</h4>
+                                <div class="import-stats" id="importStats">
+                                    <div class="stat-item">
+                                        <span class="stat-label">Boards:</span>
+                                        <span class="stat-value" id="stat-boards">-</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Cards:</span>
+                                        <span class="stat-value" id="stat-cards">-</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Templates:</span>
+                                        <span class="stat-value" id="stat-templates">-</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Weekly Items:</span>
+                                        <span class="stat-value" id="stat-weekly">-</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Entities:</span>
+                                        <span class="stat-value" id="stat-entities">-</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="detail-section">
+                                <h4>Migration Details</h4>
+                                <div class="migration-log" id="migrationLog">
+                                    <!-- Migration details will be added here -->
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="import-actions" style="display: none;" id="importActions">
+                            <button class="btn btn-primary" data-action="closeImportProgress">Close</button>
+                            <button class="btn btn-secondary" data-action="refreshAfterImport">Refresh Page</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Settings Modal -->
             <div class="modal" id="settingsModal">
                 <div class="modal-content">
