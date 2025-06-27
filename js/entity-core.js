@@ -42,8 +42,29 @@ export function createEntity(type, data) {
         appData.entities = {};
     }
     
-    // Generate unique ID
-    const entityId = `entity_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Generate unique ID using consistent format with other systems
+    let entityId;
+    switch (type) {
+        case ENTITY_TYPES.TASK:
+            if (!appData.nextTaskId) appData.nextTaskId = 1;
+            entityId = `task_${appData.nextTaskId++}`;
+            break;
+        case ENTITY_TYPES.NOTE:
+            if (!appData.nextNoteId) appData.nextNoteId = 1;
+            entityId = `note_${appData.nextNoteId++}`;
+            break;
+        case ENTITY_TYPES.CHECKLIST:
+            if (!appData.nextChecklistId) appData.nextChecklistId = 1;
+            entityId = `checklist_${appData.nextChecklistId++}`;
+            break;
+        case ENTITY_TYPES.PROJECT:
+            if (!appData.nextProjectId) appData.nextProjectId = 1;
+            entityId = `project_${appData.nextProjectId++}`;
+            break;
+        default:
+            // Fallback to timestamp-based ID for unknown types
+            entityId = `entity_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
     
     // Base entity structure
     const entity = {
@@ -523,6 +544,36 @@ export function searchEntities(criteria = {}) {
     });
 }
 
+/**
+ * Debug function to list all entities
+ * @returns {Object} Debug information about entities
+ */
+function debugEntities() {
+    const appData = getAppData();
+    const entities = appData.entities || {};
+    
+    console.log('=== ENTITY DEBUG ===');
+    console.log('Total entities:', Object.keys(entities).length);
+    
+    Object.keys(entities).forEach(entityId => {
+        const entity = entities[entityId];
+        console.log(`${entityId}: ${entity.title || 'Untitled'} (${entity.type})`);
+    });
+    
+    // Check weekly items
+    const weeklyPlans = appData.weeklyPlans || {};
+    console.log('\n=== WEEKLY ITEMS ===');
+    Object.keys(weeklyPlans).forEach(weekKey => {
+        const plan = weeklyPlans[weekKey];
+        console.log(`Week ${weekKey}:`);
+        (plan.items || []).forEach(item => {
+            console.log(`  ${item.id}: entityId=${item.entityId} (${item.entityId ? (entities[item.entityId] ? '✓' : '✗ MISSING') : 'no entityId'})`);
+        });
+    });
+    
+    return { entities, weeklyPlans };
+}
+
 // Make functions available globally for debugging
 if (typeof window !== 'undefined') {
     window.entityCore = {
@@ -535,6 +586,7 @@ if (typeof window !== 'undefined') {
         removeEntityFromContext,
         getEntitiesInContext,
         searchEntities,
+        debugEntities,
         ENTITY_TYPES,
         CONTEXT_TYPES
     };

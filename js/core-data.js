@@ -431,6 +431,7 @@ export function validateAndCleanData(data) {
     if (!data.nextTaskId) data.nextTaskId = Math.max(1, ...Object.keys(data.entities.tasks || {}).map(id => parseInt(id.replace('task_', '')) || 0)) + 1;
     if (!data.nextNoteId) data.nextNoteId = 1;
     if (!data.nextChecklistId) data.nextChecklistId = 1;
+    if (!data.nextProjectId) data.nextProjectId = 1;
     if (!data.nextCollectionId) data.nextCollectionId = 1;
     if (!data.nextTagId) data.nextTagId = 1;
     
@@ -471,6 +472,7 @@ export function initializeSampleData() {
         nextTaskId: 1,
         nextNoteId: 1,
         nextChecklistId: 1,
+        nextProjectId: 1,
         nextCollectionId: 1,
         nextTagId: 1,
         version: '5.0'
