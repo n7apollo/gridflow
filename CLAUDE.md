@@ -20,8 +20,8 @@ GridFlow is a web-based project management tool that combines Kanban boards with
 
 ## Architecture
 
-### Core Data Structure (v3.0)
-The application state is stored in a multi-board `appData` object:
+### Core Data Structure (v5.0)
+The application state is stored in a multi-board `appData` object with unified entity system:
 ```javascript
 appData = {
     currentBoardId: 'default',
@@ -29,55 +29,131 @@ appData = {
         'boardId': {
             name: 'Board Name',
             groups: [{ id, name, color, collapsed }],
-            rows: [{ id, name, description, groupId, cards: { columnKey: [cards] } }],
+            rows: [{ id, name, description, groupId, cards: { columnKey: ['entity_123', 'note_1'] } }],
             columns: [{ id, name, key }],
             settings: { showCheckboxes, showSubtaskProgress },
             nextRowId, nextCardId, nextColumnId, nextGroupId
         }
     },
+    entities: {
+        'task_1': { id, type: 'task', title, content, completed, priority, dueDate, tags, ... },
+        'note_1': { id, type: 'note', title, content, completed, tags, ... },
+        'checklist_1': { id, type: 'checklist', title, content, items, tags, ... },
+        'project_1': { id, type: 'project', title, content, status, team, milestones, ... }
+    },
     templates: [{ id, name, description, category, groups, rows, columns }],
+    templateLibrary: {
+        categories: ['Project Management', 'Personal', 'Business', 'Education'],
+        featured: [],
+        taskSets: {},
+        checklists: {},
+        noteTemplates: {}
+    },
     weeklyPlans: {
         'YYYY-Www': {
             weekStart: ISO_DATE,
             goal: 'Weekly focus goal',
-            items: [{ id, type, day, title, content, completed, ... }],
+            items: [{ id, entityId: 'note_1', day, addedAt }],
             reflection: { wins, challenges, learnings, nextWeekFocus }
         }
     },
+    collections: {},
+    tags: {},
+    relationships: {
+        entityTasks: {},
+        cardToWeeklyPlans: {},
+        weeklyPlanToCards: {},
+        entityTags: {},
+        collectionEntities: {},
+        templateUsage: {}
+    },
     nextTemplateId: 1,
+    nextTemplateLibraryId: 1,
     nextWeeklyItemId: 1,
-    version: '3.0'
+    nextTaskId: 1,
+    nextNoteId: 1,
+    nextChecklistId: 1,
+    nextProjectId: 1,
+    nextCollectionId: 1,
+    nextTagId: 1,
+    version: '5.0'
 }
 ```
 
 ### Key Technical Components
 
+**Unified Entity System**: Single source of truth for all content (tasks, notes, checklists, projects):
+- Entities stored in flat `appData.entities` structure with consistent IDs (`task_1`, `note_2`, etc.)
+- Context-aware rendering in boards, weekly planning, and task views
+- Cross-context synchronization using custom events
+- Entity-based references replace object-based storage
+
+**Modular Architecture**: ES6 modules with clear separation of concerns:
+- `js/core-data.js` → Data persistence, migration, state management
+- `js/entity-core.js` → Entity CRUD operations and context management
+- `js/entity-renderer.js` → Unified rendering system for different contexts
+- `js/entity-migration.js` → Automatic data migration to entity system
+- `js/entity-sync.js` → Cross-context synchronization with custom events
+- `js/import-export.js` → Enhanced import/export with progress tracking
+- Component-based UI system with `components/` directory
+
 **Data Persistence**: Uses localStorage with key `gridflow_data`. All changes auto-save via `saveData()` function.
 
-**Multi-View System**: Three main views accessible via navigation toggle:
-1. **Board View**: `renderBoard()` → matrix grid layout with drag-and-drop
-2. **Task View**: `renderTaskList()` → unified task management across all boards
-3. **Weekly View**: `renderWeeklyPlan()` → anti-overwhelm weekly planning interface
+**Multi-View System**: Three main views with entity-aware rendering:
+1. **Board View**: Matrix grid layout with entity-based cards and drag-and-drop
+2. **Task View**: Unified task list across all boards with filtering
+3. **Weekly View**: Entity-linked weekly planning with cross-context updates
 
-**Enhanced Navigation**: Scalable board selection with search, recent boards, and dropdown menus for actions.
+**Enhanced Import/Export**: Professional import experience with progress tracking:
+- Real-time progress modal with step-by-step feedback
+- Integrated merge/replace choice UI (no popups)
+- Migration logging and error handling
+- Statistics display and completion actions
+- Clear data functionality with safety confirmations
 
-**Data Migration System**: Robust version-aware migration from v1.0 → v3.0:
+**Data Migration System**: Robust version-aware migration from v1.0 → v5.0:
 - `migrateData()` → detects version and applies migration chain
 - `validateAndCleanData()` → ensures data integrity after migration
+- Automatic entity system migration for v4→v5 upgrades
 - Backward compatibility for all export formats
 
-**Template System**: Reusable board structures with pre-built workflows:
+**Template System**: Enhanced template library with reusable structures:
 - Grant application templates, onboarding workflows, weekly planning templates
-- Category-based organization and smart instantiation
+- Template library with categories and featured templates
+- Smart instantiation with conflict resolution
 
-**Weekly Planning System**: Anti-overwhelm productivity features:
-- Weekly goals, daily planning columns, mixed content types (notes, checklists, linked cards)
+**Weekly Planning System**: Entity-linked anti-overwhelm productivity features:
+- Weekly goals, daily planning columns, entity references
 - Progress tracking, historical navigation, weekly reflection prompts
+- Cross-context updates when entities change
 
 ### File Structure
-- `index.html`: Complete UI structure with modals (~1,100 lines)
-- `script.js`: All application logic (~4,800 lines)
-- `style.css`: Responsive CSS with CSS Grid and weekly planning styles (~3,800 lines)
+```
+gridflow/
+├── index.html                     # Main HTML structure with component system
+├── style.css                      # Responsive CSS with import progress styles
+├── js/
+│   ├── app.js                     # Main application initialization
+│   ├── core-data.js               # Data persistence and migration (v1.0→v5.0)
+│   ├── entity-core.js             # Unified entity CRUD operations
+│   ├── entity-renderer.js         # Context-aware entity rendering
+│   ├── entity-migration.js        # Entity system migration (v4→v5)
+│   ├── entity-sync.js             # Cross-context synchronization
+│   ├── import-export.js           # Enhanced import/export with progress
+│   ├── navigation.js              # Enhanced navigation system
+│   ├── board-rendering.js         # Board view rendering
+│   ├── weekly-planning.js         # Weekly planning functionality
+│   ├── ui-management.js           # Modal and UI management
+│   ├── utilities.js               # Shared utility functions
+│   └── [other modules...]         # Additional feature modules
+├── components/
+│   ├── header.js                  # Navigation header component
+│   ├── sidebar.js                 # Sidebar component
+│   ├── views.js                   # Main view components
+│   ├── modals.js                  # All modal dialogs
+│   └── loader.js                  # Component system loader
+└── CLAUDE.md                      # This documentation file
+```
 
 ## Development Commands
 
@@ -101,44 +177,87 @@ CDN-loaded libraries (loaded in index.html):
 
 ## Data Operations
 
-### Import/Export Functions
+### Enhanced Import/Export System
+**Export Functions**:
 - `exportToPDF()`: Renders board as multi-page PDF
 - `exportToPNG()`: Captures board as high-res image
 - `exportToExcel()`: Creates structured spreadsheet with group hierarchy
 - `exportToJSON()`: Full data backup with version tracking
-- `importFromJSON()`: Smart import with migration, merge/replace options, and validation
+- `clearAllData()`: Safe data clearing with double confirmation
+
+**Advanced Import Experience**:
+- `importFromJSON()`: Professional import with progress modal
+- Real-time progress tracking with step-by-step feedback
+- Integrated merge/replace choice UI (no popups)
+- Migration logging and error handling
+- Import statistics and completion actions
+- Automatic entity system migration for legacy data
 
 ### Migration System
-Version-aware data migration handles:
+Version-aware data migration handles all versions from v1.0 → v5.0:
 - **v1.0**: Original single-board format
 - **v2.0**: Multi-board format  
 - **v2.5**: Added template system
 - **v3.0**: Added weekly planning system
+- **v4.0**: Added unified entity relationships
+- **v5.0**: Unified entity system with flat storage
 
-Migration functions:
+**Migration Functions**:
 - `detectVersion()`: Auto-detect data version from structure
-- `migrateToV2()`, `migrateToV2_5()`, `migrateToV3()`: Version-specific migrations
+- `migrateToV2()` through `migrateToV5()`: Version-specific migrations
+- `migrateToEntitySystem()`: Converts cards/items to entity references
 - `mergeImportedData()`: Smart merging with conflict resolution
+- `validateAndCleanData()`: Ensures data integrity with entity support
 
-### Template System
-- `populateDefaultTemplates()`: Adds pre-built templates (grant applications, onboarding, etc.)
+### Unified Entity System
+**Core Entity Operations**:
+- `createEntity(type, data)`: Create new entity with sequential ID
+- `getEntity(entityId)`: Retrieve entity by ID
+- `updateEntity(entityId, updates)`: Update entity properties
+- `deleteEntity(entityId)`: Remove entity and cleanup references
+- `toggleEntityCompletion(entityId)`: Toggle completion status
+
+**Context Management**:
+- `addEntityToContext()`: Link entity to board/weekly/task list
+- `removeEntityFromContext()`: Remove entity from specific context
+- `getEntitiesInContext()`: Retrieve entities in specific context
+- `renderEntity(entityId, contextType, contextData)`: Context-aware rendering
+
+**Cross-Context Synchronization**:
+- Event-driven updates using custom events
+- Automatic UI refresh when entities change
+- Consistent display across board, weekly, and task views
+
+### Template & Library System
+**Template Operations**:
+- Enhanced template library with categories and featured templates
 - `createTemplate()`: Save current board structure as reusable template
 - `applySelectedTemplate()`: Instantiate template with new IDs and smart mapping
-- Category-based organization and filtering
+- Template usage tracking and analytics
 
-### Weekly Planning
-- `initializeWeeklyPlanning()`: Set up current week structure
-- `renderWeeklyPlan()`: Render weekly interface with progress tracking
-- `addCardToWeeklyPlan()`: Link project cards to weekly focus
-- Mixed content support: notes, checklists, linked cards
+**Template Library**:
+- Pre-built templates for common workflows
+- Category-based organization and filtering
+- Task sets and checklist templates for reuse
+
+### Weekly Planning Integration
+**Entity-Linked Planning**:
+- `initializeWeeklyPlanning()`: Set up current week with entity support
+- `renderWeeklyPlan()`: Render weekly interface with entity references
+- `addEntityToWeeklyPlan()`: Link entities to weekly focus
+- Cross-context updates when entities change in boards
+
+**Weekly Planning Features**:
+- Mixed content support: entity-linked notes, checklists, tasks
 - Weekly reflection system and historical navigation
+- Progress tracking with entity completion status
 
 ### CRUD Pattern
-All entities (groups, rows, columns, cards, templates, weekly items) follow consistent patterns:
-1. `add{Entity}()` → opens modal with appropriate form
-2. `save{Entity}()` → validates, assigns ID, and persists
-3. `edit{Entity}()` → loads existing data into modal
-4. `delete{Entity}()` → confirms and removes with cleanup
+All entities and objects follow consistent patterns:
+1. **Entity CRUD**: `createEntity()`, `updateEntity()`, `deleteEntity()`
+2. **Board Objects**: `add{Object}()`, `save{Object}()`, `edit{Object}()`, `delete{Object}()`
+3. **Context Management**: `addToContext()`, `removeFromContext()`, `moveInContext()`
+4. **Validation**: Auto-ID assignment, conflict resolution, data integrity
 
 ## State Management
 
@@ -198,3 +317,59 @@ No automated tests exist. Manual testing should cover:
 - Template creation and application
 - Mobile responsiveness and touch interactions
 - Cross-device data sync via JSON export/import
+- Cross-context entity synchronization and updates
+- Entity migration from legacy formats
+
+## UI Components
+
+**Component System**: HTML Custom Elements for modular UI:
+- `<gridflow-header>`: Navigation header with board selector
+- `<gridflow-sidebar>`: Collapsible sidebar navigation
+- `<gridflow-views>`: Main content area with view switching
+- `<gridflow-modals>`: All application modals and dialogs
+
+**Modal Management**: Centralized modal system with event delegation:
+- Form modals for entity creation/editing
+- Import progress modal with real-time feedback
+- Settings and configuration modals
+- Mobile-responsive overlay system
+
+**Responsive Design**: Mobile-first approach with progressive enhancement:
+- CSS Grid for board layout with dynamic column count
+- Touch-friendly interactions and gestures
+- Responsive breakpoints at 768px and 480px
+- Mobile menu with organized action sections
+
+## Error Handling
+
+**Import/Export Safety**:
+- Comprehensive error handling with user feedback
+- Progress tracking with rollback capability
+- Data validation before migration
+- Double confirmation for destructive actions
+
+**Entity System Safety**:
+- Null reference checks throughout rendering
+- Graceful degradation for missing entities
+- Context cleanup when entities are deleted
+- ID conflict resolution during imports
+
+## Performance Considerations
+
+**Entity System Optimization**:
+- Flat entity storage for O(1) lookups
+- Event-driven updates minimize re-renders
+- Context-aware rendering reduces DOM manipulation
+- Lazy loading for large datasets
+
+**Memory Management**:
+- Cleanup of event listeners when entities deleted
+- Efficient DOM updates with minimal reflows
+- localStorage optimization with compression potential
+
+# important-instruction-reminders
+- Do what has been asked; nothing more, nothing less.
+- NEVER create files unless they're absolutely necessary for achieving your goal.
+- ALWAYS prefer editing an existing file to creating a new one.
+- NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
+- You run in an environment where `ast-grep` is available; whenever a search requires syntax-aware or structural matching, default to `ast-grep --lang js -p '<pattern>'` (or set `--lang` appropriately) and avoid falling back to text-only tools like `rg` or `grep` unless I explicitly request a plain-text search.
