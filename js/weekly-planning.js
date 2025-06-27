@@ -190,6 +190,18 @@ export function createWeeklyItemElement(item) {
     // DEBUG: Log the full item object to console
     console.log('Creating weekly item element for:', JSON.stringify(item, null, 2));
     
+    // Handle migrated data: resolve entity references to get title/content
+    if (item.entityId && !item.title && !item.content) {
+        const appData = getAppData();
+        const entity = appData.entities?.notes?.[item.entityId];
+        if (entity) {
+            // Temporarily add title/content to item for display
+            item.title = entity.title;
+            item.content = entity.content;
+            console.log('Resolved entity data for item:', item.id, entity);
+        }
+    }
+    
     const itemElement = document.createElement('div');
     itemElement.className = `weekly-item ${item.type} ${item.completed ? 'completed' : ''}`;
     itemElement.dataset.itemId = item.id;
@@ -214,6 +226,17 @@ export function createWeeklyItemElement(item) {
             </div>
         `;
     } else if (item.type === 'checklist') {
+        // Handle migrated checklist data
+        if (item.entityId && !item.title && !item.content) {
+            const appData = getAppData();
+            const entity = appData.entities?.checklists?.[item.entityId];
+            if (entity) {
+                item.title = entity.title;
+                item.content = entity.description || entity.content;
+                console.log('Resolved checklist entity data for item:', item.id, entity);
+            }
+        }
+        
         const checklistTitle = item.title || '';
         const checklistContent = item.content || '';
         const displayText = checklistTitle || checklistContent || '<em>(No content)</em>';
@@ -463,6 +486,16 @@ export function editWeeklyItem(itemId) {
     
     const item = currentWeek.items.find(i => i.id === itemId);
     if (!item) return;
+    
+    // Handle migrated data: resolve entity references before editing
+    if (item.entityId && !item.title && !item.content) {
+        const entityType = item.type === 'checklist' ? 'checklists' : 'notes';
+        const entity = appData.entities?.[entityType]?.[item.entityId];
+        if (entity) {
+            item.title = entity.title;
+            item.content = entity.content || entity.description;
+        }
+    }
     
     // Set the current editing item for reference
     currentEditingWeeklyItem = item;
@@ -727,6 +760,22 @@ export function saveWeeklyItem() {
         currentEditingWeeklyItem.title = title;
         currentEditingWeeklyItem.content = content;
         currentEditingWeeklyItem.day = day;
+        
+        // If this is a migrated item with an entity reference, update the entity too
+        if (currentEditingWeeklyItem.entityId) {
+            const entityType = type === 'checklist' ? 'checklists' : 'notes';
+            const entity = appData.entities?.[entityType]?.[currentEditingWeeklyItem.entityId];
+            if (entity) {
+                entity.title = title;
+                if (entityType === 'notes') {
+                    entity.content = content;
+                } else {
+                    entity.description = content;
+                }
+                entity.updatedAt = new Date().toISOString();
+                console.log('Updated entity for weekly item:', currentEditingWeeklyItem.entityId, entity);
+            }
+        }
         
         // Clear the editing reference
         currentEditingWeeklyItem = null;
