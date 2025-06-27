@@ -194,9 +194,10 @@ export function createWeeklyItemElement(item) {
     let content = '';
     
     if (item.type === 'note') {
+        const noteText = item.content || item.title || '<em>(No content)</em>';
         content = `
             <div class="item-content">
-                <div class="item-text">${item.content}</div>
+                <div class="item-text">${noteText}</div>
             </div>
             <div class="item-actions">
                 <button class="btn btn-small" onclick="window.weeklyPlanning.editWeeklyItem('${item.id}')">Edit</button>
@@ -204,14 +205,15 @@ export function createWeeklyItemElement(item) {
             </div>
         `;
     } else if (item.type === 'checklist') {
+        const checklistText = item.title || item.content || '<em>(No content)</em>';
         content = `
             <div class="item-content">
                 <div class="checklist-item">
                     <input type="checkbox" ${item.completed ? 'checked' : ''} 
                            onchange="window.weeklyPlanning.toggleWeeklyItem('${item.id}')">
-                    <span class="checklist-text">${item.title}</span>
+                    <span class="checklist-text">${checklistText}</span>
                 </div>
-                ${item.content ? `<div class="item-description">${item.content}</div>` : ''}
+                ${item.content && item.content !== checklistText ? `<div class="item-description">${item.content}</div>` : ''}
             </div>
             <div class="item-actions">
                 <button class="btn btn-small" onclick="window.weeklyPlanning.editWeeklyItem('${item.id}')">Edit</button>
