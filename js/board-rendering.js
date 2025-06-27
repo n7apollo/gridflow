@@ -37,21 +37,27 @@ export function renderColumnHeaders() {
         console.warn('boardHeader element not found');
         return;
     }
-    container.innerHTML = '<div class="row-label-header font-bold bg-base-200 p-2 rounded-tl-lg">Projects</div>';
-    
+    // Use grid for column headers, matching the number of columns
+    const columnCount = boardData.columns.length;
+    container.innerHTML = '';
+    container.className = `grid grid-cols-[200px_repeat(${columnCount},minmax(180px,1fr))] gap-0 bg-base-200 rounded-t-lg`; // 200px for row label, rest for columns
+    // Row label header
+    const rowLabelHeader = document.createElement('div');
+    rowLabelHeader.className = 'row-label-header font-bold flex items-center justify-center p-2 border-b border-base-300';
+    rowLabelHeader.textContent = 'Projects';
+    container.appendChild(rowLabelHeader);
+    // Column headers
     boardData.columns.forEach((column, index) => {
         const headerDiv = document.createElement('div');
-        headerDiv.className = 'column-header bg-base-200 font-semibold p-2 flex items-center justify-between border-b border-base-300';
+        headerDiv.className = 'column-header font-semibold p-2 flex items-center justify-between border-b border-base-300 min-w-[180px]';
         headerDiv.dataset.columnId = column.id;
         headerDiv.dataset.columnIndex = index;
-        
         headerDiv.innerHTML = `
             <span class="column-title">${column.name}</span>
             <div class="column-actions">
                 <button class="btn btn-xs btn-outline btn-secondary" onclick="showColumnOutline('${column.key}')" title="Show outline for this column">📝 Outline</button>
             </div>
         `;
-        
         container.appendChild(headerDiv);
     });
 }
@@ -63,31 +69,29 @@ export function renderColumnHeaders() {
 export function renderGroupsAndRows() {
     const container = document.getElementById('rowsContainer');
     container.innerHTML = '';
-    
+    // Set grid layout for rows to match column headers
+    const columnCount = boardData.columns.length;
+    container.className = `flex flex-col w-full`;
     // First render ungrouped rows
     const ungroupedRows = boardData.rows.filter(row => !row.groupId);
     ungroupedRows.forEach(row => {
-        const rowElement = createRowElement(row);
+        const rowElement = createRowElement(row, columnCount);
         container.appendChild(rowElement);
     });
-    
     // Then render groups in their defined order
     boardData.groups.forEach(group => {
         const groupRows = boardData.rows.filter(row => row.groupId === group.id);
-        
         if (groupRows.length > 0) {
             // Add group header
             const groupElement = createGroupElement(group);
             container.appendChild(groupElement);
-            
             // Add all rows for this group
             groupRows.forEach(row => {
-                const rowElement = createRowElement(row);
+                const rowElement = createRowElement(row, columnCount);
                 container.appendChild(rowElement);
             });
         }
     });
-    
     // Setup row sorting for the entire container
     setupRowSorting(container);
 }
@@ -124,9 +128,9 @@ export function createGroupElement(group) {
  * @param {Object} row - The row object to render
  * @returns {HTMLElement} The row element
  */
-export function createRowElement(row) {
+export function createRowElement(row, columnCount) {
     const rowDiv = document.createElement('div');
-    rowDiv.className = 'board-row flex items-stretch bg-base-100 border-b border-base-200 hover:bg-base-200 transition-colors';
+    rowDiv.className = `board-row grid grid-cols-[200px_repeat(${columnCount},minmax(180px,1fr))] items-stretch bg-base-100 border-b border-base-200 hover:bg-base-200 transition-colors`;
     rowDiv.dataset.rowId = row.id;
     if (row.groupId) {
         rowDiv.classList.add('in-group');
@@ -205,7 +209,7 @@ export function createRowElement(row) {
  */
 export function createColumnElement(row, column) {
     const columnDiv = document.createElement('div');
-    columnDiv.className = 'column flex flex-col gap-2 p-2 min-w-[180px] max-w-[1fr]';
+    columnDiv.className = 'column flex flex-col gap-2 p-2 min-w-[180px]';
     columnDiv.dataset.rowId = row.id;
     columnDiv.dataset.columnKey = column.key;
     // Cards container
@@ -303,13 +307,14 @@ export function createCardElement(card, rowId, columnKey) {
 export function updateCSSGridColumns() {
     const columnCount = boardData.columns.length;
     document.documentElement.style.setProperty('--column-count', columnCount);
-    
     const headers = document.getElementById('boardHeader');
     const rows = document.querySelectorAll('.board-row');
-    
-    headers.style.gridTemplateColumns = `200px repeat(${columnCount}, 1fr)`;
+    // Set grid template columns for headers and rows
+    if (headers) {
+        headers.style.gridTemplateColumns = `200px repeat(${columnCount}, minmax(180px, 1fr))`;
+    }
     rows.forEach(row => {
-        row.style.gridTemplateColumns = `200px repeat(${columnCount}, 1fr)`;
+        row.style.gridTemplateColumns = `200px repeat(${columnCount}, minmax(180px, 1fr))`;
     });
 }
 
