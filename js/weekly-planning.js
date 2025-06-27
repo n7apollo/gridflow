@@ -347,6 +347,7 @@ export function editWeeklyGoal() {
     // Set handlers after DOM update
     const saveBtn = form.querySelector('#saveWeeklyGoalBtn');
     const cancelBtn = form.querySelector('#cancelWeeklyGoalBtn');
+    if (!saveBtn || !cancelBtn) return;
     saveBtn.onclick = function() {
         const newGoal = form.querySelector('#weeklyGoalInput').value.trim();
         const appData = getAppData();
