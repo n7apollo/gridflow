@@ -52,22 +52,29 @@ export function renderEntity(entityId, contextType, contextData = {}) {
  */
 function renderEntityAsCard(entity, contextData = {}) {
     const cardElement = document.createElement('div');
-    cardElement.className = `card ${entity.type}-card ${entity.completed ? 'completed' : ''}`;
+    cardElement.className = `card bg-base-100 shadow-md border border-base-300 hover:shadow-lg transition-shadow cursor-pointer ${entity.completed ? 'opacity-75' : ''}`;
     cardElement.dataset.entityId = entity.id;
     cardElement.draggable = true;
     
     // Build card content based on entity type
     let cardContent = '';
     
-    // Common header for all card types
+    // Card body with DaisyUI classes
     cardContent += `
-        <div class="card-header">
-            <div class="card-title-row">
-                <h3 class="card-title">${entity.title || 'Untitled'}</h3>
-                ${entity.completed ? '<span class="completion-badge">✓</span>' : ''}
+        <div class="card-body p-4">
+            <!-- Card Header -->
+            <div class="flex items-start justify-between mb-2">
+                <div class="flex items-center gap-2">
+                    <span class="text-lg">${getEntityTypeIcon(entity.type)}</span>
+                    ${entity.completed ? '<span class="badge badge-success badge-sm">✓</span>' : ''}
+                </div>
+                <span class="badge badge-outline badge-sm">${entity.type}</span>
             </div>
-            ${getEntityTypeIcon(entity.type)}
-        </div>
+            
+            <!-- Card Title -->
+            <h3 class="card-title text-base font-semibold text-base-content mb-2 line-clamp-2">
+                ${entity.title || 'Untitled'}
+            </h3>
     `;
     
     // Type-specific content
@@ -89,17 +96,25 @@ function renderEntityAsCard(entity, contextData = {}) {
             break;
             
         default:
-            cardContent += `<div class="card-content">${entity.content}</div>`;
+            if (entity.content) {
+                cardContent += `<p class="text-sm text-base-content/70 line-clamp-3">${entity.content}</p>`;
+            }
     }
     
-    // Common footer with actions
+    // Card actions
     cardContent += `
-        <div class="card-actions">
-            <button class="btn btn-small" onclick="entityRenderer.editEntity('${entity.id}')">Edit</button>
-            <button class="btn btn-small ${entity.completed ? 'btn-secondary' : 'btn-primary'}" 
-                    onclick="entityRenderer.toggleCompletion('${entity.id}')">
-                ${entity.completed ? 'Mark Incomplete' : 'Mark Complete'}
-            </button>
+            <div class="card-actions justify-end mt-3 pt-2 border-t border-base-300">
+                <button class="btn btn-xs btn-outline" onclick="event.stopPropagation(); entityRenderer.editEntity('${entity.id}')">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                    </svg>
+                    Edit
+                </button>
+                <button class="btn btn-xs ${entity.completed ? 'btn-warning' : 'btn-success'}" 
+                        onclick="event.stopPropagation(); entityRenderer.toggleCompletion('${entity.id}')">
+                    ${entity.completed ? 'Undo' : 'Done'}
+                </button>
+            </div>
         </div>
     `;
     
@@ -238,25 +253,45 @@ function renderTaskCardContent(entity) {
     let content = '';
     
     if (entity.content) {
-        content += `<div class="card-description">${entity.content}</div>`;
+        content += `<p class="text-sm text-base-content/70 line-clamp-3 mb-3">${entity.content}</p>`;
     }
     
-    content += '<div class="task-metadata">';
+    // Task metadata badges
+    const metadata = [];
     
     if (entity.priority && entity.priority !== 'medium') {
-        content += `<span class="priority-badge priority-${entity.priority}">${entity.priority}</span>`;
+        const priorityClasses = {
+            'high': 'badge-error',
+            'low': 'badge-success'
+        };
+        const priorityIcons = {
+            'high': '🔴',
+            'low': '🟢'
+        };
+        metadata.push(`<span class="badge ${priorityClasses[entity.priority]} badge-sm">${priorityIcons[entity.priority]} ${entity.priority}</span>`);
     }
     
     if (entity.dueDate) {
-        content += `<span class="due-date">Due: ${formatDate(entity.dueDate)}</span>`;
+        const dueDate = new Date(entity.dueDate);
+        const isOverdue = dueDate < new Date() && !entity.completed;
+        const isToday = dueDate.toDateString() === new Date().toDateString();
+        
+        let dueDateClass = 'badge-outline';
+        if (isOverdue) dueDateClass = 'badge-error';
+        else if (isToday) dueDateClass = 'badge-warning';
+        
+        metadata.push(`<span class="badge ${dueDateClass} badge-sm">📅 ${formatDate(entity.dueDate)}</span>`);
     }
     
     if (entity.subtasks && entity.subtasks.length > 0) {
         const completedSubtasks = entity.subtasks.filter(st => st.completed).length;
-        content += `<span class="subtasks">${completedSubtasks}/${entity.subtasks.length} subtasks</span>`;
+        const progress = Math.round((completedSubtasks / entity.subtasks.length) * 100);
+        metadata.push(`<span class="badge badge-outline badge-sm">📋 ${completedSubtasks}/${entity.subtasks.length} (${progress}%)</span>`);
     }
     
-    content += '</div>';
+    if (metadata.length > 0) {
+        content += `<div class="flex flex-wrap gap-1 mb-2">${metadata.join('')}</div>`;
+    }
     
     return content;
 }

@@ -72,160 +72,231 @@ class GridFlowModals extends HTMLElement {
     getTemplate() {
         return `
             <!-- Entity Detail View Modal -->
-            <div class="modal modal-large" id="entityDetailModal">
-                <div class="modal-content entity-detail-content">
-                    <div class="modal-header">
-                        <div class="entity-header">
-                            <div class="entity-icon" id="entityIcon">📋</div>
-                            <div class="entity-title-section">
-                                <h2 id="entityDetailTitle" class="entity-title" contenteditable="true">Entity Title</h2>
-                                <div class="entity-meta">
-                                    <span class="entity-type-badge" id="entityTypeBadge">Task</span>
-                                    <span class="entity-id" id="entityIdDisplay">task_1</span>
+            <div class="modal" id="entityDetailModal">
+                <div class="modal-box w-11/12 max-w-5xl h-5/6 max-h-screen">
+                    <!-- Modal Header -->
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center gap-4">
+                            <div class="text-4xl" id="entityIcon">📋</div>
+                            <div class="flex-1">
+                                <h2 id="entityDetailTitle" class="text-2xl font-bold text-base-content" contenteditable="true">Entity Title</h2>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="badge badge-primary" id="entityTypeBadge">Task</span>
+                                    <span class="text-xs text-base-content/60" id="entityIdDisplay">task_1</span>
                                 </div>
-                            </div>
-                            <div class="entity-status">
-                                <label class="completion-toggle">
-                                    <input type="checkbox" id="entityCompleted">
-                                    <span class="completion-label">Complete</span>
-                                </label>
                             </div>
                         </div>
-                        <button class="close-btn" data-action="closeEntityDetailModal">&times;</button>
+                        <div class="flex items-center gap-4">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" class="checkbox checkbox-primary" id="entityCompleted">
+                                <span class="text-sm font-medium">Complete</span>
+                            </label>
+                            <button class="btn btn-sm btn-circle btn-ghost" data-action="closeEntityDetailModal">✕</button>
+                        </div>
                     </div>
 
-                    <div class="modal-body entity-detail-body">
-                        <div class="entity-content-grid">
-                            <!-- Left Column - Main Content -->
-                            <div class="entity-main-content">
-                                <!-- Description Section -->
-                                <div class="content-section">
-                                    <h3>Description</h3>
-                                    <div class="content-editor">
-                                        <textarea id="entityDescription" placeholder="Add a description..." rows="4"></textarea>
-                                    </div>
+                    <!-- Modal Body -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full overflow-y-auto">
+                        <!-- Left Column - Main Content (2/3 width) -->
+                        <div class="lg:col-span-2 space-y-6">
+                            <!-- Description Section -->
+                            <div class="card bg-base-100 shadow-sm border border-base-300">
+                                <div class="card-body">
+                                    <h3 class="card-title text-lg">Description</h3>
+                                    <textarea 
+                                        id="entityDescription" 
+                                        class="textarea textarea-bordered w-full h-32 resize-none" 
+                                        placeholder="Add a description...">
+                                    </textarea>
                                 </div>
+                            </div>
 
-                                <!-- Task-specific sections -->
-                                <div class="content-section task-only" id="taskSpecificSection">
-                                    <h3>Task Details</h3>
-                                    <div class="task-properties">
-                                        <div class="property-row">
-                                            <label for="entityPriority">Priority:</label>
-                                            <select id="entityPriority">
+                            <!-- Task-specific section -->
+                            <div class="card bg-base-100 shadow-sm border border-base-300 task-only" id="taskSpecificSection">
+                                <div class="card-body">
+                                    <h3 class="card-title text-lg">Task Details</h3>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div class="form-control">
+                                            <label class="label">
+                                                <span class="label-text font-medium">Priority</span>
+                                            </label>
+                                            <select id="entityPriority" class="select select-bordered">
                                                 <option value="low">🟢 Low</option>
                                                 <option value="medium">🟡 Medium</option>
                                                 <option value="high">🔴 High</option>
                                             </select>
                                         </div>
-                                        <div class="property-row">
-                                            <label for="entityDueDate">Due Date:</label>
-                                            <input type="date" id="entityDueDate">
+                                        <div class="form-control">
+                                            <label class="label">
+                                                <span class="label-text font-medium">Due Date</span>
+                                            </label>
+                                            <input type="date" id="entityDueDate" class="input input-bordered">
                                         </div>
                                     </div>
                                 </div>
+                            </div>
 
-                                <!-- Checklist-specific section -->
-                                <div class="content-section checklist-only" id="checklistSection">
-                                    <h3>Checklist Items</h3>
-                                    <div class="checklist-items" id="checklistItems">
+                            <!-- Checklist-specific section -->
+                            <div class="card bg-base-100 shadow-sm border border-base-300 checklist-only" id="checklistSection">
+                                <div class="card-body">
+                                    <div class="flex items-center justify-between">
+                                        <h3 class="card-title text-lg">Checklist Items</h3>
+                                        <button class="btn btn-sm btn-primary" data-action="addChecklistItem">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                            </svg>
+                                            Add Item
+                                        </button>
+                                    </div>
+                                    <div class="space-y-2 mt-4" id="checklistItems">
                                         <!-- Checklist items will be populated here -->
                                     </div>
-                                    <button class="btn btn-secondary btn-small" data-action="addChecklistItem">+ Add Item</button>
                                 </div>
+                            </div>
 
-                                <!-- Project-specific section -->
-                                <div class="content-section project-only" id="projectSection">
-                                    <h3>Project Details</h3>
-                                    <div class="project-properties">
-                                        <div class="property-row">
-                                            <label for="projectStatus">Status:</label>
-                                            <select id="projectStatus">
+                            <!-- Project-specific section -->
+                            <div class="card bg-base-100 shadow-sm border border-base-300 project-only" id="projectSection">
+                                <div class="card-body">
+                                    <h3 class="card-title text-lg">Project Details</h3>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div class="form-control">
+                                            <label class="label">
+                                                <span class="label-text font-medium">Status</span>
+                                            </label>
+                                            <select id="projectStatus" class="select select-bordered">
                                                 <option value="planning">📋 Planning</option>
                                                 <option value="active">🚀 Active</option>
                                                 <option value="on-hold">⏸️ On Hold</option>
                                                 <option value="completed">✅ Completed</option>
                                             </select>
                                         </div>
-                                        <div class="property-row">
-                                            <label for="projectTeam">Team:</label>
-                                            <input type="text" id="projectTeam" placeholder="Team members...">
+                                        <div class="form-control">
+                                            <label class="label">
+                                                <span class="label-text font-medium">Team</span>
+                                            </label>
+                                            <input type="text" id="projectTeam" class="input input-bordered" placeholder="Team members...">
                                         </div>
                                     </div>
-                                </div>
-
-                                <!-- Subtasks Section -->
-                                <div class="content-section" id="subtasksSection">
-                                    <h3>Subtasks</h3>
-                                    <div class="subtasks-list" id="subtasksList">
-                                        <!-- Subtasks will be populated here -->
-                                    </div>
-                                    <button class="btn btn-secondary btn-small" data-action="addSubtask">+ Add Subtask</button>
                                 </div>
                             </div>
 
-                            <!-- Right Column - Sidebar -->
-                            <div class="entity-sidebar">
-                                <!-- Actions Section -->
-                                <div class="sidebar-section">
-                                    <h4>Actions</h4>
-                                    <div class="action-buttons">
-                                        <button class="btn btn-primary btn-block" data-action="addToWeeklyPlan">📅 Add to Weekly Plan</button>
-                                        <button class="btn btn-secondary btn-block" data-action="duplicateEntity">📋 Duplicate</button>
-                                        <button class="btn btn-secondary btn-block" data-action="moveToBoard">🔀 Move to Board</button>
+                            <!-- Subtasks Section -->
+                            <div class="card bg-base-100 shadow-sm border border-base-300" id="subtasksSection">
+                                <div class="card-body">
+                                    <div class="flex items-center justify-between">
+                                        <h3 class="card-title text-lg">Subtasks</h3>
+                                        <button class="btn btn-sm btn-outline" data-action="addSubtask">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                            </svg>
+                                            Add Subtask
+                                        </button>
+                                    </div>
+                                    <div class="mt-4" id="subtasksList">
+                                        <!-- Subtasks will be populated here -->
                                     </div>
                                 </div>
+                            </div>
+                        </div>
 
-                                <!-- Weekly Planning Section -->
-                                <div class="sidebar-section" id="weeklyPlanSection">
-                                    <h4>Weekly Planning</h4>
-                                    <div class="weekly-status" id="weeklyStatus">
-                                        <p class="no-weekly">Not in any weekly plan</p>
+                        <!-- Right Column - Sidebar (1/3 width) -->
+                        <div class="space-y-4">
+                            <!-- Actions Card -->
+                            <div class="card bg-base-100 shadow-sm border border-base-300">
+                                <div class="card-body">
+                                    <h4 class="card-title text-base">Actions</h4>
+                                    <div class="space-y-2">
+                                        <button class="btn btn-primary btn-sm w-full" data-action="addToWeeklyPlan">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                            </svg>
+                                            Add to Weekly Plan
+                                        </button>
+                                        <button class="btn btn-outline btn-sm w-full" data-action="duplicateEntity">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                            </svg>
+                                            Duplicate
+                                        </button>
+                                        <button class="btn btn-outline btn-sm w-full" data-action="moveToBoard">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+                                            </svg>
+                                            Move to Board
+                                        </button>
                                     </div>
                                 </div>
+                            </div>
 
-                                <!-- Tags Section -->
-                                <div class="sidebar-section">
-                                    <h4>Tags</h4>
-                                    <div class="tags-container" id="entityTags">
+                            <!-- Weekly Planning Card -->
+                            <div class="card bg-base-100 shadow-sm border border-base-300" id="weeklyPlanSection">
+                                <div class="card-body">
+                                    <h4 class="card-title text-base">Weekly Planning</h4>
+                                    <div id="weeklyStatus">
+                                        <div class="text-sm text-base-content/60">Not in any weekly plan</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Tags Card -->
+                            <div class="card bg-base-100 shadow-sm border border-base-300">
+                                <div class="card-body">
+                                    <h4 class="card-title text-base">Tags</h4>
+                                    <div class="flex flex-wrap gap-2 mb-2" id="entityTags">
                                         <!-- Tags will be populated here -->
                                     </div>
-                                    <input type="text" id="newTagInput" placeholder="Add tag..." class="tag-input">
+                                    <input type="text" id="newTagInput" class="input input-bordered input-sm w-full" placeholder="Add tag...">
                                 </div>
+                            </div>
 
-                                <!-- Metadata Section -->
-                                <div class="sidebar-section">
-                                    <h4>Details</h4>
-                                    <div class="metadata">
-                                        <div class="meta-item">
-                                            <span class="meta-label">Created:</span>
-                                            <span class="meta-value" id="entityCreated">-</span>
+                            <!-- Metadata Card -->
+                            <div class="card bg-base-100 shadow-sm border border-base-300">
+                                <div class="card-body">
+                                    <h4 class="card-title text-base">Details</h4>
+                                    <div class="space-y-2 text-sm">
+                                        <div class="flex justify-between">
+                                            <span class="text-base-content/60">Created:</span>
+                                            <span id="entityCreated">-</span>
                                         </div>
-                                        <div class="meta-item">
-                                            <span class="meta-label">Modified:</span>
-                                            <span class="meta-value" id="entityModified">-</span>
+                                        <div class="flex justify-between">
+                                            <span class="text-base-content/60">Modified:</span>
+                                            <span id="entityModified">-</span>
                                         </div>
-                                        <div class="meta-item">
-                                            <span class="meta-label">Board:</span>
-                                            <span class="meta-value" id="entityBoard">-</span>
+                                        <div class="flex justify-between">
+                                            <span class="text-base-content/60">Board:</span>
+                                            <span id="entityBoard">-</span>
                                         </div>
                                     </div>
                                 </div>
+                            </div>
 
-                                <!-- Danger Zone -->
-                                <div class="sidebar-section danger-zone">
-                                    <h4>Danger Zone</h4>
-                                    <button class="btn btn-danger btn-block" data-action="deleteEntity">🗑️ Delete</button>
+                            <!-- Danger Zone Card -->
+                            <div class="card bg-error/10 shadow-sm border border-error/20">
+                                <div class="card-body">
+                                    <h4 class="card-title text-base text-error">Danger Zone</h4>
+                                    <button class="btn btn-error btn-sm w-full" data-action="deleteEntity">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                        </svg>
+                                        Delete
+                                    </button>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="modal-footer">
-                        <button class="btn btn-primary" data-action="saveEntityChanges">Save Changes</button>
-                        <button class="btn btn-secondary" data-action="closeEntityDetailModal">Close</button>
+                    <!-- Modal Footer -->
+                    <div class="modal-action mt-6 pt-4 border-t border-base-300">
+                        <button class="btn btn-primary" data-action="saveEntityChanges">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            Save Changes
+                        </button>
+                        <button class="btn btn-ghost" data-action="closeEntityDetailModal">Close</button>
                     </div>
                 </div>
+                <div class="modal-backdrop" data-action="closeEntityDetailModal"></div>
             </div>
 
             <!-- Card Modal -->

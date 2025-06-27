@@ -45,105 +45,109 @@ class GridFlowViews extends HTMLElement {
     getTemplate() {
         return `
             <!-- Board View -->
-            <div class="board-container" id="boardContainer">
+            <div class="board-container container mx-auto p-4" id="boardContainer">
                 <!-- Board Header Section -->
-                <div class="board-view-header">
-                    <div class="board-header-left">
-                        <div class="board-selector-enhanced">
-                            <button class="current-board-btn" data-action="toggleBoardDropdown" id="currentBoardBtn">
+                <div class="board-view-header flex flex-col md:flex-row items-center justify-between gap-4 mb-4">
+                    <div class="board-header-left flex items-center gap-2">
+                        <div class="dropdown dropdown-bottom">
+                            <button class="btn btn-outline btn-primary flex items-center gap-2" data-action="toggleBoardDropdown" id="currentBoardBtn">
                                 <span class="current-board-name" id="currentBoardName">Loading...</span>
-                                <span class="dropdown-arrow">▼</span>
+                                <span class="ml-1">▼</span>
                             </button>
-                            <div class="board-dropdown" id="boardDropdown">
-                                <div class="board-search">
-                                    <input type="text" placeholder="Search boards..." id="boardSearchInput">
+                            <div class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-64 mt-2" id="boardDropdown">
+                                <div class="mb-2">
+                                    <input type="text" placeholder="Search boards..." id="boardSearchInput" class="input input-bordered w-full" />
                                 </div>
-                                <div class="board-list" id="boardList">
+                                <div class="board-list max-h-40 overflow-y-auto mb-2" id="boardList">
                                     <!-- Populated dynamically -->
                                 </div>
-                                <div class="board-actions">
-                                    <button class="board-action-btn" data-action="createNewBoard">
-                                        <span class="action-icon">+</span>
-                                        <span class="action-text">New Board</span>
+                                <div class="flex gap-2">
+                                    <button class="btn btn-success flex-1" data-action="createNewBoard">
+                                        <span class="mr-1">+</span>
+                                        <span>New Board</span>
                                     </button>
-                                    <button class="board-action-btn" data-action="showBoardModal">
-                                        <span class="action-icon">⚙️</span>
-                                        <span class="action-text">Manage Boards</span>
+                                    <button class="btn btn-outline flex-1" data-action="showBoardModal">
+                                        <span class="mr-1">⚙️</span>
+                                        <span>Manage Boards</span>
                                     </button>
                                 </div>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="board-header-center">
+                    <div class="board-header-center flex gap-2">
                         <button class="btn btn-primary" data-action="addRow">+ Add Row</button>
                         <button class="btn btn-secondary" data-action="addGroup">+ Add Group</button>
                         <button class="btn btn-secondary" data-action="addColumn">+ Add Column</button>
                     </div>
                     
-                    <div class="board-header-right">
-                        <div class="templates-menu">
-                            <button class="btn btn-secondary dropdown-trigger" data-action="toggleTemplatesMenu" id="templatesBtn">
+                    <div class="board-header-right flex items-center gap-2">
+                        <div class="dropdown dropdown-bottom">
+                            <button class="btn btn-secondary flex items-center gap-1" data-action="toggleTemplatesMenu" id="templatesBtn">
                                 📋 Templates
-                                <span class="dropdown-arrow">▼</span>
+                                <span>▼</span>
                             </button>
-                            <div class="dropdown-menu" id="templatesDropdown">
-                                <button class="dropdown-item" data-action="showApplyTemplateModal">
-                                    <span class="item-icon">📥</span>
-                                    <span class="item-text">Apply Template</span>
+                            <div class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52 mt-2" id="templatesDropdown">
+                                <button class="btn btn-ghost w-full justify-start" data-action="showApplyTemplateModal">
+                                    <span class="mr-2">📥</span>
+                                    <span>Apply Template</span>
                                 </button>
-                                <button class="dropdown-item" data-action="showSaveAsTemplateModal">
-                                    <span class="item-icon">💾</span>
-                                    <span class="item-text">Save as Template</span>
+                                <button class="btn btn-ghost w-full justify-start" data-action="showSaveAsTemplateModal">
+                                    <span class="mr-2">💾</span>
+                                    <span>Save as Template</span>
                                 </button>
                             </div>
                         </div>
-                        <div class="board-export-menu">
-                            <button class="btn btn-secondary dropdown-trigger" data-action="toggleBoardExportMenu" id="boardExportBtn">
+                        <div class="dropdown dropdown-bottom">
+                            <button class="btn btn-secondary flex items-center gap-1" data-action="toggleBoardExportMenu" id="boardExportBtn">
                                 📤 Export Board
-                                <span class="dropdown-arrow">▼</span>
+                                <span>▼</span>
                             </button>
-                            <div class="dropdown-menu" id="boardExportDropdown">
-                                <button class="dropdown-item" data-action="exportToPDF">
-                                    <span class="item-icon">📄</span>
-                                    <span class="item-text">Export as PDF</span>
+                            <div class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52 mt-2" id="boardExportDropdown">
+                                <button class="btn btn-ghost w-full justify-start" data-action="exportToPDF">
+                                    <span class="mr-2">📄</span>
+                                    <span>Export as PDF</span>
                                 </button>
-                                <button class="dropdown-item" data-action="exportToPNG">
-                                    <span class="item-icon">🖼️</span>
-                                    <span class="item-text">Export as PNG</span>
+                                <button class="btn btn-ghost w-full justify-start" data-action="exportToPNG">
+                                    <span class="mr-2">🖼️</span>
+                                    <span>Export as PNG</span>
                                 </button>
-                                <button class="dropdown-item" data-action="exportToExcel">
-                                    <span class="item-icon">📊</span>
-                                    <span class="item-text">Export as Excel</span>
+                                <button class="btn btn-ghost w-full justify-start" data-action="exportToExcel">
+                                    <span class="mr-2">📊</span>
+                                    <span>Export as Excel</span>
                                 </button>
                             </div>
                         </div>
-                        <div class="more-menu">
-                            <button class="btn btn-secondary dropdown-trigger" data-action="toggleMoreMenu" id="moreBtn">
+                        <div class="dropdown dropdown-bottom">
+                            <button class="btn btn-secondary" data-action="toggleMoreMenu" id="moreBtn">
                                 ⋯
                             </button>
-                            <div class="dropdown-menu" id="moreDropdown">
-                                <button class="dropdown-item" data-action="toggleSettings">
-                                    <span class="item-icon">🔧</span>
-                                    <span class="item-text">Board Settings</span>
+                            <div class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-40 mt-2" id="moreDropdown">
+                                <button class="btn btn-ghost w-full justify-start" data-action="toggleSettings">
+                                    <span class="mr-2">🔧</span>
+                                    <span>Board Settings</span>
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="settings-panel" id="settingsPanel">
+                <div class="settings-panel card bg-base-200 shadow-lg p-4 mb-4 hidden" id="settingsPanel">
                     <div class="settings-content">
-                        <div class="settings-row">
-                            <input type="checkbox" id="showCheckboxes" onchange="toggleCheckboxes()">
-                            <label for="showCheckboxes">Show Checkboxes</label>
+                        <div class="form-control mb-2">
+                            <label class="label cursor-pointer">
+                                <input type="checkbox" id="showCheckboxes" class="checkbox" onchange="toggleCheckboxes()">
+                                <span class="label-text ml-2">Show Checkboxes</span>
+                            </label>
                         </div>
-                        <div class="settings-row">
-                            <input type="checkbox" id="showSubtaskProgress" onchange="toggleSubtaskProgress()">
-                            <label for="showSubtaskProgress">Show Subtask Progress</label>
+                        <div class="form-control mb-2">
+                            <label class="label cursor-pointer">
+                                <input type="checkbox" id="showSubtaskProgress" class="checkbox" onchange="toggleSubtaskProgress()">
+                                <span class="label-text ml-2">Show Subtask Progress</span>
+                            </label>
                         </div>
                     </div>
-                    <button class="btn btn-secondary" data-action="toggleSettings">Close</button>
+                    <button class="btn btn-secondary mt-2" data-action="toggleSettings">Close</button>
                 </div>
                 
                 <div class="board-header" id="boardHeader">
@@ -155,43 +159,43 @@ class GridFlowViews extends HTMLElement {
             </div>
 
             <!-- Task Management Interface -->
-            <div class="task-container" id="taskContainer" style="display: none;">
-                <div class="task-header">
-                    <div class="task-controls">
-                        <div class="filter-group">
-                            <label for="taskBoardFilter">Board:</label>
-                            <select id="taskBoardFilter" data-action="filterTasksByBoard">
+            <div class="task-container card bg-base-100 shadow-lg p-4 mt-4" id="taskContainer" style="display: none;">
+                <div class="task-header mb-4">
+                    <div class="task-controls flex flex-wrap gap-2 items-end">
+                        <div class="form-control">
+                            <label class="label" for="taskBoardFilter">Board:</label>
+                            <select id="taskBoardFilter" data-action="filterTasksByBoard" class="select select-bordered min-w-[8rem]">
                                 <option value="">All Boards</option>
                                 <!-- Board options will be populated dynamically -->
                             </select>
                         </div>
-                        <div class="filter-group">
-                            <label for="taskStatusFilter">Status:</label>
-                            <select id="taskStatusFilter" data-action="filterTasks">
+                        <div class="form-control">
+                            <label class="label" for="taskStatusFilter">Status:</label>
+                            <select id="taskStatusFilter" data-action="filterTasks" class="select select-bordered min-w-[8rem]">
                                 <option value="">All Statuses</option>
                                 <option value="pending">Pending</option>
                                 <option value="completed">Completed</option>
                             </select>
                         </div>
-                        <div class="filter-group">
-                            <label for="taskPriorityFilter">Priority:</label>
-                            <select id="taskPriorityFilter" data-action="filterTasks">
+                        <div class="form-control">
+                            <label class="label" for="taskPriorityFilter">Priority:</label>
+                            <select id="taskPriorityFilter" data-action="filterTasks" class="select select-bordered min-w-[8rem]">
                                 <option value="">All Priorities</option>
                                 <option value="high">High</option>
                                 <option value="medium">Medium</option>
                                 <option value="low">Low</option>
                             </select>
                         </div>
-                        <div class="filter-group">
-                            <label for="taskSortBy">Sort by:</label>
-                            <select id="taskSortBy" data-action="sortTasks">
+                        <div class="form-control">
+                            <label class="label" for="taskSortBy">Sort by:</label>
+                            <select id="taskSortBy" data-action="sortTasks" class="select select-bordered min-w-[8rem]">
                                 <option value="title">Title</option>
                                 <option value="priority">Priority</option>
                                 <option value="dueDate">Due Date</option>
                                 <option value="board">Board</option>
                             </select>
                         </div>
-                        <button class="btn btn-primary" data-action="openTaskModal">+ Add Task</button>
+                        <button class="btn btn-primary ml-2" data-action="openTaskModal">+ Add Task</button>
                     </div>
                 </div>
                 <div class="task-list" id="taskList">
@@ -200,19 +204,19 @@ class GridFlowViews extends HTMLElement {
             </div>
 
             <!-- Weekly Planning Interface -->
-            <div class="weekly-container" id="weeklyContainer" style="display: none;">
-                <div class="weekly-header">
-                    <div class="weekly-navigation">
+            <div class="weekly-container card bg-base-100 shadow-lg p-4 mt-4" id="weeklyContainer" style="display: none;">
+                <div class="weekly-header mb-4">
+                    <div class="weekly-navigation flex items-center justify-between gap-2">
                         <button class="btn btn-secondary" data-action="navigateWeek" data-params="prev" id="prevWeekBtn">← Previous Week</button>
-                        <div class="week-info">
-                            <h2 class="week-title" id="weekTitle">Current Week</h2>
-                            <div class="week-dates" id="weekDates">
+                        <div class="week-info text-center">
+                            <h2 class="week-title text-lg font-bold" id="weekTitle">Current Week</h2>
+                            <div class="week-dates text-sm text-gray-500" id="weekDates">
                                 <!-- Week dates will be populated -->
                             </div>
                         </div>
                         <button class="btn btn-secondary" data-action="navigateWeek" data-params="next" id="nextWeekBtn">Next Week →</button>
                     </div>
-                    <div class="weekly-actions">
+                    <div class="weekly-actions flex gap-2 mt-2">
                         <button class="btn btn-secondary" data-action="showWeeklyReflectionModal">✍️ Reflection</button>
                         <button class="btn btn-primary" data-action="addWeeklyNote" data-params="monday">+ Add Note</button>
                     </div>
@@ -220,89 +224,89 @@ class GridFlowViews extends HTMLElement {
                 
                 <div class="weekly-content">
                     <!-- Weekly Goal Section -->
-                    <div class="weekly-goal-section">
-                        <div class="goal-header">
-                            <h3>Weekly Focus Goal</h3>
-                            <button class="btn btn-small btn-secondary" data-action="editWeeklyGoal" id="editGoalBtn">Edit</button>
+                    <div class="weekly-goal-section card bg-base-200 p-4 mb-4">
+                        <div class="goal-header flex items-center justify-between mb-2">
+                            <h3 class="font-semibold">Weekly Focus Goal</h3>
+                            <button class="btn btn-xs btn-secondary" data-action="editWeeklyGoal" id="editGoalBtn">Edit</button>
                         </div>
                         <div class="goal-content">
-                            <div class="weekly-goal" id="weeklyGoal">Click to set your weekly focus goal...</div>
-                            <div class="weekly-goal-form" id="weeklyGoalForm" style="display: none;">
-                                <input type="text" id="weeklyGoalInput" placeholder="Enter your weekly focus goal...">
-                                <div class="goal-actions">
-                                    <button class="btn btn-small btn-primary" data-action="saveWeeklyGoal">Save</button>
-                                    <button class="btn btn-small btn-secondary" data-action="cancelGoalEdit">Cancel</button>
+                            <div class="weekly-goal cursor-pointer" id="weeklyGoal">Click to set your weekly focus goal...</div>
+                            <div class="weekly-goal-form flex gap-2 mt-2" id="weeklyGoalForm" style="display: none;">
+                                <input type="text" id="weeklyGoalInput" placeholder="Enter your weekly focus goal..." class="input input-bordered flex-1" />
+                                <div class="goal-actions flex gap-2">
+                                    <button class="btn btn-xs btn-primary" data-action="saveWeeklyGoal">Save</button>
+                                    <button class="btn btn-xs btn-secondary" data-action="cancelGoalEdit">Cancel</button>
                                 </div>
                             </div>
                         </div>
                     </div>
                     
                     <!-- Daily Planning Grid -->
-                    <div class="daily-planning-grid">
-                        <div class="day-column" id="mondayColumn">
-                            <div class="day-header">
-                                <h3>Monday</h3>
-                                <button class="btn btn-small btn-secondary" data-action="addDailyItem" data-params="monday">+</button>
+                    <div class="daily-planning-grid grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4">
+                        <div class="day-column card bg-base-200 p-2" id="mondayColumn">
+                            <div class="day-header flex items-center justify-between mb-2">
+                                <h3 class="font-semibold">Monday</h3>
+                                <button class="btn btn-xs btn-secondary" data-action="addDailyItem" data-params="monday">+</button>
                             </div>
                             <div class="day-items" id="mondayItems">
                                 <!-- Monday items will be populated -->
                             </div>
                         </div>
                         
-                        <div class="day-column" id="tuesdayColumn">
-                            <div class="day-header">
-                                <h3>Tuesday</h3>
-                                <button class="btn btn-small btn-secondary" data-action="addDailyItem" data-params="tuesday">+</button>
+                        <div class="day-column card bg-base-200 p-2" id="tuesdayColumn">
+                            <div class="day-header flex items-center justify-between mb-2">
+                                <h3 class="font-semibold">Tuesday</h3>
+                                <button class="btn btn-xs btn-secondary" data-action="addDailyItem" data-params="tuesday">+</button>
                             </div>
                             <div class="day-items" id="tuesdayItems">
                                 <!-- Tuesday items will be populated -->
                             </div>
                         </div>
                         
-                        <div class="day-column" id="wednesdayColumn">
-                            <div class="day-header">
-                                <h3>Wednesday</h3>
-                                <button class="btn btn-small btn-secondary" data-action="addDailyItem" data-params="wednesday">+</button>
+                        <div class="day-column card bg-base-200 p-2" id="wednesdayColumn">
+                            <div class="day-header flex items-center justify-between mb-2">
+                                <h3 class="font-semibold">Wednesday</h3>
+                                <button class="btn btn-xs btn-secondary" data-action="addDailyItem" data-params="wednesday">+</button>
                             </div>
                             <div class="day-items" id="wednesdayItems">
                                 <!-- Wednesday items will be populated -->
                             </div>
                         </div>
                         
-                        <div class="day-column" id="thursdayColumn">
-                            <div class="day-header">
-                                <h3>Thursday</h3>
-                                <button class="btn btn-small btn-secondary" data-action="addDailyItem" data-params="thursday">+</button>
+                        <div class="day-column card bg-base-200 p-2" id="thursdayColumn">
+                            <div class="day-header flex items-center justify-between mb-2">
+                                <h3 class="font-semibold">Thursday</h3>
+                                <button class="btn btn-xs btn-secondary" data-action="addDailyItem" data-params="thursday">+</button>
                             </div>
                             <div class="day-items" id="thursdayItems">
                                 <!-- Thursday items will be populated -->
                             </div>
                         </div>
                         
-                        <div class="day-column" id="fridayColumn">
-                            <div class="day-header">
-                                <h3>Friday</h3>
-                                <button class="btn btn-small btn-secondary" data-action="addDailyItem" data-params="friday">+</button>
+                        <div class="day-column card bg-base-200 p-2" id="fridayColumn">
+                            <div class="day-header flex items-center justify-between mb-2">
+                                <h3 class="font-semibold">Friday</h3>
+                                <button class="btn btn-xs btn-secondary" data-action="addDailyItem" data-params="friday">+</button>
                             </div>
                             <div class="day-items" id="fridayItems">
                                 <!-- Friday items will be populated -->
                             </div>
                         </div>
                         
-                        <div class="day-column" id="saturdayColumn">
-                            <div class="day-header">
-                                <h3>Saturday</h3>
-                                <button class="btn btn-small btn-secondary" data-action="addDailyItem" data-params="saturday">+</button>
+                        <div class="day-column card bg-base-200 p-2" id="saturdayColumn">
+                            <div class="day-header flex items-center justify-between mb-2">
+                                <h3 class="font-semibold">Saturday</h3>
+                                <button class="btn btn-xs btn-secondary" data-action="addDailyItem" data-params="saturday">+</button>
                             </div>
                             <div class="day-items" id="saturdayItems">
                                 <!-- Saturday items will be populated -->
                             </div>
                         </div>
                         
-                        <div class="day-column" id="sundayColumn">
-                            <div class="day-header">
-                                <h3>Sunday</h3>
-                                <button class="btn btn-small btn-secondary" data-action="addDailyItem" data-params="sunday">+</button>
+                        <div class="day-column card bg-base-200 p-2" id="sundayColumn">
+                            <div class="day-header flex items-center justify-between mb-2">
+                                <h3 class="font-semibold">Sunday</h3>
+                                <button class="btn btn-xs btn-secondary" data-action="addDailyItem" data-params="sunday">+</button>
                             </div>
                             <div class="day-items" id="sundayItems">
                                 <!-- Sunday items will be populated -->

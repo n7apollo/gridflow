@@ -38,63 +38,57 @@ class GridFlowSidebar extends HTMLElement {
 
     getTemplate() {
         return `
-            <aside class="sidebar" id="sidebar">
-                <div class="sidebar-header">
-                    <div class="sidebar-logo">
-                        <span class="logo-icon">⚡</span>
-                        <span class="logo-text">GridFlow</span>
+            <aside class="drawer-side w-64 min-h-screen bg-base-200 shadow-lg" id="sidebar">
+                <div class="flex items-center justify-between p-4 border-b border-base-300">
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl">⚡</span>
+                        <span class="font-bold text-lg">GridFlow</span>
                     </div>
-                    <button class="sidebar-toggle" data-action="toggleSidebar" title="Toggle Sidebar">
-                        <span class="toggle-icon">‹</span>
+                    <button class="btn btn-square btn-ghost" data-action="toggleSidebar" title="Toggle Sidebar">
+                        <span class="text-xl">‹</span>
                     </button>
                 </div>
                 
-                <div class="sidebar-content">
-                    <div class="sidebar-section">
-                        <div class="sidebar-section-title">VIEWS</div>
-                        <nav class="sidebar-nav">
-                            <ul>
-                                <li class="nav-item">
-                                    <a href="#" class="nav-link active" id="sidebarBoardView" data-view="board">
-                                        <span class="nav-icon">📋</span>
-                                        <span class="nav-text">Board View</span>
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a href="#" class="nav-link" id="sidebarTaskView" data-view="tasks">
-                                        <span class="nav-icon">✅</span>
-                                        <span class="nav-text">Task View</span>
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a href="#" class="nav-link" id="sidebarWeeklyView" data-view="weekly">
-                                        <span class="nav-icon">📅</span>
-                                        <span class="nav-text">Weekly Plan</span>
-                                    </a>
-                                </li>
-                            </ul>
-                        </nav>
+                <div class="p-4 flex flex-col gap-6">
+                    <div>
+                        <div class="text-xs font-semibold text-base-content/60 mb-2">VIEWS</div>
+                        <ul class="menu bg-base-200 rounded-box">
+                            <li>
+                                <a href="#" class="nav-link ${'active'}" id="sidebarBoardView" data-view="board">
+                                    <span class="mr-2">📋</span>
+                                    Board View
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#" class="nav-link" id="sidebarTaskView" data-view="tasks">
+                                    <span class="mr-2">✅</span>
+                                    Task View
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#" class="nav-link" id="sidebarWeeklyView" data-view="weekly">
+                                    <span class="mr-2">📅</span>
+                                    Weekly Plan
+                                </a>
+                            </li>
+                        </ul>
                     </div>
-                    
-                    
-                    <div class="sidebar-section">
-                        <div class="sidebar-section-title">SETTINGS</div>
-                        <nav class="sidebar-nav">
-                            <ul>
-                                <li class="nav-item">
-                                    <a href="#" class="nav-link" data-action="showSettingsModal">
-                                        <span class="nav-icon">⚙️</span>
-                                        <span class="nav-text">Settings</span>
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a href="#" class="nav-link" data-action="showDataManagementModal">
-                                        <span class="nav-icon">💾</span>
-                                        <span class="nav-text">Data Management</span>
-                                    </a>
-                                </li>
-                            </ul>
-                        </nav>
+                    <div>
+                        <div class="text-xs font-semibold text-base-content/60 mb-2">SETTINGS</div>
+                        <ul class="menu bg-base-200 rounded-box">
+                            <li>
+                                <a href="#" class="nav-link" data-action="showSettingsModal">
+                                    <span class="mr-2">⚙️</span>
+                                    Settings
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#" class="nav-link" data-action="showDataManagementModal">
+                                    <span class="mr-2">💾</span>
+                                    Data Management
+                                </a>
+                            </li>
+                        </ul>
                     </div>
                 </div>
             </aside>
