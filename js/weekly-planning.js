@@ -194,10 +194,13 @@ export function createWeeklyItemElement(item) {
     let content = '';
     
     if (item.type === 'note') {
-        const noteText = item.content || item.title || '<em>(No content)</em>';
+        const noteTitle = item.title || '';
+        const noteContent = item.content || '';
+        const displayText = noteTitle || noteContent || '<em>(No content)</em>';
         content = `
             <div class="item-content">
-                <div class="item-text">${noteText}</div>
+                ${noteTitle ? `<div class="item-title">${noteTitle}</div>` : ''}
+                ${noteContent && noteContent !== noteTitle ? `<div class="item-text">${noteContent}</div>` : noteTitle ? '' : `<div class="item-text">${displayText}</div>`}
             </div>
             <div class="item-actions">
                 <button class="btn btn-small" onclick="window.weeklyPlanning.editWeeklyItem('${item.id}')">Edit</button>
@@ -205,15 +208,17 @@ export function createWeeklyItemElement(item) {
             </div>
         `;
     } else if (item.type === 'checklist') {
-        const checklistText = item.title || item.content || '<em>(No content)</em>';
+        const checklistTitle = item.title || '';
+        const checklistContent = item.content || '';
+        const displayText = checklistTitle || checklistContent || '<em>(No content)</em>';
         content = `
             <div class="item-content">
                 <div class="checklist-item">
                     <input type="checkbox" ${item.completed ? 'checked' : ''} 
                            onchange="window.weeklyPlanning.toggleWeeklyItem('${item.id}')">
-                    <span class="checklist-text">${checklistText}</span>
+                    <span class="checklist-text">${displayText}</span>
                 </div>
-                ${item.content && item.content !== checklistText ? `<div class="item-description">${item.content}</div>` : ''}
+                ${checklistContent && checklistContent !== checklistTitle && checklistTitle ? `<div class="item-description">${checklistContent}</div>` : ''}
             </div>
             <div class="item-actions">
                 <button class="btn btn-small" onclick="window.weeklyPlanning.editWeeklyItem('${item.id}')">Edit</button>
@@ -452,14 +457,16 @@ export function editWeeklyItem(itemId) {
     const item = currentWeek.items.find(i => i.id === itemId);
     if (!item) return;
     
-    const currentContent = item.type === 'note' ? item.content : item.title;
+    // Use title if it exists, otherwise fall back to content
+    const currentContent = item.title || item.content || '';
     const newContent = prompt(`Edit ${item.type}:`, currentContent);
     
     if (newContent !== null && newContent.trim()) {
-        if (item.type === 'note') {
+        // Always update the title field for consistency
+        item.title = newContent.trim();
+        // Keep content as secondary field if it's different from title
+        if (!item.content || item.content === item.title) {
             item.content = newContent.trim();
-        } else {
-            item.title = newContent.trim();
         }
         
         setAppData(appData);
@@ -667,6 +674,62 @@ export function removeCardFromWeeklyPlan(itemId) {
 }
 
 /**
+ * Save weekly item from modal
+ */
+export function saveWeeklyItem() {
+    const typeInput = document.getElementById('weeklyItemType');
+    const titleInput = document.getElementById('weeklyItemTitle');
+    const contentInput = document.getElementById('weeklyItemContent');
+    const form = document.getElementById('weeklyItemForm');
+    
+    if (!typeInput || !titleInput || !contentInput || !form) {
+        console.error('Weekly item form elements not found');
+        return;
+    }
+    
+    const type = typeInput.value;
+    const title = titleInput.value.trim();
+    const content = contentInput.value.trim();
+    const day = form.dataset.day || 'monday';
+    
+    if (!title && !content) {
+        showStatusMessage('Please enter a title or content', 'error');
+        return;
+    }
+    
+    const appData = getAppData();
+    
+    if (!appData.weeklyPlans[currentWeekKey]) {
+        appData.weeklyPlans[currentWeekKey] = {
+            weekStart: getWeekStart(currentWeekKey).toISOString(),
+            goal: '',
+            items: [],
+            reflection: { wins: '', challenges: '', learnings: '', nextWeekFocus: '' }
+        };
+    }
+    
+    const newItem = {
+        id: `weekly_${appData.nextWeeklyItemId++}`,
+        type: type,
+        day: day,
+        title: title,
+        content: content,
+        completed: false,
+        createdAt: new Date().toISOString()
+    };
+    
+    appData.weeklyPlans[currentWeekKey].items.push(newItem);
+    setAppData(appData);
+    saveData();
+    
+    closeWeeklyItemModal();
+    renderWeeklyItems();
+    updateWeekProgress();
+    
+    showStatusMessage('Weekly item saved', 'success');
+}
+
+/**
  * Close weekly item modal
  */
 export function closeWeeklyItemModal() {
@@ -718,6 +781,7 @@ window.saveWeeklyReflection = saveWeeklyReflection;
 window.findCardById = findCardById;
 window.addCardToWeeklyPlan = addCardToWeeklyPlan;
 window.removeCardFromWeeklyPlan = removeCardFromWeeklyPlan;
+window.saveWeeklyItem = saveWeeklyItem;
 window.closeWeeklyItemModal = closeWeeklyItemModal;
 
 // Export module for access by other modules
@@ -747,6 +811,7 @@ window.weeklyPlanning = {
     findCardById,
     addCardToWeeklyPlan,
     removeCardFromWeeklyPlan,
+    saveWeeklyItem,
     closeWeeklyItemModal,
     getCurrentWeek,
     setCurrentWeek,
