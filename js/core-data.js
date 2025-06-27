@@ -347,6 +347,77 @@ export function migrateToV5(data) {
         data.nextCollectionId = 1;
     }
     
+    // Migrate v4 entity structure to v5 unified entity structure
+    if (data.entities && (data.entities.tasks || data.entities.notes || data.entities.checklists)) {
+        console.log('Migrating v4 entity structure to v5 unified format...');
+        
+        const newEntities = {};
+        
+        // Migrate tasks
+        if (data.entities.tasks) {
+            Object.keys(data.entities.tasks).forEach(taskId => {
+                const task = data.entities.tasks[taskId];
+                newEntities[taskId] = {
+                    id: taskId,
+                    type: 'task',
+                    title: task.text || 'Untitled Task',
+                    content: task.description || '',
+                    completed: task.completed || false,
+                    priority: task.priority || 'medium',
+                    dueDate: task.dueDate || null,
+                    tags: task.tags || [],
+                    createdAt: task.createdAt || new Date().toISOString(),
+                    updatedAt: task.updatedAt || new Date().toISOString(),
+                    // Preserve task-specific fields
+                    parentType: task.parentType,
+                    parentId: task.parentId
+                };
+            });
+        }
+        
+        // Migrate notes
+        if (data.entities.notes) {
+            Object.keys(data.entities.notes).forEach(noteId => {
+                const note = data.entities.notes[noteId];
+                newEntities[noteId] = {
+                    id: noteId,
+                    type: 'note',
+                    title: note.title || 'Untitled Note',
+                    content: note.content || '',
+                    completed: false,
+                    tags: note.tags || [],
+                    createdAt: note.createdAt || new Date().toISOString(),
+                    updatedAt: note.updatedAt || new Date().toISOString(),
+                    // Preserve note-specific fields
+                    attachedTo: note.attachedTo
+                };
+            });
+        }
+        
+        // Migrate checklists
+        if (data.entities.checklists) {
+            Object.keys(data.entities.checklists).forEach(checklistId => {
+                const checklist = data.entities.checklists[checklistId];
+                newEntities[checklistId] = {
+                    id: checklistId,
+                    type: 'checklist',
+                    title: checklist.title || 'Untitled Checklist',
+                    content: checklist.description || '',
+                    completed: false,
+                    items: checklist.items || [],
+                    tags: checklist.tags || [],
+                    createdAt: checklist.createdAt || new Date().toISOString(),
+                    updatedAt: checklist.updatedAt || new Date().toISOString()
+                };
+            });
+        }
+        
+        // Replace the old structure with the new unified structure
+        data.entities = newEntities;
+        
+        console.log(`Migrated ${Object.keys(newEntities).length} entities to unified format`);
+    }
+    
     data.version = '5.0';
     return data;
 }
