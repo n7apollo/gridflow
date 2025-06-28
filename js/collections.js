@@ -50,19 +50,41 @@ export function updateCollectionItems(collectionId) {
     
     // Start with all entities
     if (!filters.entityTypes || filters.entityTypes.length === 0) {
-        // Get all entity types
-        entities.push(...Object.values(appData.entities.tasks).map(e => ({ type: 'task', entity: e })));
-        entities.push(...Object.values(appData.entities.notes).map(e => ({ type: 'note', entity: e })));
-        entities.push(...Object.values(appData.entities.checklists).map(e => ({ type: 'checklist', entity: e })));
+        // Get all entity types - handle both old and new entity structure
+        if (appData.entities && appData.entities.tasks) {
+            entities.push(...Object.values(appData.entities.tasks).map(e => ({ type: 'task', entity: e })));
+        }
+        if (appData.entities && appData.entities.notes) {
+            entities.push(...Object.values(appData.entities.notes).map(e => ({ type: 'note', entity: e })));
+        }
+        if (appData.entities && appData.entities.checklists) {
+            entities.push(...Object.values(appData.entities.checklists).map(e => ({ type: 'checklist', entity: e })));
+        }
+        
+        // Handle new flat entity structure (v5.0)
+        if (appData.entities && !appData.entities.tasks) {
+            Object.values(appData.entities).forEach(entity => {
+                if (entity && entity.type) {
+                    entities.push({ type: entity.type, entity: entity });
+                }
+            });
+        }
     } else {
         // Get specific entity types
         filters.entityTypes.forEach(type => {
-            if (type === 'task' && appData.entities.tasks) {
+            if (type === 'task' && appData.entities && appData.entities.tasks) {
                 entities.push(...Object.values(appData.entities.tasks).map(e => ({ type: 'task', entity: e })));
-            } else if (type === 'note' && appData.entities.notes) {
+            } else if (type === 'note' && appData.entities && appData.entities.notes) {
                 entities.push(...Object.values(appData.entities.notes).map(e => ({ type: 'note', entity: e })));
-            } else if (type === 'checklist' && appData.entities.checklists) {
+            } else if (type === 'checklist' && appData.entities && appData.entities.checklists) {
                 entities.push(...Object.values(appData.entities.checklists).map(e => ({ type: 'checklist', entity: e })));
+            } else if (appData.entities) {
+                // Handle flat entity structure
+                Object.values(appData.entities).forEach(entity => {
+                    if (entity && entity.type === type) {
+                        entities.push({ type: type, entity: entity });
+                    }
+                });
             }
         });
     }
@@ -94,6 +116,12 @@ export function updateCollectionItems(collectionId) {
     }
     
     // Update collection entity relationships
+    if (!appData.relationships) {
+        appData.relationships = {};
+    }
+    if (!appData.relationships.collectionEntities) {
+        appData.relationships.collectionEntities = {};
+    }
     appData.relationships.collectionEntities[collectionId] = entities.map(item => `${item.type}:${item.entity.id}`);
     
     // Update collection metadata

@@ -98,8 +98,17 @@ export function loadData() {
         
         // Initialize Phase 2 sample data for new v5.0 installations
         if (appData.version === '5.0') {
-            if (window.initializeSampleTemplates) window.initializeSampleTemplates();
-            if (window.initializeSampleCollections) window.initializeSampleCollections();
+            try {
+                if (window.initializeSampleTemplates) window.initializeSampleTemplates();
+            } catch (error) {
+                console.error('Failed to initialize sample templates:', error);
+            }
+            
+            try {
+                if (window.initializeSampleCollections) window.initializeSampleCollections();
+            } catch (error) {
+                console.error('Failed to initialize sample collections:', error);
+            }
         }
         
         // Auto-save migrated data (but avoid infinite loop)
