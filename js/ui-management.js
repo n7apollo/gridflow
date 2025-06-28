@@ -18,23 +18,29 @@ function closeModal() {
 // ============================================
 
 function showSettingsModal() {
+    console.log('showSettingsModal called');
     const modal = document.getElementById('settingsModal');
-    if (modal) modal.classList.add('modal-open');
-    
-    // Render content for all tabs
-    if (window.renderColumnsListModal) window.renderColumnsListModal();
-    if (window.renderGroupsListModal) window.renderGroupsListModal();
-    updateModalSettingsUI();
-    if (window.updateBoardInfo) window.updateBoardInfo();
-    
-    // Check if mobile and initialize accordingly
-    const isMobile = window.innerWidth <= 768;
-    if (isMobile) {
-        // Start with tab list on mobile
-        showMobileTabList();
+    if (modal) {
+        console.log('Settings modal found, opening...');
+        modal.classList.add('modal-open');
+        
+        // Render content for all tabs
+        if (window.renderColumnsListModal) window.renderColumnsListModal();
+        if (window.renderGroupsListModal) window.renderGroupsListModal();
+        updateModalSettingsUI();
+        if (window.updateBoardInfo) window.updateBoardInfo();
+        
+        // Check if mobile and initialize accordingly
+        const isMobile = window.innerWidth <= 768;
+        if (isMobile) {
+            // Start with tab list on mobile
+            showMobileTabList();
+        } else {
+            // Show first tab by default on desktop
+            switchTab('columns');
+        }
     } else {
-        // Show first tab by default on desktop
-        switchTab('columns');
+        console.error('Settings modal not found!');
     }
 }
 

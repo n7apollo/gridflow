@@ -84,9 +84,13 @@ function updateIdCounters() {
  * Show data management modal
  */
 export function showDataManagementModal() {
+    console.log('showDataManagementModal called');
     const modal = document.getElementById('dataManagementModal');
     if (modal) {
+        console.log('Data management modal found, opening...');
         modal.classList.add('modal-open');
+    } else {
+        console.error('Data management modal not found!');
     }
 }
 

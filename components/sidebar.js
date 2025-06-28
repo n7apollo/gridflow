@@ -19,19 +19,36 @@ class GridFlowSidebar extends HTMLElement {
     }
 
     handleClick(event) {
+        // Handle buttons with actions
         const button = event.target.closest('button');
-        if (button) {
+        if (button && button.dataset.action) {
             const action = button.dataset.action;
             if (action && window[action]) {
+                event.preventDefault();
                 window[action]();
+                return;
             }
         }
 
-        const navLink = event.target.closest('.nav-link');
-        if (navLink) {
-            const view = navLink.dataset.view;
+        // Handle anchor elements with actions
+        const actionLink = event.target.closest('a[data-action]');
+        if (actionLink) {
+            const action = actionLink.dataset.action;
+            if (action && window[action]) {
+                event.preventDefault();
+                window[action]();
+                return;
+            }
+        }
+
+        // Handle view navigation links
+        const viewLink = event.target.closest('a[data-view]');
+        if (viewLink) {
+            const view = viewLink.dataset.view;
             if (view && window.switchToView) {
+                event.preventDefault();
                 window.switchToView(view);
+                return;
             }
         }
     }
