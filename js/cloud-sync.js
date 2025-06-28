@@ -246,7 +246,10 @@ export class CloudSync {
             throw new Error(`Data size exceeds ${this.currentLimits.maxSize / 1024}kb limit`);
         }
 
-        const response = await fetch(`${this.baseUrl}?apiKey=${apiKey}`, {
+        // Generate a descriptive name for the JSON item
+        const itemName = `GridFlow-Backup-${new Date().toISOString().split('T')[0]}`;
+        
+        const response = await fetch(`${this.baseUrl}?apiKey=${apiKey}&name=${encodeURIComponent(itemName)}&isPublic=false`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

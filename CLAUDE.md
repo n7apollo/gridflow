@@ -10,6 +10,21 @@ GridFlow is a web-based project management tool that combines Kanban boards with
 - **Task View**: Unified task list across all boards with filtering
 - **Weekly Planning**: Focused weekly planning with daily columns and progress tracking
 
+## UI Framework & Design System
+
+GridFlow uses a modern, responsive design stack:
+
+- **DaisyUI + Tailwind CSS**: Component-based design system with utility-first styling
+- **Lucide Icons**: SVG icon library for consistent iconography
+- **Responsive Design**: Mobile-first approach with progressive enhancement
+- **Component Architecture**: Custom HTML elements for modular UI
+
+### Styling Guidelines
+- Use DaisyUI component classes (e.g., `btn`, `card`, `modal`) for consistency
+- Leverage Tailwind utilities for custom styling and spacing
+- Icons should use Lucide SVG elements with proper rendering (avoid `textContent` for SVG)
+- Follow mobile-first responsive breakpoints (768px, 480px)
+
 ### Core Concepts
 - **Groups**: Top-level categories (e.g., "Communications", "Development", "Marketing") with custom colors
 - **Rows**: Specific projects within groups with names and optional descriptions (e.g., "Launch updated website version")
@@ -169,11 +184,21 @@ This is a vanilla HTML/CSS/JavaScript application with no build steps, package m
 
 ## External Dependencies
 
-CDN-loaded libraries (loaded in index.html):
+**UI Framework & Styling**:
+- **DaisyUI**: Component library built on Tailwind CSS for consistent UI components
+- **Tailwind CSS**: Utility-first CSS framework for responsive design
+- **Lucide Icons**: SVG icon library for consistent iconography throughout the app
+
+**CDN-loaded Libraries** (loaded in index.html):
 - `html2canvas` (1.4.1): PNG export functionality
 - `jsPDF` (2.5.1): PDF export functionality  
 - `xlsx` (0.18.5): Excel export functionality
 - `SortableJS` (1.15.0): Reliable drag-and-drop functionality
+
+**Icon Rendering**: 
+- Use `getEntityTypeIcon(type, asHTML)` for proper SVG rendering
+- `asHTML = true` for template literals, `asHTML = false` for DOM appendChild
+- Never use `textContent` with SVG elements (causes `[object SVGSVGElement]` display issue)
 
 ## Data Operations
 
@@ -259,6 +284,36 @@ All entities and objects follow consistent patterns:
 3. **Context Management**: `addToContext()`, `removeFromContext()`, `moveInContext()`
 4. **Validation**: Auto-ID assignment, conflict resolution, data integrity
 
+### Cloud Sync System
+**Automatic Cloud Backup**: Integration with jsonstorage.net for seamless data synchronization across devices.
+
+**Core Sync Module** (`js/cloud-sync.js`):
+- `CloudSync` class with smart sync scheduling and usage tracking
+- Free tier optimization (512 requests/day, 32kb limit) with auto-upgrade prompts
+- Secure API key storage with simple XOR encryption
+- Automatic conflict resolution using existing merge logic
+- Smart sync triggers: on data changes, app focus, manual triggers
+
+**Sync UI Management** (`js/sync-ui.js`):
+- Settings modal integration for API key configuration
+- Real-time usage monitoring and limit warnings
+- Status indicators in Data Management modal
+- Manual sync controls with progress feedback
+
+**Key Features**:
+- **Offline-First**: Works perfectly without internet, syncs when available
+- **Smart Limits**: Respects jsonstorage.net free tier limits, warns before hitting caps
+- **User-Managed**: Each user provides their own API key and controls their data
+- **Error Handling**: Graceful degradation with clear error messages and retry logic
+- **First Sync**: Automatic cloud storage creation on initial sync
+- **Cross-Device**: JSON export/import workflow enhanced with automatic cloud backup
+
+**Configuration**:
+1. User obtains API key from [app.jsonstorage.net](https://app.jsonstorage.net)
+2. Configure in Settings → Cloud Sync → Enter API key
+3. Auto-sync enabled by default (5-minute intervals when changes detected)
+4. Manual sync available in Settings and Data Management modals
+
 ## State Management
 
 ### Global Variables
@@ -319,6 +374,9 @@ No automated tests exist. Manual testing should cover:
 - Cross-device data sync via JSON export/import
 - Cross-context entity synchronization and updates
 - Entity migration from legacy formats
+- **Cloud sync functionality**: API key configuration, first sync, auto-sync, manual sync, error handling
+- **Sync limit testing**: Free tier request limits, data size limits, error scenarios
+- **Offline/online transitions**: Sync behavior when connectivity changes
 
 ## UI Components
 
@@ -331,8 +389,9 @@ No automated tests exist. Manual testing should cover:
 **Modal Management**: Centralized modal system with event delegation:
 - Form modals for entity creation/editing
 - Import progress modal with real-time feedback
-- Settings and configuration modals
-- Mobile-responsive overlay system
+- Settings and configuration modals (including cloud sync configuration)
+- Data management modal with cloud sync status
+- Mobile-responsive overlay system using DaisyUI modal classes (`modal-open`)
 
 **Responsive Design**: Mobile-first approach with progressive enhancement:
 - CSS Grid for board layout with dynamic column count
