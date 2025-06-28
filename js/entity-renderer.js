@@ -134,36 +134,64 @@ function renderEntityAsCard(entity, contextData = {}) {
  */
 function renderEntityAsWeeklyItem(entity, contextData) {
     const itemElement = document.createElement('div');
-    itemElement.className = `weekly-item ${entity.type}-item ${entity.completed ? 'completed' : ''}`;
+    itemElement.className = `card bg-base-100 border border-base-300 shadow-sm hover:shadow-md transition-shadow p-3 ${entity.completed ? 'opacity-60' : ''}`;
     itemElement.dataset.entityId = entity.id;
+    
+    // Add context data attributes
+    if (contextData.weekKey) itemElement.dataset.weekKey = contextData.weekKey;
+    if (contextData.day) itemElement.dataset.day = contextData.day;
+    if (contextData.weeklyItemId) itemElement.dataset.weeklyItemId = contextData.weeklyItemId;
     
     let itemContent = '';
     
     // Different rendering based on entity type
     switch (entity.type) {
         case ENTITY_TYPES.TASK:
+            const priorityColor = entity.priority === 'high' ? 'badge-error' : 
+                                entity.priority === 'low' ? 'badge-info' : 'badge-neutral';
             itemContent = `
-                <div class="weekly-item-content">
-                    <div class="weekly-task">
-                        <input type="checkbox" ${entity.completed ? 'checked' : ''} 
-                               onchange="entityRenderer.toggleCompletion('${entity.id}')">
-                        <div class="task-info">
-                            <span class="task-title">${entity.title}</span>
-                            ${entity.priority !== 'medium' ? `<span class="priority-badge priority-${entity.priority}">${entity.priority}</span>` : ''}
-                            ${entity.dueDate ? `<span class="due-date">Due: ${formatDate(entity.dueDate)}</span>` : ''}
+                <div class="flex items-start gap-3">
+                    <input type="checkbox" class="checkbox checkbox-sm mt-1" ${entity.completed ? 'checked' : ''} 
+                           onchange="entityRenderer.toggleCompletion('${entity.id}')">
+                    <div class="flex-1 min-w-0">
+                        <div class="font-medium text-sm mb-1 ${entity.completed ? 'line-through text-base-content/60' : ''}">${entity.title}</div>
+                        <div class="flex flex-wrap gap-2 mb-2">
+                            ${entity.priority !== 'medium' ? `<div class="badge ${priorityColor} badge-xs">${entity.priority}</div>` : ''}
+                            ${entity.dueDate ? `<div class="badge badge-outline badge-xs">Due: ${formatDate(entity.dueDate)}</div>` : ''}
                         </div>
+                        ${entity.content ? `<div class="text-xs text-base-content/70 ${entity.completed ? 'line-through' : ''}">${entity.content}</div>` : ''}
                     </div>
-                    ${entity.content ? `<div class="task-description">${entity.content}</div>` : ''}
+                    <div class="dropdown dropdown-end">
+                        <label tabindex="0" class="btn btn-ghost btn-xs btn-circle">
+                            <i data-lucide="more-horizontal" class="w-3 h-3"></i>
+                        </label>
+                        <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-32 text-sm">
+                            <li><a onclick="entityRenderer.editEntity('${entity.id}')">Edit</a></li>
+                            <li><a onclick="entityRenderer.removeFromWeekly('${entity.id}', '${contextData.weekKey}')">Remove</a></li>
+                        </ul>
+                    </div>
                 </div>
             `;
             break;
             
         case ENTITY_TYPES.NOTE:
             itemContent = `
-                <div class="weekly-item-content">
-                    <div class="note-content">
-                        <div class="note-title">${entity.title}</div>
-                        ${entity.content ? `<div class="note-text">${entity.content}</div>` : ''}
+                <div class="flex items-start gap-3">
+                    <div class="flex-shrink-0 mt-1">
+                        <i data-lucide="file-text" class="w-4 h-4 text-info"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-medium text-sm mb-1">${entity.title}</div>
+                        ${entity.content ? `<div class="text-xs text-base-content/70 mt-1">${entity.content}</div>` : ''}
+                    </div>
+                    <div class="dropdown dropdown-end">
+                        <label tabindex="0" class="btn btn-ghost btn-xs btn-circle">
+                            <i data-lucide="more-horizontal" class="w-3 h-3"></i>
+                        </label>
+                        <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-32 text-sm">
+                            <li><a onclick="entityRenderer.editEntity('${entity.id}')">Edit</a></li>
+                            <li><a onclick="entityRenderer.removeFromWeekly('${entity.id}', '${contextData.weekKey}')">Remove</a></li>
+                        </ul>
                     </div>
                 </div>
             `;
@@ -172,40 +200,66 @@ function renderEntityAsWeeklyItem(entity, contextData) {
         case ENTITY_TYPES.CHECKLIST:
             const completedCount = entity.items ? entity.items.filter(item => item.completed).length : 0;
             const totalCount = entity.items ? entity.items.length : 0;
+            const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
             
             itemContent = `
-                <div class="weekly-item-content">
-                    <div class="checklist-summary">
-                        <span class="checklist-title">${entity.title}</span>
-                        <span class="checklist-progress">${completedCount}/${totalCount}</span>
+                <div class="flex items-start gap-3">
+                    <div class="flex-shrink-0 mt-1">
+                        <i data-lucide="check-square" class="w-4 h-4 text-warning"></i>
                     </div>
-                    ${totalCount > 0 ? `
-                        <div class="checklist-progress-bar">
-                            <div class="progress-fill" style="width: ${(completedCount/totalCount)*100}%"></div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-medium text-sm mb-2">${entity.title}</div>
+                        <div class="flex items-center gap-2 mb-2">
+                            <div class="progress progress-primary w-20 h-2">
+                                <div class="progress-bar" style="width: ${progressPercent}%"></div>
+                            </div>
+                            <span class="text-xs text-base-content/60">${completedCount}/${totalCount}</span>
                         </div>
-                    ` : ''}
+                        ${entity.content ? `<div class="text-xs text-base-content/70">${entity.content}</div>` : ''}
+                    </div>
+                    <div class="dropdown dropdown-end">
+                        <label tabindex="0" class="btn btn-ghost btn-xs btn-circle">
+                            <i data-lucide="more-horizontal" class="w-3 h-3"></i>
+                        </label>
+                        <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-32 text-sm">
+                            <li><a onclick="entityRenderer.editEntity('${entity.id}')">Edit</a></li>
+                            <li><a onclick="entityRenderer.removeFromWeekly('${entity.id}', '${contextData.weekKey}')">Remove</a></li>
+                        </ul>
+                    </div>
                 </div>
             `;
             break;
             
         default:
             itemContent = `
-                <div class="weekly-item-content">
-                    <div class="item-title">${entity.title}</div>
-                    ${entity.content ? `<div class="item-text">${entity.content}</div>` : ''}
+                <div class="flex items-start gap-3">
+                    <div class="flex-shrink-0 mt-1">
+                        <i data-lucide="file" class="w-4 h-4 text-base-content/60"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-medium text-sm mb-1">${entity.title}</div>
+                        ${entity.content ? `<div class="text-xs text-base-content/70">${entity.content}</div>` : ''}
+                    </div>
+                    <div class="dropdown dropdown-end">
+                        <label tabindex="0" class="btn btn-ghost btn-xs btn-circle">
+                            <i data-lucide="more-horizontal" class="w-3 h-3"></i>
+                        </label>
+                        <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-32 text-sm">
+                            <li><a onclick="entityRenderer.editEntity('${entity.id}')">Edit</a></li>
+                            <li><a onclick="entityRenderer.removeFromWeekly('${entity.id}', '${contextData.weekKey}')">Remove</a></li>
+                        </ul>
+                    </div>
                 </div>
             `;
     }
     
-    // Add common weekly item actions
-    itemContent += `
-        <div class="weekly-item-actions">
-            <button class="btn btn-small" onclick="entityRenderer.editEntity('${entity.id}')">Edit</button>
-            <button class="btn btn-small btn-danger" onclick="entityRenderer.removeFromWeekly('${entity.id}', '${contextData.weekKey}')">Remove</button>
-        </div>
-    `;
-    
     itemElement.innerHTML = itemContent;
+    
+    // Render Lucide icons
+    if (window.lucide) {
+        window.lucide.createIcons({ attrs: { class: 'lucide' } });
+    }
+    
     return itemElement;
 }
 

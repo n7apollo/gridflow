@@ -79,6 +79,42 @@ export function formatDayDate(date, day) {
 }
 
 /**
+ * Update date badges for each day in the weekly view
+ */
+function updateDateBadges() {
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const weekStart = getWeekStart(currentWeekKey);
+    
+    days.forEach((day, index) => {
+        const dateElement = document.getElementById(`${day}Date`);
+        if (!dateElement) return;
+        
+        // Calculate the date for this day (Monday = index 0, Sunday = index 6)
+        const dayIndex = index + 1; // Convert to 1-based index where Monday = 1
+        const targetDate = new Date(weekStart);
+        targetDate.setDate(weekStart.getDate() + dayIndex);
+        
+        // Update the badge with the day number
+        dateElement.textContent = targetDate.getDate();
+        
+        // Add today indicator
+        const today = new Date();
+        const isToday = targetDate.toDateString() === today.toDateString();
+        
+        if (isToday) {
+            dateElement.classList.add('badge-primary');
+            dateElement.classList.remove('badge-neutral', 'badge-secondary');
+        } else if (day === 'saturday' || day === 'sunday') {
+            dateElement.classList.add('badge-secondary');
+            dateElement.classList.remove('badge-neutral', 'badge-primary');
+        } else {
+            dateElement.classList.add('badge-neutral');
+            dateElement.classList.remove('badge-primary', 'badge-secondary');
+        }
+    });
+}
+
+/**
  * Initialize weekly planning system
  */
 export function initializeWeeklyPlanning() {
@@ -151,35 +187,35 @@ export function renderWeeklyItems() {
     
     const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
     
+    // Update date badges first
+    updateDateBadges();
+    
     days.forEach(day => {
-        const dayColumn = document.getElementById(`${day}Items`);
-        if (!dayColumn) return;
+        const dayItemsContainer = document.getElementById(`${day}Items`);
+        if (!dayItemsContainer) return;
         
-        dayColumn.innerHTML = '';
-        
-        // Add day header with date
-        const dayHeader = document.createElement('div');
-        dayHeader.className = 'day-header';
-        dayHeader.innerHTML = `
-            <h3>${day.charAt(0).toUpperCase() + day.slice(1)}</h3>
-            <span class="day-date">${formatDayDate(new Date(), day)}</span>
-        `;
-        dayColumn.appendChild(dayHeader);
+        // Clear existing items (but keep the header structure from views.js)
+        dayItemsContainer.innerHTML = '';
         
         // Filter and render items for this day
         const dayItems = items.filter(item => item.day === day);
         
         dayItems.forEach(item => {
             const itemElement = createWeeklyItemElement(item);
-            dayColumn.appendChild(itemElement);
+            dayItemsContainer.appendChild(itemElement);
         });
         
-        // Add "Add Item" button
+        // Add "Add Item" button at the bottom
         const addButton = document.createElement('button');
-        addButton.className = 'btn btn-add-item';
-        addButton.innerHTML = '+ Add Item';
+        addButton.className = 'btn btn-sm btn-outline btn-ghost w-full mt-4 gap-2';
+        addButton.innerHTML = '<i data-lucide="plus" class="w-4 h-4"></i> Add Item';
         addButton.onclick = () => addWeeklyNote(day);
-        dayColumn.appendChild(addButton);
+        dayItemsContainer.appendChild(addButton);
+        
+        // Re-render Lucide icons
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
     });
 }
 

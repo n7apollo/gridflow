@@ -246,73 +246,108 @@ class GridFlowViews extends HTMLElement {
                     </div>
                     
                     <!-- Daily Planning Grid -->
-                    <div class="daily-planning-grid grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4">
-                        <div class="day-column card bg-base-200 p-2" id="mondayColumn">
-                            <div class="day-header flex items-center justify-between mb-2">
-                                <h3 class="font-semibold">Monday</h3>
-                                <button class="btn btn-xs btn-secondary" data-action="addDailyItem" data-params="monday">+</button>
+                    <div class="daily-planning-grid grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-6 min-h-[600px]">
+                        <div class="day-column card bg-base-100 shadow-sm border border-base-300 p-4 min-w-0" id="mondayColumn">
+                            <div class="day-header flex items-center justify-between mb-4 pb-2 border-b border-base-300">
+                                <div class="flex items-center gap-3">
+                                    <div class="badge badge-neutral badge-lg font-bold text-lg min-w-[2.5rem]" id="mondayDate">1</div>
+                                    <h3 class="font-semibold text-base">Monday</h3>
+                                </div>
+                                <button class="btn btn-sm btn-ghost btn-circle" data-action="addDailyItem" data-params="monday" title="Add item">
+                                    <i data-lucide="plus" class="w-4 h-4"></i>
+                                </button>
                             </div>
-                            <div class="day-items" id="mondayItems">
+                            <div class="day-items space-y-2" id="mondayItems">
                                 <!-- Monday items will be populated -->
                             </div>
                         </div>
                         
-                        <div class="day-column card bg-base-200 p-2" id="tuesdayColumn">
-                            <div class="day-header flex items-center justify-between mb-2">
-                                <h3 class="font-semibold">Tuesday</h3>
-                                <button class="btn btn-xs btn-secondary" data-action="addDailyItem" data-params="tuesday">+</button>
+                        <div class="day-column card bg-base-100 shadow-sm border border-base-300 p-4 min-w-0" id="tuesdayColumn">
+                            <div class="day-header flex items-center justify-between mb-4 pb-2 border-b border-base-300">
+                                <div class="flex items-center gap-3">
+                                    <div class="badge badge-neutral badge-lg font-bold text-lg min-w-[2.5rem]" id="tuesdayDate">2</div>
+                                    <h3 class="font-semibold text-base">Tuesday</h3>
+                                </div>
+                                <button class="btn btn-sm btn-ghost btn-circle" data-action="addDailyItem" data-params="tuesday" title="Add item">
+                                    <i data-lucide="plus" class="w-4 h-4"></i>
+                                </button>
                             </div>
-                            <div class="day-items" id="tuesdayItems">
+                            <div class="day-items space-y-2" id="tuesdayItems">
                                 <!-- Tuesday items will be populated -->
                             </div>
                         </div>
                         
-                        <div class="day-column card bg-base-200 p-2" id="wednesdayColumn">
-                            <div class="day-header flex items-center justify-between mb-2">
-                                <h3 class="font-semibold">Wednesday</h3>
-                                <button class="btn btn-xs btn-secondary" data-action="addDailyItem" data-params="wednesday">+</button>
+                        <div class="day-column card bg-base-100 shadow-sm border border-base-300 p-4 min-w-0" id="wednesdayColumn">
+                            <div class="day-header flex items-center justify-between mb-4 pb-2 border-b border-base-300">
+                                <div class="flex items-center gap-3">
+                                    <div class="badge badge-neutral badge-lg font-bold text-lg min-w-[2.5rem]" id="wednesdayDate">3</div>
+                                    <h3 class="font-semibold text-base">Wednesday</h3>
+                                </div>
+                                <button class="btn btn-sm btn-ghost btn-circle" data-action="addDailyItem" data-params="wednesday" title="Add item">
+                                    <i data-lucide="plus" class="w-4 h-4"></i>
+                                </button>
                             </div>
-                            <div class="day-items" id="wednesdayItems">
+                            <div class="day-items space-y-2" id="wednesdayItems">
                                 <!-- Wednesday items will be populated -->
                             </div>
                         </div>
                         
-                        <div class="day-column card bg-base-200 p-2" id="thursdayColumn">
-                            <div class="day-header flex items-center justify-between mb-2">
-                                <h3 class="font-semibold">Thursday</h3>
-                                <button class="btn btn-xs btn-secondary" data-action="addDailyItem" data-params="thursday">+</button>
+                        <div class="day-column card bg-base-100 shadow-sm border border-base-300 p-4 min-w-0" id="thursdayColumn">
+                            <div class="day-header flex items-center justify-between mb-4 pb-2 border-b border-base-300">
+                                <div class="flex items-center gap-3">
+                                    <div class="badge badge-neutral badge-lg font-bold text-lg min-w-[2.5rem]" id="thursdayDate">4</div>
+                                    <h3 class="font-semibold text-base">Thursday</h3>
+                                </div>
+                                <button class="btn btn-sm btn-ghost btn-circle" data-action="addDailyItem" data-params="thursday" title="Add item">
+                                    <i data-lucide="plus" class="w-4 h-4"></i>
+                                </button>
                             </div>
-                            <div class="day-items" id="thursdayItems">
+                            <div class="day-items space-y-2" id="thursdayItems">
                                 <!-- Thursday items will be populated -->
                             </div>
                         </div>
                         
-                        <div class="day-column card bg-base-200 p-2" id="fridayColumn">
-                            <div class="day-header flex items-center justify-between mb-2">
-                                <h3 class="font-semibold">Friday</h3>
-                                <button class="btn btn-xs btn-secondary" data-action="addDailyItem" data-params="friday">+</button>
+                        <div class="day-column card bg-base-100 shadow-sm border border-base-300 p-4 min-w-0" id="fridayColumn">
+                            <div class="day-header flex items-center justify-between mb-4 pb-2 border-b border-base-300">
+                                <div class="flex items-center gap-3">
+                                    <div class="badge badge-neutral badge-lg font-bold text-lg min-w-[2.5rem]" id="fridayDate">5</div>
+                                    <h3 class="font-semibold text-base">Friday</h3>
+                                </div>
+                                <button class="btn btn-sm btn-ghost btn-circle" data-action="addDailyItem" data-params="friday" title="Add item">
+                                    <i data-lucide="plus" class="w-4 h-4"></i>
+                                </button>
                             </div>
-                            <div class="day-items" id="fridayItems">
+                            <div class="day-items space-y-2" id="fridayItems">
                                 <!-- Friday items will be populated -->
                             </div>
                         </div>
                         
-                        <div class="day-column card bg-base-200 p-2" id="saturdayColumn">
-                            <div class="day-header flex items-center justify-between mb-2">
-                                <h3 class="font-semibold">Saturday</h3>
-                                <button class="btn btn-xs btn-secondary" data-action="addDailyItem" data-params="saturday">+</button>
+                        <div class="day-column weekend-column card bg-secondary/5 shadow-sm border border-secondary/20 p-4 min-w-0" id="saturdayColumn">
+                            <div class="day-header flex items-center justify-between mb-4 pb-2 border-b border-secondary/30">
+                                <div class="flex items-center gap-3">
+                                    <div class="badge badge-secondary badge-lg font-bold text-lg min-w-[2.5rem]" id="saturdayDate">6</div>
+                                    <h3 class="font-semibold text-base text-secondary">Saturday</h3>
+                                </div>
+                                <button class="btn btn-sm btn-ghost btn-circle hover:btn-secondary" data-action="addDailyItem" data-params="saturday" title="Add item">
+                                    <i data-lucide="plus" class="w-4 h-4"></i>
+                                </button>
                             </div>
-                            <div class="day-items" id="saturdayItems">
+                            <div class="day-items space-y-2" id="saturdayItems">
                                 <!-- Saturday items will be populated -->
                             </div>
                         </div>
                         
-                        <div class="day-column card bg-base-200 p-2" id="sundayColumn">
-                            <div class="day-header flex items-center justify-between mb-2">
-                                <h3 class="font-semibold">Sunday</h3>
-                                <button class="btn btn-xs btn-secondary" data-action="addDailyItem" data-params="sunday">+</button>
+                        <div class="day-column weekend-column card bg-secondary/5 shadow-sm border border-secondary/20 p-4 min-w-0" id="sundayColumn">
+                            <div class="day-header flex items-center justify-between mb-4 pb-2 border-b border-secondary/30">
+                                <div class="flex items-center gap-3">
+                                    <div class="badge badge-secondary badge-lg font-bold text-lg min-w-[2.5rem]" id="sundayDate">7</div>
+                                    <h3 class="font-semibold text-base text-secondary">Sunday</h3>
+                                </div>
+                                <button class="btn btn-sm btn-ghost btn-circle hover:btn-secondary" data-action="addDailyItem" data-params="sunday" title="Add item">
+                                    <i data-lucide="plus" class="w-4 h-4"></i>
+                                </button>
                             </div>
-                            <div class="day-items" id="sundayItems">
+                            <div class="day-items space-y-2" id="sundayItems">
                                 <!-- Sunday items will be populated -->
                             </div>
                         </div>
