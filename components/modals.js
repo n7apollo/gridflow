@@ -795,7 +795,7 @@ class GridFlowModals extends HTMLElement {
             </div>
 
             <!-- Mobile Menu Overlay -->
-            <div class="modal modal-open" id="mobileMenuOverlay" data-action="closeMobileMenu" style="background: rgba(0,0,0,0.4);"></div>
+            <div class="modal" id="mobileMenuOverlay" data-action="closeMobileMenu" style="background: rgba(0,0,0,0.4);"></div>
             <!-- Mobile Menu -->
             <div class="drawer-side" id="mobileMenu">
                 <div class="menu p-4 w-80 min-h-full bg-base-200 text-base-content">
