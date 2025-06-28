@@ -350,17 +350,24 @@ export class CloudSync {
                 throw new Error('Cloud sync is disabled');
             }
 
+            console.log('syncToCloud: Preparing export data...');
             const exportData = this.prepareExportData();
             const settings = this.getSyncSettings();
+            
+            console.log('syncToCloud: Export data size:', this.getDataSize(exportData), 'bytes');
+            console.log('syncToCloud: Settings:', settings ? 'found' : 'not found', settings?.storageUri ? `(storageUri: ${settings.storageUri})` : '(no storageUri)');
             
             let result;
             if (settings && settings.storageUri) {
                 // Update existing
+                console.log('syncToCloud: Updating existing cloud storage...');
                 result = await this.updateCloudStorage(exportData);
             } else {
                 // Create new
+                console.log('syncToCloud: Creating new cloud storage...');
                 const storageUri = await this.createCloudStorage(exportData);
                 result = { uri: `${this.baseUrl}/${storageUri}` };
+                console.log('syncToCloud: Created new storage with URI:', storageUri);
             }
 
             this.usageStats.lastSyncTime = new Date().toISOString();
@@ -416,15 +423,26 @@ export class CloudSync {
         try {
             showStatusMessage('Syncing with cloud...', 'info');
             
-            // First, try to fetch cloud data
+            // Check if this is the first sync (no storageUri yet)
+            const settings = this.getSyncSettings();
+            if (!settings || !settings.storageUri) {
+                // No cloud storage exists yet, this is the first sync
+                console.log('First sync - creating cloud storage');
+                await this.syncToCloud();
+                showStatusMessage('Initial sync to cloud completed!', 'success');
+                return;
+            }
+            
+            // Try to fetch existing cloud data
             let cloudData = null;
             try {
                 cloudData = await this.fetchCloudData();
             } catch (error) {
                 if (error.message.includes('not found')) {
-                    // No cloud data exists, this is the first sync
+                    // Cloud data was deleted, recreate it
+                    console.log('Cloud data not found - recreating');
                     await this.syncToCloud();
-                    showStatusMessage('Initial sync to cloud completed!', 'success');
+                    showStatusMessage('Recreated cloud storage!', 'success');
                     return;
                 }
                 throw error;

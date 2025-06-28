@@ -9,7 +9,7 @@ import { showStatusMessage } from './utilities.js';
 /**
  * Configure sync API key from settings modal
  */
-export function configureSyncApiKey() {
+export async function configureSyncApiKey() {
     const apiKeyInput = document.getElementById('syncApiKey');
     const planSelect = document.getElementById('syncPlanType');
     
@@ -44,7 +44,16 @@ export function configureSyncApiKey() {
         // Refresh the status display
         refreshSyncStatus();
         
-        showStatusMessage('Cloud sync configured successfully!', 'success');
+        // Perform initial sync to establish cloud storage
+        try {
+            await cloudSync.performFullSync();
+        } catch (syncError) {
+            console.warn('Initial sync failed, but configuration was successful:', syncError);
+            showStatusMessage('Cloud sync configured! Initial sync will happen automatically.', 'success');
+            return;
+        }
+        
+        showStatusMessage('Cloud sync configured and synced successfully!', 'success');
     } catch (error) {
         console.error('Failed to configure sync:', error);
         showStatusMessage(`Configuration failed: ${error.message}`, 'error');

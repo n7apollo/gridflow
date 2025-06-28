@@ -107,6 +107,12 @@ function initializeGridFlow() {
     // Initialize collections (populate defaults if needed)
     collections.initializeSampleCollections();
     
+    // Initialize cloud sync (load settings and start auto-sync if enabled)
+    if (window.cloudSync) {
+        window.cloudSync.loadSyncSettings();
+        console.log('Cloud sync initialized');
+    }
+    
     // Update UI (will be called by navigation after components are ready)
     // if (window.renderBoard) window.renderBoard();
     // if (window.updateSettingsUI) window.updateSettingsUI();
