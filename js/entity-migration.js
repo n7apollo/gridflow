@@ -225,8 +225,11 @@ function determineEntityType(card) {
  * @returns {Object} Entity data
  */
 function convertCardToEntityData(card) {
+    console.log('Converting card to entity:', card);
+    console.log('Card properties:', Object.keys(card));
+    
     const entityData = {
-        title: card.title || card.name || 'Untitled',
+        title: card.title || card.name || card.text || 'Untitled',
         content: card.description || card.content || '',
         completed: card.completed || false,
         tags: card.tags || [],
