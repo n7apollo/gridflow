@@ -24,20 +24,9 @@ function showSettingsModal() {
         console.log('Settings modal found, opening...');
         modal.classList.add('modal-open');
         
-        // Render content for all tabs
-        if (window.renderColumnsListModal) window.renderColumnsListModal();
-        if (window.renderGroupsListModal) window.renderGroupsListModal();
-        updateModalSettingsUI();
-        if (window.updateBoardInfo) window.updateBoardInfo();
-        
-        // Check if mobile and initialize accordingly
-        const isMobile = window.innerWidth <= 768;
-        if (isMobile) {
-            // Start with tab list on mobile
-            showMobileTabList();
-        } else {
-            // Show first tab by default on desktop
-            switchTab('columns');
+        // Initialize sync UI
+        if (window.initializeSyncUI) {
+            window.initializeSyncUI();
         }
     } else {
         console.error('Settings modal not found!');

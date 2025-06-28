@@ -89,6 +89,11 @@ export function showDataManagementModal() {
     if (modal) {
         console.log('Data management modal found, opening...');
         modal.classList.add('modal-open');
+        
+        // Update sync status in data management modal
+        if (window.updateDataManagementSyncStatus) {
+            window.updateDataManagementSyncStatus();
+        }
     } else {
         console.error('Data management modal not found!');
     }

@@ -28,6 +28,8 @@ import * as entityMigration from './entity-migration.js';
 import * as entitySync from './entity-sync.js';
 import * as dataMigration from './data-migration.js';
 import * as dragDrop from './drag-drop.js';
+import * as cloudSync from './cloud-sync.js';
+import * as syncUI from './sync-ui.js';
 
 // Initialize the application
 function initializeGridFlow() {
@@ -57,6 +59,8 @@ function initializeGridFlow() {
     window.entitySync = entitySync;
     window.dataMigration = dataMigration;
     window.dragDrop = dragDrop;
+    window.cloudSync = cloudSync.cloudSync; // Export the instance
+    window.syncUI = syncUI;
     
     // Load data first
     const { appData, boardData } = coreData.loadData();

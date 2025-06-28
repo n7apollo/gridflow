@@ -89,6 +89,16 @@ class GridFlowModals extends HTMLElement {
                 window.importFromJSON();
             }
         }
+        
+        // Handle sync plan type changes
+        if (event.target.id === 'syncPlanType' && window.updateSyncPlan) {
+            window.updateSyncPlan();
+        }
+        
+        // Handle auto sync checkbox changes
+        if (event.target.id === 'autoSyncEnabled' && window.toggleAutoSync) {
+            window.toggleAutoSync();
+        }
     }
 
     getTemplate() {
@@ -672,9 +682,23 @@ class GridFlowModals extends HTMLElement {
                     <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" data-action="closeDataManagementModal">✕</button>
                     <h2 class="text-xl font-bold mb-4">Data Management</h2>
                     <div class="space-y-6">
+                        <!-- Cloud Sync Status -->
                         <div class="card bg-base-100 border border-base-300">
                             <div class="card-body">
-                                <h3 class="card-title text-base">📤 Backup Data</h3>
+                                <h3 class="card-title text-base">☁️ Cloud Sync</h3>
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-sm" id="dataSyncStatus">Not configured</span>
+                                    <button class="btn btn-primary btn-sm" data-action="showSettingsModal">Configure</button>
+                                </div>
+                                <div class="text-xs text-base-content/60" id="dataSyncDetails">
+                                    Configure cloud sync in Settings to automatically backup your data
+                                </div>
+                                <button class="btn btn-outline w-full mt-2" data-action="manualSync" id="dataSyncButton" disabled>🔄 Sync Now</button>
+                            </div>
+                        </div>
+                        <div class="card bg-base-100 border border-base-300">
+                            <div class="card-body">
+                                <h3 class="card-title text-base">📤 Manual Backup</h3>
                                 <p>Export all your GridFlow data as a JSON backup file:</p>
                                 <button class="btn btn-primary w-full mt-2" data-action="exportToJSON">💾 Download Backup (JSON)</button>
                             </div>
@@ -800,7 +824,124 @@ class GridFlowModals extends HTMLElement {
                     <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" data-action="closeSettingsModal">✕</button>
                     <h2 class="text-xl font-bold mb-4">Settings</h2>
                     <div class="settings-container">
-                        <!-- Content managed by ui-management.js -->
+                        <div class="space-y-6">
+                            <!-- Cloud Sync Configuration -->
+                            <div class="card bg-base-100 border border-base-300">
+                                <div class="card-body">
+                                    <h3 class="card-title text-base">⚙️ Cloud Sync Configuration</h3>
+                                    <div class="space-y-4">
+                                        <div class="form-control">
+                                            <label class="label">
+                                                <span class="label-text font-medium">API Key</span>
+                                                <a href="https://app.jsonstorage.net" target="_blank" class="link link-primary text-xs">Get your key →</a>
+                                            </label>
+                                            <div class="flex gap-2">
+                                                <input type="password" id="syncApiKey" class="input input-bordered flex-1" placeholder="Enter your jsonstorage.net API key">
+                                                <button class="btn btn-primary" data-action="configureSyncApiKey">Save</button>
+                                            </div>
+                                            <p class="text-xs text-base-content/60 mt-1">
+                                                Your API key is stored securely on your device and never shared.
+                                            </p>
+                                        </div>
+                                        <div class="form-control">
+                                            <label class="label">
+                                                <span class="label-text font-medium">Plan Type</span>
+                                            </label>
+                                            <select id="syncPlanType" class="select select-bordered" data-action="updateSyncPlan">
+                                                <option value="free">Free (512 requests/day, 32kb)</option>
+                                                <option value="paid">Paid ($1/month - 1440 requests/day, 64kb)</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-control">
+                                            <label class="label cursor-pointer">
+                                                <span class="label-text">Enable automatic sync</span>
+                                                <input type="checkbox" id="autoSyncEnabled" class="checkbox" data-action="toggleAutoSync">
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Sync Status -->
+                            <div class="card bg-base-100 border border-base-300">
+                                <div class="card-body">
+                                    <h3 class="card-title text-base">📊 Sync Status</h3>
+                                    <div class="grid grid-cols-2 gap-4" id="syncStatusGrid">
+                                        <div class="stat">
+                                            <div class="stat-title">Status</div>
+                                            <div class="stat-value text-sm" id="syncStatus">Not configured</div>
+                                        </div>
+                                        <div class="stat">
+                                            <div class="stat-title">Last Sync</div>
+                                            <div class="stat-value text-sm" id="lastSyncTime">Never</div>
+                                        </div>
+                                        <div class="stat">
+                                            <div class="stat-title">Requests Used</div>
+                                            <div class="stat-value text-sm" id="requestsUsed">0/512</div>
+                                        </div>
+                                        <div class="stat">
+                                            <div class="stat-title">Data Size</div>
+                                            <div class="stat-value text-sm" id="dataSize">0 KB</div>
+                                        </div>
+                                    </div>
+                                    <div class="mt-4 space-y-2">
+                                        <div class="flex gap-2">
+                                            <button class="btn btn-primary btn-sm" data-action="manualSync">🔄 Sync Now</button>
+                                            <button class="btn btn-outline btn-sm" data-action="refreshSyncStatus">📊 Refresh Status</button>
+                                        </div>
+                                        <div id="syncMessages" class="text-xs text-base-content/60">
+                                            Configure your API key to enable cloud sync
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Usage Statistics -->
+                            <div class="card bg-base-100 border border-base-300">
+                                <div class="card-body">
+                                    <h3 class="card-title text-base">📈 Usage Statistics</h3>
+                                    <div class="stats stats-vertical w-full">
+                                        <div class="stat">
+                                            <div class="stat-title">Total Syncs</div>
+                                            <div class="stat-value text-sm" id="totalSyncs">0</div>
+                                        </div>
+                                        <div class="stat">
+                                            <div class="stat-title">Errors</div>
+                                            <div class="stat-value text-sm" id="syncErrors">0</div>
+                                        </div>
+                                        <div class="stat">
+                                            <div class="stat-title">Requests Remaining</div>
+                                            <div class="stat-value text-sm" id="requestsRemaining">512</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Help -->
+                            <div class="card bg-info/10 border border-info/20">
+                                <div class="card-body">
+                                    <h3 class="card-title text-base text-info">💡 How it works</h3>
+                                    <div class="text-sm space-y-2">
+                                        <p>• Your data syncs automatically when changes are made</p>
+                                        <p>• Free tier: 512 syncs per day, up to 32kb data</p>
+                                        <p>• Paid tier: 1440 syncs per day, up to 64kb data</p>
+                                        <p>• Data is stored securely at jsonstorage.net</p>
+                                        <p>• Each user manages their own API key and data</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Danger Zone -->
+                            <div class="card bg-error/10 border border-error/20">
+                                <div class="card-body">
+                                    <h3 class="card-title text-base text-error">⚠️ Reset Sync</h3>
+                                    <p class="text-sm text-base-content/60 mb-4">
+                                        Clear all sync configuration and usage data.
+                                    </p>
+                                    <button class="btn btn-error btn-sm" data-action="clearSyncData">🗑️ Clear Sync Data</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

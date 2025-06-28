@@ -53,6 +53,12 @@ export function saveData() {
         }
         
         localStorage.setItem('gridflow_data', JSON.stringify(appData));
+        
+        // Mark changes for cloud sync
+        if (window.cloudSync && window.cloudSync.isEnabled) {
+            window.cloudSync.markChanges();
+        }
+        
         showStatusMessage('Data saved successfully', 'success');
     } catch (error) {
         console.error('Failed to save data:', error);
