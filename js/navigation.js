@@ -15,10 +15,14 @@ import { showStatusMessage } from './utilities.js';
  * @param {string} view - View to switch to ('board', 'tasks', 'weekly')
  */
 export function switchToView(view) {
-    // Hide all containers
-    document.getElementById('boardContainer').style.display = 'none';
-    document.getElementById('taskContainer').style.display = 'none';
-    document.getElementById('weeklyContainer').style.display = 'none';
+    // Hide all containers using CSS classes
+    const boardContainer = document.getElementById('boardContainer');
+    const taskContainer = document.getElementById('taskContainer');
+    const weeklyContainer = document.getElementById('weeklyContainer');
+    
+    if (boardContainer) boardContainer.classList.add('hidden');
+    if (taskContainer) taskContainer.classList.add('hidden');
+    if (weeklyContainer) weeklyContainer.classList.add('hidden');
     
     // Remove active class from all view buttons (header) - check if they exist
     const boardViewBtn = document.getElementById('boardViewBtn');
@@ -30,24 +34,24 @@ export function switchToView(view) {
     if (weeklyViewBtn) weeklyViewBtn.classList.remove('active');
     
     // Remove active class from sidebar nav links
-    const sidebarLinks = document.querySelectorAll('.sidebar .nav-link');
+    const sidebarLinks = document.querySelectorAll('.nav-link');
     sidebarLinks.forEach(link => link.classList.remove('active'));
     
     // Show selected view and activate buttons
     if (view === 'board') {
-        document.getElementById('boardContainer').style.display = 'block';
+        if (boardContainer) boardContainer.classList.remove('hidden');
         if (boardViewBtn) boardViewBtn.classList.add('active');
         const sidebarBoardView = document.getElementById('sidebarBoardView');
         if (sidebarBoardView) sidebarBoardView.classList.add('active');
         if (window.renderBoard) window.renderBoard();
     } else if (view === 'tasks') {
-        document.getElementById('taskContainer').style.display = 'block';
+        if (taskContainer) taskContainer.classList.remove('hidden');
         if (taskViewBtn) taskViewBtn.classList.add('active');
         const sidebarTaskView = document.getElementById('sidebarTaskView');
         if (sidebarTaskView) sidebarTaskView.classList.add('active');
         if (window.populateTaskView) window.populateTaskView();
     } else if (view === 'weekly') {
-        document.getElementById('weeklyContainer').style.display = 'block';
+        if (weeklyContainer) weeklyContainer.classList.remove('hidden');
         if (weeklyViewBtn) weeklyViewBtn.classList.add('active');
         const sidebarWeeklyView = document.getElementById('sidebarWeeklyView');
         if (sidebarWeeklyView) sidebarWeeklyView.classList.add('active');
@@ -63,53 +67,20 @@ export function switchToView(view) {
  * Toggle sidebar visibility and collapsed state
  */
 export function toggleSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    const mainContent = document.querySelector('.main-content');
-    const toggleIcon = document.querySelector('.toggle-icon');
-    
-    if (window.innerWidth <= 600) {
-        // Mobile: toggle sidebar visibility
-        sidebar.classList.toggle('open');
-    } else if (window.innerWidth <= 900) {
-        // Tablet: sidebar is always collapsed but visible
-        return;
-    } else {
-        // Desktop: toggle between full and collapsed
-        if (sidebar.style.width === '64px') {
-            sidebar.style.width = '260px';
-            mainContent.style.marginLeft = '260px';
-            toggleIcon.textContent = '‹';
-        } else {
-            sidebar.style.width = '64px';
-            mainContent.style.marginLeft = '64px';
-            toggleIcon.textContent = '›';
-        }
+    // DaisyUI drawer handles sidebar toggling via the drawer-toggle checkbox
+    const drawerToggle = document.getElementById('drawer-toggle');
+    if (drawerToggle) {
+        drawerToggle.checked = !drawerToggle.checked;
     }
 }
 
 /**
  * Handle responsive sidebar behavior
+ * Note: DaisyUI drawer handles responsive behavior automatically
  */
 export function handleSidebarResize() {
-    const sidebar = document.getElementById('sidebar');
-    const mainContent = document.querySelector('.main-content');
-    
-    if (window.innerWidth <= 600) {
-        // Mobile: sidebar off-canvas
-        sidebar.style.width = '';
-        mainContent.style.marginLeft = '';
-        sidebar.classList.remove('open');
-    } else if (window.innerWidth <= 900) {
-        // Tablet: collapsed sidebar
-        sidebar.style.width = '';
-        mainContent.style.marginLeft = '';
-    } else {
-        // Desktop: full sidebar (unless manually collapsed)
-        if (sidebar.style.width !== '64px') {
-            sidebar.style.width = '';
-            mainContent.style.marginLeft = '';
-        }
-    }
+    // DaisyUI drawer component handles responsive behavior automatically
+    // No manual style manipulation needed
 }
 
 /**
@@ -131,13 +102,13 @@ export function toggleBoardDropdown() {
     const dropdown = document.getElementById('boardDropdown');
     if (!dropdown) return; // Early return if element doesn't exist
     
-    const isOpen = dropdown.style.display === 'block';
+    const isOpen = !dropdown.classList.contains('hidden');
     
     if (isOpen) {
         closeBoardDropdown();
     } else {
         if (window.populateBoardDropdown) window.populateBoardDropdown();
-        dropdown.style.display = 'block';
+        dropdown.classList.remove('hidden');
         
         // Focus search input
         const searchInput = document.getElementById('boardSearchInput');
@@ -159,7 +130,7 @@ export function toggleBoardDropdown() {
 export function closeBoardDropdown() {
     const dropdown = document.getElementById('boardDropdown');
     if (dropdown) {
-        dropdown.style.display = 'none';
+        dropdown.classList.add('hidden');
     }
     document.removeEventListener('click', handleBoardDropdownOutsideClick);
 }
@@ -190,9 +161,9 @@ export function filterBoards() {
     boardItems.forEach(item => {
         const boardName = item.textContent.toLowerCase();
         if (boardName.includes(searchTerm)) {
-            item.style.display = 'block';
+            item.classList.remove('hidden');
         } else {
-            item.style.display = 'none';
+            item.classList.add('hidden');
         }
     });
 }
@@ -206,13 +177,13 @@ export function filterBoards() {
  */
 export function toggleTemplatesMenu() {
     const dropdown = document.getElementById('templatesDropdown');
-    const isOpen = dropdown.style.display === 'block';
+    const isOpen = !dropdown.classList.contains('hidden');
     
     // Close all other dropdowns first
     closeAllDropdowns();
     
     if (!isOpen) {
-        dropdown.style.display = 'block';
+        dropdown.classList.remove('hidden');
         
         // Close when clicking outside
         setTimeout(() => {
@@ -226,7 +197,7 @@ export function toggleTemplatesMenu() {
  */
 export function closeTemplatesMenu() {
     const dropdown = document.getElementById('templatesDropdown');
-    dropdown.style.display = 'none';
+    if (dropdown) dropdown.classList.add('hidden');
     document.removeEventListener('click', handleTemplatesOutsideClick);
 }
 
@@ -252,13 +223,13 @@ function handleTemplatesOutsideClick(event) {
  */
 export function toggleBoardExportMenu() {
     const dropdown = document.getElementById('boardExportDropdown');
-    const isOpen = dropdown.style.display === 'block';
+    const isOpen = !dropdown.classList.contains('hidden');
     
     // Close all other dropdowns first
     closeAllDropdowns();
     
     if (!isOpen) {
-        dropdown.style.display = 'block';
+        dropdown.classList.remove('hidden');
         
         // Close when clicking outside
         setTimeout(() => {
@@ -273,7 +244,7 @@ export function toggleBoardExportMenu() {
 export function closeBoardExportMenu() {
     const dropdown = document.getElementById('boardExportDropdown');
     if (dropdown) {
-        dropdown.style.display = 'none';
+        dropdown.classList.add('hidden');
         document.removeEventListener('click', handleBoardExportOutsideClick);
     }
 }
@@ -361,11 +332,15 @@ export function hideSettings() {
  * @returns {string} Current view ('board', 'tasks', 'weekly')
  */
 export function getCurrentView() {
-    if (document.getElementById('boardContainer').style.display !== 'none') {
+    const boardContainer = document.getElementById('boardContainer');
+    const taskContainer = document.getElementById('taskContainer');
+    const weeklyContainer = document.getElementById('weeklyContainer');
+    
+    if (boardContainer && !boardContainer.classList.contains('hidden')) {
         return 'board';
-    } else if (document.getElementById('taskContainer').style.display !== 'none') {
+    } else if (taskContainer && !taskContainer.classList.contains('hidden')) {
         return 'tasks';
-    } else if (document.getElementById('weeklyContainer').style.display !== 'none') {
+    } else if (weeklyContainer && !weeklyContainer.classList.contains('hidden')) {
         return 'weekly';
     }
     return 'board'; // default

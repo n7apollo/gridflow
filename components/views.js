@@ -163,7 +163,7 @@ class GridFlowViews extends HTMLElement {
             </div>
 
             <!-- Task Management Interface -->
-            <div class="task-container card bg-base-100 shadow-lg p-4 mt-4" id="taskContainer" style="display: none;">
+            <div class="task-container card bg-base-100 shadow-lg p-4 mt-4 hidden" id="taskContainer">
                 <div class="task-header mb-4">
                     <div class="task-controls flex flex-wrap gap-2 items-end">
                         <div class="form-control">
@@ -208,7 +208,7 @@ class GridFlowViews extends HTMLElement {
             </div>
 
             <!-- Weekly Planning Interface -->
-            <div class="weekly-container card bg-base-100 shadow-lg p-4 mt-4" id="weeklyContainer" style="display: none;">
+            <div class="weekly-container card bg-base-100 shadow-lg p-4 mt-4 hidden" id="weeklyContainer">
                 <div class="weekly-header mb-4">
                     <div class="weekly-navigation flex items-center justify-between gap-2">
                         <button class="btn btn-secondary" data-action="navigateWeek" data-params="prev" id="prevWeekBtn">← Previous Week</button>
