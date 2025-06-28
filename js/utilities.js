@@ -1,4 +1,4 @@
-import { getCurrentOutlineData, setCurrentOutlineData, getCurrentData } from './core-data.js';
+import { getCurrentOutlineData, setCurrentOutlineData, getBoardData } from './core-data.js';
 import { getEntity } from './entity-core.js';
 
 /**
@@ -229,7 +229,7 @@ export function setupEventListeners() {
  * @param {string} columnKey - Column key to generate outline for
  */
 export function showColumnOutline(columnKey) {
-    const { boardData } = getCurrentData();
+    const boardData = getBoardData();
     const column = boardData.columns.find(c => c.key === columnKey);
     if (!column) return;
     
@@ -262,7 +262,7 @@ export function showColumnOutline(columnKey) {
  * @returns {Object} Outline data with html, plain, and markdown formats
  */
 function generateColumnOutline(columnKey) {
-    const { boardData } = getCurrentData();
+    const boardData = getBoardData();
     let html = '<ul class="list-disc pl-4 space-y-2">';
     let plain = '';
     let markdown = '';
