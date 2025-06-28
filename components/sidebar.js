@@ -51,22 +51,22 @@ class GridFlowSidebar extends HTMLElement {
                 
                 <div class="p-4 flex flex-col gap-6">
                     <div>
-                        <div class="text-xs font-semibold text-base-content/60 mb-2">VIEWS</div>
                         <ul class="menu bg-base-200 rounded-box">
+                            <li class="menu-title">Views</li>
                             <li>
-                                <a href="#" class="nav-link w-full ${'active'}" id="sidebarBoardView" data-view="board">
+                                <a href="#" id="sidebarBoardView" data-view="board">
                                     <span class="mr-2">📋</span>
                                     Board View
                                 </a>
                             </li>
                             <li>
-                                <a href="#" class="nav-link w-full" id="sidebarTaskView" data-view="tasks">
+                                <a href="#" id="sidebarTaskView" data-view="tasks">
                                     <span class="mr-2">✅</span>
                                     Task View
                                 </a>
                             </li>
                             <li>
-                                <a href="#" class="nav-link w-full" id="sidebarWeeklyView" data-view="weekly">
+                                <a href="#" id="sidebarWeeklyView" data-view="weekly">
                                     <span class="mr-2">📅</span>
                                     Weekly Plan
                                 </a>
@@ -74,16 +74,16 @@ class GridFlowSidebar extends HTMLElement {
                         </ul>
                     </div>
                     <div>
-                        <div class="text-xs font-semibold text-base-content/60 mb-2">SETTINGS</div>
                         <ul class="menu bg-base-200 rounded-box">
+                            <li class="menu-title">Actions</li>
                             <li>
-                                <a href="#" class="nav-link w-full" data-action="showSettingsModal">
+                                <a href="#" data-action="showSettingsModal">
                                     <span class="mr-2">⚙️</span>
                                     Settings
                                 </a>
                             </li>
                             <li>
-                                <a href="#" class="nav-link w-full" data-action="showDataManagementModal">
+                                <a href="#" data-action="showDataManagementModal">
                                     <span class="mr-2">💾</span>
                                     Data Management
                                 </a>
