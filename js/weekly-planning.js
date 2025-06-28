@@ -533,7 +533,7 @@ export function addWeeklyNote(day = 'monday', type = 'note') {
         document.getElementById('weeklyItemContent').value = '';
         form.dataset.day = day;
     }
-    modal.style.display = 'block';
+    modal.style.display = 'modal-open';
 }
 
 /**
@@ -599,7 +599,7 @@ export function editWeeklyItem(itemId) {
     if (form) form.dataset.day = item.day;
     
     // Show modal
-    modal.style.display = 'block';
+    modal.style.display = 'modal-open';
 }
 
 /**
@@ -667,7 +667,7 @@ export function showWeeklyReflectionModal() {
     if (reflectionNextWeek) reflectionNextWeek.value = reflection.nextWeekFocus || '';
     
     const modal = document.getElementById('weeklyReflectionModal');
-    if (modal) modal.style.display = 'block';
+    if (modal) modal.style.display = 'modal-open';
 }
 
 /**

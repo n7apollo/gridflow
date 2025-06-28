@@ -246,7 +246,7 @@ class GridFlowViews extends HTMLElement {
                     </div>
                     
                     <!-- Daily Planning Grid -->
-                    <div class="daily-planning-grid grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-6 min-h-[600px]">
+                    <div class="daily-planning-grid grid grid-cols-1 md:grid-cols-3 gap-6 min-h-[600px]">
                         <div class="day-column card bg-base-100 shadow-sm border border-base-300 p-4 min-w-0" id="mondayColumn">
                             <div class="day-header flex items-center justify-between mb-4 pb-2 border-b border-base-300">
                                 <div class="flex items-center gap-3">
