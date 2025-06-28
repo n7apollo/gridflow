@@ -15,6 +15,7 @@ class GridFlowModals extends HTMLElement {
     setupEventListeners() {
         this.addEventListener('click', this.handleClick.bind(this));
         this.addEventListener('submit', this.handleSubmit.bind(this));
+        this.addEventListener('change', this.handleChange.bind(this));
     }
 
     handleClick(event) {
@@ -76,6 +77,16 @@ class GridFlowModals extends HTMLElement {
             if (window[action]) {
                 // Form submissions always need the event for preventDefault
                 window[action](event);
+            }
+        }
+    }
+
+    handleChange(event) {
+        // Handle file input changes
+        if (event.target.id === 'importFile' && event.target.files.length > 0) {
+            // Call importFromJSON when a file is selected
+            if (window.importFromJSON) {
+                window.importFromJSON();
             }
         }
     }
@@ -673,7 +684,7 @@ class GridFlowModals extends HTMLElement {
                                 <h3 class="card-title text-base">📥 Import Data</h3>
                                 <p>Select a JSON backup file to import:</p>
                                 <div class="flex items-center gap-2 mt-2">
-                                    <input type="file" id="importFile" accept=".json" class="file-input file-input-bordered file-input-sm w-full max-w-xs" onchange="importFromJSON()">
+                                    <input type="file" id="importFile" accept=".json" class="file-input file-input-bordered file-input-sm w-full max-w-xs">
                                     <label for="importFile" class="btn btn-secondary">Choose File</label>
                                 </div>
                                 <p class="text-xs text-base-content/60 mt-2">
