@@ -1,4 +1,5 @@
-import { getCurrentOutlineData } from './core-data.js';
+import { getCurrentOutlineData, setCurrentOutlineData, getCurrentData } from './core-data.js';
+import { getEntity } from './entity-core.js';
 
 /**
  * GridFlow - Utilities Module
@@ -224,10 +225,139 @@ export function setupEventListeners() {
 // Sidebar functionality moved to js/navigation.js
 
 /**
+ * Show column outline modal
+ * @param {string} columnKey - Column key to generate outline for
+ */
+export function showColumnOutline(columnKey) {
+    const { boardData } = getCurrentData();
+    const column = boardData.columns.find(c => c.key === columnKey);
+    if (!column) return;
+    
+    // Set modal title
+    const modalTitle = document.getElementById('outlineModalTitle');
+    if (modalTitle) {
+        modalTitle.textContent = `${column.name} - Column Outline`;
+    }
+    
+    // Generate outline data
+    const outlineData = generateColumnOutline(columnKey);
+    setCurrentOutlineData(outlineData);
+    
+    // Display HTML outline
+    const outlineContent = document.getElementById('outlineModalContent');
+    if (outlineContent) {
+        outlineContent.innerHTML = outlineData.html;
+    }
+    
+    // Show modal using DaisyUI
+    const modal = document.getElementById('outlineModal');
+    if (modal) {
+        modal.classList.add('modal-open');
+    }
+}
+
+/**
+ * Generate outline data for a specific column
+ * @param {string} columnKey - Column key
+ * @returns {Object} Outline data with html, plain, and markdown formats
+ */
+function generateColumnOutline(columnKey) {
+    const { boardData } = getCurrentData();
+    let html = '<ul class="list-disc pl-4 space-y-2">';
+    let plain = '';
+    let markdown = '';
+    
+    // First, add ungrouped rows
+    const ungroupedRows = boardData.rows.filter(row => !row.groupId);
+    ungroupedRows.forEach(row => {
+        const entityIds = row.cards[columnKey] || [];
+        if (entityIds.length > 0) {
+            html += `<li class="mb-2"><strong class="text-base-content">${escapeHtml(row.name)}</strong>`;
+            plain += `• ${row.name}\n`;
+            markdown += `- ${row.name}\n`;
+            
+            if (entityIds.length > 0) {
+                html += '<ul class="list-circle pl-4 mt-1 space-y-1">';
+                entityIds.forEach(entityId => {
+                    const entity = getEntity(entityId);
+                    if (entity) {
+                        const entityText = entity.completed ? `✓ ${entity.title}` : entity.title;
+                        html += `<li class="text-sm text-base-content/80">${escapeHtml(entityText)}</li>`;
+                        plain += `  ○ ${entityText}\n`;
+                        markdown += `  - ${entityText}\n`;
+                    }
+                });
+                html += '</ul>';
+            }
+            html += '</li>';
+        }
+    });
+    
+    // Then, add grouped rows
+    boardData.groups.forEach(group => {
+        const groupRows = boardData.rows.filter(row => row.groupId === group.id);
+        const groupHasEntities = groupRows.some(row => {
+            const entityIds = row.cards[columnKey] || [];
+            return entityIds.length > 0;
+        });
+        
+        if (groupHasEntities) {
+            html += `<li class="mb-3"><strong class="text-lg text-primary">${escapeHtml(group.name)}</strong>`;
+            plain += `• ${group.name}\n`;
+            markdown += `- **${group.name}**\n`;
+            
+            html += '<ul class="list-disc pl-4 mt-1 space-y-2">';
+            groupRows.forEach(row => {
+                const entityIds = row.cards[columnKey] || [];
+                if (entityIds.length > 0) {
+                    html += `<li><strong class="text-base-content">${escapeHtml(row.name)}</strong>`;
+                    plain += `  ○ ${row.name}\n`;
+                    markdown += `  - ${row.name}\n`;
+                    
+                    if (entityIds.length > 0) {
+                        html += '<ul class="list-circle pl-4 mt-1 space-y-1">';
+                        entityIds.forEach(entityId => {
+                            const entity = getEntity(entityId);
+                            if (entity) {
+                                const entityText = entity.completed ? `✓ ${entity.title}` : entity.title;
+                                html += `<li class="text-sm text-base-content/80">${escapeHtml(entityText)}</li>`;
+                                plain += `    - ${entityText}\n`;
+                                markdown += `    - ${entityText}\n`;
+                            }
+                        });
+                        html += '</ul>';
+                    }
+                    html += '</li>';
+                }
+            });
+            html += '</ul></li>';
+        }
+    });
+    
+    html += '</ul>';
+    
+    return { html, plain, markdown };
+}
+
+/**
+ * Escape HTML characters for safe display
+ * @param {string} text - Text to escape
+ * @returns {string} Escaped text
+ */
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+/**
  * Outline modal functions
  */
 export function closeOutlineModal() {
-    document.getElementById('outlineModal').style.display = 'none';
+    const modal = document.getElementById('outlineModal');
+    if (modal) {
+        modal.classList.remove('modal-open');
+    }
 }
 
 // Make outline functions globally available for onclick handlers
@@ -241,3 +371,4 @@ if (typeof window !== 'undefined') {
 window.showStatusMessage = showStatusMessage;
 window.setupEventListeners = setupEventListeners;
 window.closeOutlineModal = closeOutlineModal;
+window.showColumnOutline = showColumnOutline;

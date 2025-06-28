@@ -47,7 +47,12 @@ class GridFlowModals extends HTMLElement {
                 if (button.dataset.params) {
                     window[action](button.dataset.params);
                 } else {
-                    window[action]();
+                    // Only pass event to functions that expect it (save functions)
+                    if (action.startsWith('save')) {
+                        window[action](event);
+                    } else {
+                        window[action]();
+                    }
                 }
             }
         }
@@ -69,7 +74,8 @@ class GridFlowModals extends HTMLElement {
         if (submitButton && submitButton.dataset.action) {
             const action = submitButton.dataset.action;
             if (window[action]) {
-                window[action]();
+                // Form submissions always need the event for preventDefault
+                window[action](event);
             }
         }
     }

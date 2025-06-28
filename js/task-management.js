@@ -5,6 +5,7 @@
 
 import { getAppData, getBoardData, setAppData, setBoardData, saveData } from './core-data.js';
 import { showStatusMessage } from './utilities.js';
+import { getEntity } from './entity-core.js';
 
 // Current editing state
 let currentEditingTask = null;
@@ -88,19 +89,22 @@ export function getAllTasks() {
                         const column = board.columns.find(c => c.key === columnKey);
                         const group = board.groups.find(g => g.id === row.groupId);
                         
-                        row.cards[columnKey].forEach(card => {
-                            tasks.push({
-                                ...card,
-                                boardId,
-                                boardName: board.name,
-                                rowId: row.id,
-                                rowName: row.name,
-                                columnKey,
-                                columnName: column ? column.name : columnKey,
-                                groupId: row.groupId,
-                                groupName: group ? group.name : 'No Group',
-                                groupColor: group ? group.color : '#666'
-                            });
+                        row.cards[columnKey].forEach(entityId => {
+                            const entity = getEntity(entityId);
+                            if (entity) {
+                                tasks.push({
+                                    ...entity,
+                                    boardId,
+                                    boardName: board.name,
+                                    rowId: row.id,
+                                    rowName: row.name,
+                                    columnKey,
+                                    columnName: column ? column.name : columnKey,
+                                    groupId: row.groupId,
+                                    groupName: group ? group.name : 'No Group',
+                                    groupColor: group ? group.color : '#666'
+                                });
+                            }
                         });
                     });
                 }
@@ -199,24 +203,24 @@ export function sortTaskList(tasks) {
         
         switch (sortBy) {
             case 'title':
-                valueA = a.title.toLowerCase();
-                valueB = b.title.toLowerCase();
+                valueA = (a.title || '').toLowerCase();
+                valueB = (b.title || '').toLowerCase();
                 break;
             case 'board':
-                valueA = a.boardName.toLowerCase();
-                valueB = b.boardName.toLowerCase();
+                valueA = (a.boardName || '').toLowerCase();
+                valueB = (b.boardName || '').toLowerCase();
                 break;
             case 'group':
-                valueA = a.groupName.toLowerCase();
-                valueB = b.groupName.toLowerCase();
+                valueA = (a.groupName || '').toLowerCase();
+                valueB = (b.groupName || '').toLowerCase();
                 break;
             case 'row':
-                valueA = a.rowName.toLowerCase();
-                valueB = b.rowName.toLowerCase();
+                valueA = (a.rowName || '').toLowerCase();
+                valueB = (b.rowName || '').toLowerCase();
                 break;
             case 'column':
-                valueA = a.columnName.toLowerCase();
-                valueB = b.columnName.toLowerCase();
+                valueA = (a.columnName || '').toLowerCase();
+                valueB = (b.columnName || '').toLowerCase();
                 break;
             case 'priority':
                 const priorityOrder = { high: 3, medium: 2, low: 1 };
@@ -228,8 +232,8 @@ export function sortTaskList(tasks) {
                 valueB = b.completed ? 1 : 0;
                 break;
             default:
-                valueA = a.title.toLowerCase();
-                valueB = b.title.toLowerCase();
+                valueA = (a.title || '').toLowerCase();
+                valueB = (b.title || '').toLowerCase();
         }
         
         if (valueA < valueB) return sortOrder === 'asc' ? -1 : 1;
