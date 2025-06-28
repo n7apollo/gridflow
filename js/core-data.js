@@ -72,11 +72,21 @@ export function saveData() {
 export function loadData() {
     try {
         const saved = localStorage.getItem('gridflow_data');
+        console.log('loadData: localStorage item exists:', !!saved);
         if (saved) {
             const savedData = JSON.parse(saved);
+            console.log('loadData: Parsed data version:', savedData.version);
+            console.log('loadData: Number of boards:', Object.keys(savedData.boards || {}).length);
+            console.log('loadData: First board name:', Object.keys(savedData.boards || {})[0]);
+            
             const migratedData = migrateData(savedData);
+            console.log('loadData: After migration - version:', migratedData.version);
+            console.log('loadData: After migration - boards:', Object.keys(migratedData.boards || {}).length);
+            
             setAppData(migratedData);
+            console.log('loadData: Data set successfully');
         } else {
+            console.log('loadData: No saved data found, initializing sample data');
             initializeSampleData();
         }
         
@@ -99,12 +109,41 @@ export function loadData() {
             console.error('Failed to save migrated data:', error);
         }
         
+        console.log('loadData: Final appData check:', {
+            version: appData.version,
+            boardCount: Object.keys(appData.boards || {}).length,
+            currentBoardId: appData.currentBoardId,
+            firstBoardName: appData.boards ? Object.values(appData.boards)[0]?.name : 'none'
+        });
+        
         return { appData, boardData };
     } catch (error) {
         console.error('Failed to load data:', error);
         showStatusMessage('Failed to load data, initializing new board', 'error');
         initializeSampleData();
         return { appData, boardData };
+    }
+}
+
+/**
+ * Debug function to check localStorage content
+ */
+export function debugLocalStorage() {
+    const saved = localStorage.getItem('gridflow_data');
+    if (saved) {
+        const data = JSON.parse(saved);
+        console.log('Debug localStorage:', {
+            hasData: !!saved,
+            version: data.version,
+            boardCount: Object.keys(data.boards || {}).length,
+            boardNames: Object.keys(data.boards || {}),
+            currentBoardId: data.currentBoardId,
+            firstBoardData: data.boards ? Object.values(data.boards)[0] : null
+        });
+        return data;
+    } else {
+        console.log('Debug localStorage: No data found');
+        return null;
     }
 }
 
@@ -838,3 +877,4 @@ window.compareVersions = compareVersions;
 window.validateAndCleanData = validateAndCleanData;
 window.initializeSampleData = initializeSampleData;
 window.createDefaultBoard = createDefaultBoard;
+window.debugLocalStorage = debugLocalStorage;
