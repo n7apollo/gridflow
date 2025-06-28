@@ -227,10 +227,27 @@ function determineEntityType(card) {
 function convertCardToEntityData(card) {
     console.log('Converting card to entity:', card);
     console.log('Card properties:', Object.keys(card));
+    console.log('Card is array:', Array.isArray(card));
+    console.log('Card type:', typeof card);
     
+    // Handle array-based card format (legacy)
+    if (Array.isArray(card)) {
+        console.log('Array card contents:', card);
+        const entityData = {
+            title: card[0] || card[1] || 'Untitled', // Try first few array elements
+            content: card[1] || card[2] || '',
+            completed: false,
+            tags: [],
+            createdAt: new Date().toISOString()
+        };
+        console.log('Converted array card to entity data:', entityData);
+        return entityData;
+    }
+    
+    // Handle object-based card format (normal)
     const entityData = {
-        title: card.title || card.name || card.text || 'Untitled',
-        content: card.description || card.content || '',
+        title: card.title || card.name || card.text || card.label || 'Untitled',
+        content: card.description || card.content || card.body || '',
         completed: card.completed || false,
         tags: card.tags || [],
         createdAt: card.createdAt || new Date().toISOString()
