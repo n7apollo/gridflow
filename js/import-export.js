@@ -324,11 +324,19 @@ export function exportToJSON() {
  * Import data from JSON file
  */
 export function importFromJSON() {
+    console.log('importFromJSON called');
     const fileInput = document.getElementById('importFile');
     const file = fileInput.files[0];
     
-    if (!file) return;
+    console.log('File input found:', !!fileInput);
+    console.log('File selected:', !!file, file ? file.name : 'none');
     
+    if (!file) {
+        showStatusMessage('Please select a JSON file first', 'error');
+        return;
+    }
+    
+    console.log('Closing data management modal and showing import progress modal');
     // Close data management modal and show progress modal
     closeDataManagementModal();
     showImportProgressModal();
@@ -355,8 +363,10 @@ export function importFromJSON() {
 export function showImportProgressModal() {
     const modal = document.getElementById('importProgressModal');
     if (modal) {
-        modal.style.display = 'block';
+        modal.classList.add('modal-open');
         resetImportProgress();
+    } else {
+        console.error('Import progress modal not found!');
     }
 }
 
@@ -366,7 +376,7 @@ export function showImportProgressModal() {
 export function closeImportProgress() {
     const modal = document.getElementById('importProgressModal');
     if (modal) {
-        modal.style.display = 'none';
+        modal.classList.remove('modal-open');
     }
 }
 
