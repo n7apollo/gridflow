@@ -393,14 +393,14 @@ function renderProjectCardContent(entity) {
  * Get icon for entity type
  */
 function getEntityTypeIcon(type) {
+    // Lucide icon SVGs
     const icons = {
-        [ENTITY_TYPES.TASK]: '✓',
-        [ENTITY_TYPES.NOTE]: '📝',
-        [ENTITY_TYPES.CHECKLIST]: '☐',
-        [ENTITY_TYPES.PROJECT]: '📁'
+        [ENTITY_TYPES.TASK]: '<svg class="lucide lucide-check w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M5 13l4 4L19 7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        [ENTITY_TYPES.NOTE]: '<svg class="lucide lucide-file-text w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="14 2 14 8 20 8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="16" y1="13" x2="8" y2="13" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="16" y1="17" x2="8" y2="17" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="10 9 9 9 8 9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        [ENTITY_TYPES.CHECKLIST]: '<svg class="lucide lucide-list-checks w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M3 17l2 2 4-4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 7l2 2 4-4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="13" y1="6" x2="21" y2="6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="13" y1="12" x2="21" y2="12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="13" y1="18" x2="21" y2="18" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        [ENTITY_TYPES.PROJECT]: '<svg class="lucide lucide-folder w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M3 7a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
     };
-    
-    return `<span class="entity-type-icon">${icons[type] || '●'}</span>`;
+    return icons[type] || '<svg class="lucide lucide-circle w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 }
 
 /**
