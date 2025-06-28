@@ -82,14 +82,6 @@ class GridFlowModals extends HTMLElement {
     }
 
     handleChange(event) {
-        // Handle file input changes
-        if (event.target.id === 'importFile' && event.target.files.length > 0) {
-            // Call importFromJSON when a file is selected
-            if (window.importFromJSON) {
-                window.importFromJSON();
-            }
-        }
-        
         // Handle sync plan type changes
         if (event.target.id === 'syncPlanType' && window.updateSyncPlan) {
             window.updateSyncPlan();
@@ -708,8 +700,8 @@ class GridFlowModals extends HTMLElement {
                                 <h3 class="card-title text-base">📥 Import Data</h3>
                                 <p>Select a JSON backup file to import:</p>
                                 <div class="flex items-center gap-2 mt-2">
-                                    <input type="file" id="importFile" accept=".json" class="file-input file-input-bordered file-input-sm w-full max-w-xs">
-                                    <label for="importFile" class="btn btn-secondary">Choose File</label>
+                                    <input type="file" id="importFile" accept=".json" class="file-input file-input-bordered file-input-sm flex-1">
+                                    <button class="btn btn-primary" data-action="importFromJSON">📤 Upload</button>
                                 </div>
                                 <p class="text-xs text-base-content/60 mt-2">
                                     <strong>Note:</strong> Importing will merge data with your current workspace. Export your current data first if you want to preserve it.
