@@ -208,6 +208,9 @@ export class CloudSync {
             version: appData.version || '5.0'
         };
         
+        // Update the original appData with the sync timestamp to maintain consistency
+        appData.exportedAt = exportData.exportedAt;
+        
         return exportData;
     }
 
@@ -387,7 +390,7 @@ export class CloudSync {
     }
 
     /**
-     * Sync from cloud to local (and merge if needed)
+     * Sync from cloud to local (replace local data)
      */
     async syncFromCloud() {
         try {
@@ -398,17 +401,15 @@ export class CloudSync {
             const cloudData = await this.fetchCloudData();
             
             if (cloudData && cloudData.syncVersion) {
-                // Import the cloud data using existing import logic
-                if (window.mergeImportedData) {
-                    // Use existing merge logic from import-export.js
-                    window.mergeImportedData(cloudData);
-                    saveData();
-                    
-                    this.usageStats.lastSyncTime = new Date().toISOString();
-                    this.saveUsageStats();
-                    
-                    return cloudData;
-                }
+                // Replace local data with cloud data (sync should replace, not merge)
+                console.log('syncFromCloud: Replacing local data with cloud data');
+                Object.assign(appData, cloudData);
+                saveData();
+                
+                this.usageStats.lastSyncTime = new Date().toISOString();
+                this.saveUsageStats();
+                
+                return cloudData;
             }
             
             throw new Error('Invalid cloud data format');
@@ -542,8 +543,6 @@ export class CloudSync {
      * Get sync status for UI
      */
     getStatus() {
-        const settings = this.getSyncSettings();
-        
         return {
             enabled: this.isEnabled,
             configured: !!this.getApiKey(),

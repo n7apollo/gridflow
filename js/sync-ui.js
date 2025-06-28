@@ -18,8 +18,14 @@ export async function configureSyncApiKey() {
         return;
     }
     
-    const apiKey = apiKeyInput.value.trim();
+    let apiKey = apiKeyInput.value.trim();
     const planType = planSelect.value;
+    
+    // Check if we're showing a masked key and user hasn't changed it
+    if (apiKeyInput.dataset.showingMasked === 'true' && apiKey.startsWith('•')) {
+        showStatusMessage('Please enter a new API key or clear the field to remove the current key', 'error');
+        return;
+    }
     
     if (!apiKey) {
         showStatusMessage('Please enter your API key', 'error');
@@ -155,6 +161,9 @@ export function refreshSyncStatus() {
         const settings = cloudSync.getSyncSettings();
         autoSyncCheckbox.checked = settings ? settings.autoSync : false;
     }
+    
+    // Update API key field with masked version if key exists
+    updateApiKeyField();
     
     // Update sync messages
     updateSyncMessages(status);
@@ -322,6 +331,35 @@ export function updateDataManagementSyncStatus() {
         } else {
             buttonEl.textContent = '🔄 Sync Now';
         }
+    }
+}
+
+/**
+ * Update API key field to show masked version if key exists
+ */
+function updateApiKeyField() {
+    const apiKeyInput = document.getElementById('syncApiKey');
+    const saveBtn = document.getElementById('saveApiKeyBtn');
+    
+    if (!apiKeyInput || !saveBtn) return;
+    
+    const existingKey = cloudSync.getApiKey();
+    
+    if (existingKey && existingKey.length > 0) {
+        // Show masked version of existing key
+        const maskedKey = '•'.repeat(Math.min(existingKey.length, 20));
+        apiKeyInput.value = maskedKey;
+        apiKeyInput.placeholder = 'API key configured (click to change)';
+        saveBtn.textContent = 'Update';
+        
+        // Add a data attribute to track if this is showing a masked key
+        apiKeyInput.dataset.showingMasked = 'true';
+    } else {
+        // No key stored, show empty field
+        apiKeyInput.value = '';
+        apiKeyInput.placeholder = 'Enter your jsonstorage.net API key';
+        saveBtn.textContent = 'Save';
+        apiKeyInput.dataset.showingMasked = 'false';
     }
 }
 

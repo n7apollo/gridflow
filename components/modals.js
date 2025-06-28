@@ -16,6 +16,8 @@ class GridFlowModals extends HTMLElement {
         this.addEventListener('click', this.handleClick.bind(this));
         this.addEventListener('submit', this.handleSubmit.bind(this));
         this.addEventListener('change', this.handleChange.bind(this));
+        this.addEventListener('input', this.handleChange.bind(this));
+        this.addEventListener('focus', this.handleFocus.bind(this), true);
     }
 
     handleClick(event) {
@@ -90,6 +92,74 @@ class GridFlowModals extends HTMLElement {
         // Handle auto sync checkbox changes
         if (event.target.id === 'autoSyncEnabled' && window.toggleAutoSync) {
             window.toggleAutoSync();
+        }
+        
+        // Handle API key visibility toggle
+        if (event.target.id === 'toggleApiKeyVisibility' || event.target.closest('#toggleApiKeyVisibility')) {
+            event.preventDefault();
+            this.toggleApiKeyVisibility();
+        }
+        
+        // Handle API key input changes (clear masked value when user starts typing)
+        if (event.target.id === 'syncApiKey') {
+            this.handleApiKeyInput(event);
+        }
+    }
+    
+    handleFocus(event) {
+        // Handle API key focus (clear masked value when user focuses field)
+        if (event.target.id === 'syncApiKey') {
+            this.handleApiKeyFocus(event);
+        }
+    }
+    
+    handleApiKeyFocus(event) {
+        const input = event.target;
+        
+        // If showing masked key and user focuses, clear it
+        if (input.dataset.showingMasked === 'true') {
+            input.value = '';
+            input.dataset.showingMasked = 'false';
+            input.placeholder = 'Enter your jsonstorage.net API key';
+            const saveBtn = document.getElementById('saveApiKeyBtn');
+            if (saveBtn) {
+                saveBtn.textContent = 'Save';
+            }
+        }
+    }
+    
+    handleApiKeyInput(event) {
+        const input = event.target;
+        
+        // If showing masked key and user is typing, clear the field
+        if (input.dataset.showingMasked === 'true' && !input.value.startsWith('•')) {
+            input.dataset.showingMasked = 'false';
+            input.placeholder = 'Enter your jsonstorage.net API key';
+            const saveBtn = document.getElementById('saveApiKeyBtn');
+            if (saveBtn) {
+                saveBtn.textContent = 'Save';
+            }
+        }
+    }
+
+    toggleApiKeyVisibility() {
+        const input = document.getElementById('syncApiKey');
+        const toggleBtn = document.getElementById('toggleApiKeyVisibility');
+        const icon = toggleBtn.querySelector('[data-lucide]');
+        
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.setAttribute('data-lucide', 'eye-off');
+            toggleBtn.title = 'Hide API key';
+        } else {
+            input.type = 'password';
+            icon.setAttribute('data-lucide', 'eye');
+            toggleBtn.title = 'Show API key';
+        }
+        
+        // Re-render the icon
+        if (window.lucide) {
+            window.lucide.createIcons();
         }
     }
 
@@ -828,8 +898,13 @@ class GridFlowModals extends HTMLElement {
                                                 <a href="https://app.jsonstorage.net" target="_blank" class="link link-primary text-xs">Get your key →</a>
                                             </label>
                                             <div class="flex gap-2">
-                                                <input type="password" id="syncApiKey" class="input input-bordered flex-1" placeholder="Enter your jsonstorage.net API key">
-                                                <button class="btn btn-primary" data-action="configureSyncApiKey">Save</button>
+                                                <div class="relative flex-1">
+                                                    <input type="password" id="syncApiKey" class="input input-bordered w-full pr-10" placeholder="Enter your jsonstorage.net API key">
+                                                    <button type="button" id="toggleApiKeyVisibility" class="btn btn-ghost btn-sm absolute right-1 top-1/2 -translate-y-1/2 p-1 h-8 w-8 min-h-0" title="Toggle visibility">
+                                                        <i data-lucide="eye" class="w-4 h-4"></i>
+                                                    </button>
+                                                </div>
+                                                <button class="btn btn-primary" data-action="configureSyncApiKey" id="saveApiKeyBtn">Save</button>
                                             </div>
                                             <p class="text-xs text-base-content/60 mt-1">
                                                 Your API key is stored securely on your device and never shared.
@@ -854,11 +929,11 @@ class GridFlowModals extends HTMLElement {
                                 </div>
                             </div>
 
-                            <!-- Sync Status -->
+                            <!-- Sync Status & Usage -->
                             <div class="card bg-base-100 border border-base-300">
                                 <div class="card-body">
-                                    <h3 class="card-title text-base">📊 Sync Status</h3>
-                                    <div class="grid grid-cols-2 gap-4" id="syncStatusGrid">
+                                    <h3 class="card-title text-base">📊 Status & Usage</h3>
+                                    <div class="grid grid-cols-2 gap-3" id="syncStatusGrid">
                                         <div class="stat">
                                             <div class="stat-title">Status</div>
                                             <div class="stat-value text-sm" id="syncStatus">Not configured</div>
@@ -868,31 +943,13 @@ class GridFlowModals extends HTMLElement {
                                             <div class="stat-value text-sm" id="lastSyncTime">Never</div>
                                         </div>
                                         <div class="stat">
-                                            <div class="stat-title">Requests Used</div>
+                                            <div class="stat-title">Daily Requests</div>
                                             <div class="stat-value text-sm" id="requestsUsed">0/512</div>
                                         </div>
                                         <div class="stat">
                                             <div class="stat-title">Data Size</div>
                                             <div class="stat-value text-sm" id="dataSize">0 KB</div>
                                         </div>
-                                    </div>
-                                    <div class="mt-4 space-y-2">
-                                        <div class="flex gap-2">
-                                            <button class="btn btn-primary btn-sm" data-action="manualSync">🔄 Sync Now</button>
-                                            <button class="btn btn-outline btn-sm" data-action="refreshSyncStatus">📊 Refresh Status</button>
-                                        </div>
-                                        <div id="syncMessages" class="text-xs text-base-content/60">
-                                            Configure your API key to enable cloud sync
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Usage Statistics -->
-                            <div class="card bg-base-100 border border-base-300">
-                                <div class="card-body">
-                                    <h3 class="card-title text-base">📈 Usage Statistics</h3>
-                                    <div class="stats stats-vertical w-full">
                                         <div class="stat">
                                             <div class="stat-title">Total Syncs</div>
                                             <div class="stat-value text-sm" id="totalSyncs">0</div>
@@ -901,9 +958,11 @@ class GridFlowModals extends HTMLElement {
                                             <div class="stat-title">Errors</div>
                                             <div class="stat-value text-sm" id="syncErrors">0</div>
                                         </div>
-                                        <div class="stat">
-                                            <div class="stat-title">Requests Remaining</div>
-                                            <div class="stat-value text-sm" id="requestsRemaining">512</div>
+                                    </div>
+                                    <div class="mt-4 space-y-2">
+                                        <button class="btn btn-primary btn-sm w-full" data-action="manualSync">🔄 Sync Now</button>
+                                        <div id="syncMessages" class="text-xs text-base-content/60">
+                                            Configure your API key to enable cloud sync
                                         </div>
                                     </div>
                                 </div>
