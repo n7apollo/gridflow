@@ -31,8 +31,15 @@ import * as dragDrop from './drag-drop.js';
 import * as cloudSync from './cloud-sync.js';
 import * as syncUI from './sync-ui.js';
 
+// IndexedDB infrastructure (Phase 1)
+import featureFlags, { FLAGS } from './feature-flags.js';
+import database from './indexeddb/database.js';
+import testRunner from './indexeddb/test-runner.js';
+import dualWriteService from './indexeddb/dual-writer.js';
+import dataValidator from './indexeddb/validator.js';
+
 // Initialize the application
-function initializeGridFlow() {
+async function initializeGridFlow() {
     // Make modules available globally for backward compatibility
     window.utilities = utilities;
     window.coreData = coreData;
@@ -61,6 +68,39 @@ function initializeGridFlow() {
     window.dragDrop = dragDrop;
     window.cloudSync = cloudSync.cloudSync; // Export the instance
     window.syncUI = syncUI;
+    
+    // Make IndexedDB infrastructure available globally
+    window.featureFlags = featureFlags;
+    window.FLAGS = FLAGS;
+    window.gridFlowDB = database;
+    window.indexedDBTests = testRunner;
+    window.dualWriteService = dualWriteService;
+    window.dataValidator = dataValidator;
+    
+    // Initialize IndexedDB if enabled
+    if (featureFlags.isEnabled(FLAGS.INDEXEDDB_ENABLED)) {
+        try {
+            console.log('🗄️ Initializing IndexedDB infrastructure...');
+            await database.init();
+            console.log('✅ IndexedDB initialized successfully');
+            
+            // Run basic tests in development
+            if (featureFlags.isEnabled(FLAGS.PERFORMANCE_MONITORING)) {
+                console.log('🧪 Running IndexedDB infrastructure tests...');
+                const testResults = await testRunner.runAllTests();
+                if (testResults.failed > 0) {
+                    utilities.showStatusMessage(
+                        `IndexedDB tests failed: ${testResults.failed}/${testResults.total}`, 
+                        'warning'
+                    );
+                }
+            }
+        } catch (error) {
+            console.error('Failed to initialize IndexedDB:', error);
+            featureFlags.disable(FLAGS.INDEXEDDB_ENABLED);
+            utilities.showStatusMessage('IndexedDB failed to initialize, using localStorage only', 'warning');
+        }
+    }
     
     // Load data first
     const { appData, boardData } = coreData.loadData();
