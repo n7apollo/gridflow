@@ -280,6 +280,62 @@ class EntityIndexedDBService {
   }
 
   /**
+   * Get weekly plan by week key
+   * @param {string} weekKey - Week key  
+   * @returns {Promise<Object|null>} Weekly plan or null
+   */
+  async getWeeklyPlan(weekKey) {
+    if (!this.isIndexedDBEnabled()) {
+      return null;
+    }
+
+    try {
+      const plan = await weeklyPlanAdapter.getById(weekKey);
+      return plan;
+    } catch (error) {
+      console.error(`IndexedDB: Failed to get weekly plan ${weekKey}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all weekly plans
+   * @returns {Promise<Object[]>} Array of weekly plans
+   */
+  async getAllWeeklyPlans() {
+    if (!this.isIndexedDBEnabled()) {
+      return [];
+    }
+
+    try {
+      const plans = await weeklyPlanAdapter.getAll();
+      return plans;
+    } catch (error) {
+      console.error('IndexedDB: Failed to get all weekly plans:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get weekly items for a week
+   * @param {string} weekKey - Week key
+   * @returns {Promise<Object[]>} Array of weekly items
+   */
+  async getWeeklyItems(weekKey) {
+    if (!this.isIndexedDBEnabled()) {
+      return [];
+    }
+
+    try {
+      const items = await weeklyItemAdapter.getByWeek(weekKey);
+      return items;
+    } catch (error) {
+      console.error(`IndexedDB: Failed to get weekly items for ${weekKey}:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Add entity to weekly plan
    * @param {string} weekKey - Week key
    * @param {string} entityId - Entity ID

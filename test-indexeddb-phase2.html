@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GridFlow - IndexedDB Phase 2.2 Testing</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        #log {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .test-section {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+        .performance-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+    </style>
+</head>
+<body class="bg-base-100 p-4">
+    <div class="max-w-6xl mx-auto">
+        <div class="text-center mb-6">
+            <h1 class="text-3xl font-bold text-primary">GridFlow IndexedDB Phase 2.2 Testing</h1>
+            <p class="text-base-content/70 mt-2">Test IndexedDB-first operations and performance monitoring</p>
+        </div>
+
+        <!-- Status Panel -->
+        <div class="test-section p-4 mb-6">
+            <h2 class="text-xl font-semibold mb-4">System Status</h2>
+            <div id="statusInfo" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="stat bg-base-200 rounded">
+                    <div class="stat-title">Current Implementation</div>
+                    <div class="stat-value text-lg" id="currentImpl">Loading...</div>
+                </div>
+                <div class="stat bg-base-200 rounded">
+                    <div class="stat-title">IndexedDB Status</div>
+                    <div class="stat-value text-lg" id="indexedDBStatus">Loading...</div>
+                </div>
+                <div class="stat bg-base-200 rounded">
+                    <div class="stat-title">Dual Write Status</div>
+                    <div class="stat-value text-lg" id="dualWriteStatus">Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feature Toggles -->
+        <div class="test-section p-4 mb-6">
+            <h2 class="text-xl font-semibold mb-4">Feature Controls</h2>
+            <div class="flex flex-wrap gap-4">
+                <button class="btn btn-primary" onclick="toggleIndexedDBPrimary()">
+                    Toggle IndexedDB Primary Test
+                </button>
+                <button class="btn btn-secondary" onclick="switchToEnhanced()">
+                    Switch to Enhanced (Dual-Write)
+                </button>
+                <button class="btn btn-accent" onclick="switchToIndexedDBFirst()">
+                    Switch to IndexedDB-First
+                </button>
+                <button class="btn btn-neutral" onclick="switchToOriginal()">
+                    Switch to Original
+                </button>
+                <button class="btn btn-info" onclick="autoSwitchImplementation()">
+                    Auto-Switch Implementation
+                </button>
+            </div>
+        </div>
+
+        <!-- Performance Testing -->
+        <div class="test-section p-4 mb-6">
+            <h2 class="text-xl font-semibold mb-4">Performance Testing</h2>
+            <div class="flex flex-wrap gap-4 mb-4">
+                <button class="btn btn-success" onclick="runPerformanceTest()">
+                    Run Performance Test
+                </button>
+                <button class="btn btn-warning" onclick="compareImplementations()">
+                    Compare All Implementations
+                </button>
+                <button class="btn btn-error" onclick="resetPerformanceStats()">
+                    Reset Performance Stats
+                </button>
+                <button class="btn btn-info" onclick="showPerformanceStats()">
+                    Show Current Stats
+                </button>
+            </div>
+            
+            <div id="performanceResults" class="performance-metrics">
+                <!-- Performance results will be displayed here -->
+            </div>
+        </div>
+
+        <!-- Data Consistency Testing -->
+        <div class="test-section p-4 mb-6">
+            <h2 class="text-xl font-semibold mb-4">Data Consistency</h2>
+            <div class="flex flex-wrap gap-4 mb-4">
+                <button class="btn btn-primary" onclick="validateConsistency()">
+                    Validate Data Consistency
+                </button>
+                <button class="btn btn-secondary" onclick="syncToIndexedDB()">
+                    Sync Missing to IndexedDB
+                </button>
+                <button class="btn btn-accent" onclick="showEntityCounts()">
+                    Show Entity Counts
+                </button>
+            </div>
+            
+            <div id="consistencyResults" class="bg-base-200 p-4 rounded">
+                <!-- Consistency results will be displayed here -->
+            </div>
+        </div>
+
+        <!-- Real Operations Testing -->
+        <div class="test-section p-4 mb-6">
+            <h2 class="text-xl font-semibold mb-4">Real Operations Testing</h2>
+            <div class="flex flex-wrap gap-4 mb-4">
+                <button class="btn btn-success" onclick="testRealOperations()">
+                    Test Real Entity Operations
+                </button>
+                <button class="btn btn-warning" onclick="testBoardOperations()">
+                    Test Board Operations
+                </button>
+                <button class="btn btn-info" onclick="testSearchOperations()">
+                    Test Search Operations
+                </button>
+            </div>
+            
+            <div id="realOperationsResults" class="bg-base-200 p-4 rounded">
+                <!-- Real operations results will be displayed here -->
+            </div>
+        </div>
+
+        <!-- Log Panel -->
+        <div class="test-section p-4">
+            <h2 class="text-xl font-semibold mb-4">Test Log</h2>
+            <div class="flex gap-2 mb-2">
+                <button class="btn btn-sm btn-outline" onclick="clearLog()">Clear Log</button>
+                <button class="btn btn-sm btn-outline" onclick="exportLog()">Export Log</button>
+            </div>
+            <div id="log" class="bg-base-300 p-4 rounded"></div>
+        </div>
+    </div>
+
+    <!-- Import GridFlow modules -->
+    <script type="module">
+        // Load modules and handle errors
+        async function loadModules() {
+            try {
+                const featureFlags = await import('./js/feature-flags.js');
+                const database = await import('./js/indexeddb/database.js');
+                const testRunner = await import('./js/indexeddb/test-runner.js');
+                const entityIndexedDBService = await import('./js/indexeddb/entity-indexeddb-service.js');
+                const entityCoreSwitcher = await import('./js/indexeddb/entity-core-switcher.js');
+                const coreData = await import('./js/core-data.js');
+
+                // Make modules available globally
+                window.featureFlags = featureFlags.default;
+                window.FLAGS = featureFlags.FLAGS;
+                window.gridFlowDB = database.default;
+                window.entityIndexedDBService = entityIndexedDBService.default;
+                window.entityCoreSwitcher = entityCoreSwitcher;
+                window.testRunner = testRunner.default;
+                window.getAppData = coreData.getAppData;
+                
+                console.log('All modules loaded successfully');
+                return true;
+            } catch (error) {
+                console.error('Module loading error:', error);
+                window.log && window.log(`Module loading error: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        // Logging function
+        window.log = function(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const colorClass = {
+                'info': 'text-info',
+                'success': 'text-success', 
+                'error': 'text-error',
+                'warning': 'text-warning'
+            }[type] || 'text-base-content';
+            
+            logDiv.innerHTML += `<div class="${colorClass}">[${timestamp}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        };
+
+        // Initialize IndexedDB
+        async function initializeIndexedDB() {
+            try {
+                await database.init();
+                log('IndexedDB initialized successfully', 'success');
+                updateStatus();
+            } catch (error) {
+                log(`Failed to initialize IndexedDB: ${error.message}`, 'error');
+            }
+        }
+
+        // Update status display
+        function updateStatus() {
+            const info = entityCoreSwitcher.getImplementationInfo();
+            
+            document.getElementById('currentImpl').textContent = info.current;
+            document.getElementById('indexedDBStatus').textContent = 
+                info.flags.indexedDBEnabled ? 'Enabled' : 'Disabled';
+            document.getElementById('dualWriteStatus').textContent = 
+                info.flags.dualWriteEnabled ? 'Enabled' : 'Disabled';
+        }
+
+        // Test functions
+        window.toggleIndexedDBPrimary = function() {
+            const isEnabled = featureFlags.isEnabled('INDEXEDDB_PRIMARY_TEST');
+            if (isEnabled) {
+                featureFlags.disable('INDEXEDDB_PRIMARY_TEST');
+                log('Disabled IndexedDB Primary Test flag', 'info');
+            } else {
+                featureFlags.enable('INDEXEDDB_PRIMARY_TEST');
+                log('Enabled IndexedDB Primary Test flag', 'success');
+            }
+            entityCoreSwitcher.autoSwitch();
+            updateStatus();
+        };
+
+        window.switchToEnhanced = function() {
+            const success = entityCoreSwitcher.switchImplementation('enhanced');
+            log(success ? 'Switched to Enhanced implementation' : 'Failed to switch', success ? 'success' : 'error');
+            updateStatus();
+        };
+
+        window.switchToIndexedDBFirst = function() {
+            const success = entityCoreSwitcher.switchImplementation('indexeddb_first');
+            log(success ? 'Switched to IndexedDB-First implementation' : 'Failed to switch', success ? 'success' : 'error');
+            updateStatus();
+        };
+
+        window.switchToOriginal = function() {
+            const success = entityCoreSwitcher.switchImplementation('original');
+            log(success ? 'Switched to Original implementation' : 'Failed to switch', success ? 'success' : 'error');
+            updateStatus();
+        };
+
+        window.autoSwitchImplementation = function() {
+            entityCoreSwitcher.autoSwitch();
+            log('Auto-switched to recommended implementation', 'info');
+            updateStatus();
+        };
+
+        window.runPerformanceTest = async function() {
+            log('Starting performance test...', 'info');
+            
+            const impl = entityCoreSwitcher.getCurrentImplementation();
+            
+            if (typeof impl.resetPerformanceStats === 'function') {
+                impl.resetPerformanceStats();
+            }
+            
+            const startTime = performance.now();
+            
+            // Create test entities
+            const entities = [];
+            for (let i = 0; i < 10; i++) {
+                const entity = impl.createEntity('task', {
+                    title: `Performance Test Task ${i}`,
+                    content: `Test content for task ${i}`,
+                    priority: i % 3 === 0 ? 'high' : 'medium'
+                });
+                entities.push(entity);
+            }
+            
+            // Update entities
+            for (const entity of entities) {
+                impl.updateEntity(entity.id, { 
+                    title: entity.title + ' (Updated)',
+                    updatedAt: new Date().toISOString()
+                });
+            }
+            
+            // Get entities
+            for (const entity of entities) {
+                if (typeof impl.getEntity === 'function') {
+                    impl.getEntity(entity.id);
+                }
+            }
+            
+            // Delete entities
+            for (const entity of entities) {
+                impl.deleteEntity(entity.id);
+            }
+            
+            const totalTime = performance.now() - startTime;
+            
+            log(`Performance test completed in ${totalTime.toFixed(2)}ms`, 'success');
+            
+            if (typeof impl.getPerformanceStats === 'function') {
+                const stats = impl.getPerformanceStats();
+                displayPerformanceStats(stats);
+            }
+        };
+
+        window.compareImplementations = async function() {
+            log('Comparing all implementations...', 'info');
+            
+            const testOps = [
+                { type: 'create', entityType: 'task', data: { title: 'Compare Test', content: 'Test' } },
+                { type: 'update', updates: { title: 'Compare Test Updated' } },
+                { type: 'delete' }
+            ];
+            
+            try {
+                const results = await entityCoreSwitcher.testImplementations(testOps);
+                displayComparisonResults(results);
+                log('Implementation comparison completed', 'success');
+            } catch (error) {
+                log(`Comparison failed: ${error.message}`, 'error');
+            }
+        };
+
+        window.validateConsistency = async function() {
+            log('Validating data consistency...', 'info');
+            
+            const impl = entityCoreSwitcher.getCurrentImplementation();
+            
+            if (typeof impl.validateDataConsistency === 'function') {
+                try {
+                    const results = await impl.validateDataConsistency();
+                    displayConsistencyResults(results);
+                    log('Consistency validation completed', 'success');
+                } catch (error) {
+                    log(`Consistency validation failed: ${error.message}`, 'error');
+                }
+            } else {
+                log('Current implementation does not support consistency validation', 'warning');
+            }
+        };
+
+        window.syncToIndexedDB = async function() {
+            log('Syncing data to IndexedDB...', 'info');
+            
+            const impl = entityCoreSwitcher.getCurrentImplementation();
+            
+            if (typeof impl.syncToIndexedDB === 'function') {
+                try {
+                    const results = await impl.syncToIndexedDB();
+                    log(`Sync completed: ${results.synced}/${results.total} entities synced`, 'success');
+                } catch (error) {
+                    log(`Sync failed: ${error.message}`, 'error');
+                }
+            } else {
+                log('Current implementation does not support sync to IndexedDB', 'warning');
+            }
+        };
+
+        window.testRealOperations = async function() {
+            log('Testing real entity operations...', 'info');
+            
+            const impl = entityCoreSwitcher.getCurrentImplementation();
+            
+            // Test create, read, update, delete cycle
+            try {
+                // Create
+                const task = impl.createEntity('task', {
+                    title: 'Real Test Task',
+                    content: 'This is a real test of entity operations',
+                    priority: 'high',
+                    dueDate: new Date().toISOString()
+                });
+                log(`Created entity: ${task.id}`, 'success');
+                
+                // Read
+                const retrieved = impl.getEntity(task.id);
+                log(`Retrieved entity: ${retrieved ? 'found' : 'not found'}`, retrieved ? 'success' : 'error');
+                
+                // Update
+                const updated = impl.updateEntity(task.id, {
+                    title: 'Updated Real Test Task',
+                    completed: true
+                });
+                log(`Updated entity: ${updated.title}`, 'success');
+                
+                // Toggle completion
+                const toggled = impl.toggleEntityCompletion(task.id);
+                log(`Toggled completion: ${toggled.completed}`, 'success');
+                
+                // Delete
+                const deleted = impl.deleteEntity(task.id);
+                log(`Deleted entity: ${deleted ? 'success' : 'failed'}`, deleted ? 'success' : 'error');
+                
+            } catch (error) {
+                log(`Real operations test failed: ${error.message}`, 'error');
+            }
+        };
+
+        window.showEntityCounts = async function() {
+            log('Checking entity counts...', 'info');
+            
+            const appData = getAppData();
+            const localStorageCount = Object.keys(appData.entities || {}).length;
+            
+            let indexedDBCount = 0;
+            try {
+                if (featureFlags.isEnabled(FLAGS.INDEXEDDB_ENABLED)) {
+                    const entities = await entityIndexedDBService.getAllEntities();
+                    indexedDBCount = entities.length;
+                }
+            } catch (error) {
+                log(`Failed to get IndexedDB count: ${error.message}`, 'warning');
+            }
+            
+            const resultsDiv = document.getElementById('consistencyResults');
+            resultsDiv.innerHTML = `
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="stat bg-base-100 rounded">
+                        <div class="stat-title">localStorage Entities</div>
+                        <div class="stat-value">${localStorageCount}</div>
+                    </div>
+                    <div class="stat bg-base-100 rounded">
+                        <div class="stat-title">IndexedDB Entities</div>
+                        <div class="stat-value">${indexedDBCount}</div>
+                    </div>
+                </div>
+            `;
+            
+            log(`Entity counts - localStorage: ${localStorageCount}, IndexedDB: ${indexedDBCount}`, 'info');
+        };
+
+        function displayPerformanceStats(stats) {
+            const resultsDiv = document.getElementById('performanceResults');
+            resultsDiv.innerHTML = `
+                <div class="stat bg-base-100 rounded">
+                    <div class="stat-title">Total Operations</div>
+                    <div class="stat-value">${stats.totalOperations}</div>
+                </div>
+                <div class="stat bg-base-100 rounded">
+                    <div class="stat-title">IndexedDB Success Rate</div>
+                    <div class="stat-value">${stats.indexedDBSuccessRate.toFixed(1)}%</div>
+                </div>
+                <div class="stat bg-base-100 rounded">
+                    <div class="stat-title">Average Read Time</div>
+                    <div class="stat-value">${stats.averageReadTime.toFixed(2)}ms</div>
+                </div>
+                <div class="stat bg-base-100 rounded">
+                    <div class="stat-title">IndexedDB Reads</div>
+                    <div class="stat-value">${stats.indexedDBReads}</div>
+                </div>
+                <div class="stat bg-base-100 rounded">
+                    <div class="stat-title">IndexedDB Writes</div>
+                    <div class="stat-value">${stats.indexedDBWrites}</div>
+                </div>
+                <div class="stat bg-base-100 rounded">
+                    <div class="stat-title">IndexedDB Errors</div>
+                    <div class="stat-value">${stats.indexedDBErrors}</div>
+                </div>
+            `;
+        }
+
+        function displayComparisonResults(results) {
+            const resultsDiv = document.getElementById('performanceResults');
+            let html = '<h3 class="text-lg font-semibold mb-4">Implementation Comparison</h3>';
+            
+            for (const [implName, result] of Object.entries(results)) {
+                const successOps = result.operations.filter(op => op.success).length;
+                const avgTime = result.operations.length > 0 
+                    ? result.operations.reduce((sum, op) => sum + op.time, 0) / result.operations.length 
+                    : 0;
+                
+                html += `
+                    <div class="bg-base-100 p-4 rounded">
+                        <h4 class="font-semibold">${implName}</h4>
+                        <div class="text-sm">
+                            <div>Operations: ${successOps}/${result.operations.length}</div>
+                            <div>Errors: ${result.errors.length}</div>
+                            <div>Total Time: ${result.totalTime.toFixed(2)}ms</div>
+                            <div>Avg Time: ${avgTime.toFixed(2)}ms</div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            resultsDiv.innerHTML = html;
+        }
+
+        function displayConsistencyResults(results) {
+            const resultsDiv = document.getElementById('consistencyResults');
+            
+            if (!results.enabled) {
+                resultsDiv.innerHTML = `<div class="text-warning">${results.message}</div>`;
+                return;
+            }
+            
+            if (results.error) {
+                resultsDiv.innerHTML = `<div class="text-error">Error: ${results.error}</div>`;
+                return;
+            }
+            
+            const statusClass = results.consistent ? 'text-success' : 'text-warning';
+            
+            resultsDiv.innerHTML = `
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="stat bg-base-100 rounded">
+                        <div class="stat-title">localStorage Count</div>
+                        <div class="stat-value">${results.localStorageCount}</div>
+                    </div>
+                    <div class="stat bg-base-100 rounded">
+                        <div class="stat-title">IndexedDB Count</div>
+                        <div class="stat-value">${results.indexedDBCount}</div>
+                    </div>
+                </div>
+                <div class="mt-4 ${statusClass}">
+                    <strong>Status: ${results.consistent ? 'Consistent' : 'Inconsistent'}</strong>
+                    ${!results.consistent ? `
+                        <div class="mt-2">
+                            <div>Only in IndexedDB: ${results.onlyInIndexedDB?.length || 0}</div>
+                            <div>Only in localStorage: ${results.onlyInLocalStorage?.length || 0}</div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        window.clearLog = function() {
+            document.getElementById('log').innerHTML = '';
+        };
+
+        window.resetPerformanceStats = function() {
+            const impl = entityCoreSwitcher.getCurrentImplementation();
+            if (typeof impl.resetPerformanceStats === 'function') {
+                impl.resetPerformanceStats();
+                log('Performance stats reset', 'info');
+                document.getElementById('performanceResults').innerHTML = '';
+            } else {
+                log('Current implementation does not support performance stats', 'warning');
+            }
+        };
+
+        window.showPerformanceStats = function() {
+            const impl = entityCoreSwitcher.getCurrentImplementation();
+            if (typeof impl.getPerformanceStats === 'function') {
+                const stats = impl.getPerformanceStats();
+                displayPerformanceStats(stats);
+                log('Performance stats displayed', 'info');
+            } else {
+                log('Current implementation does not support performance stats', 'warning');
+            }
+        };
+
+        // Initialize everything
+        async function initialize() {
+            const modulesLoaded = await loadModules();
+            if (modulesLoaded) {
+                await initializeIndexedDB();
+                
+                // Listen for implementation switches
+                window.addEventListener('entityCoreSwitch', (event) => {
+                    log(`Implementation switched: ${event.detail.from} → ${event.detail.to}`, 'info');
+                    updateStatus();
+                });
+            } else {
+                log('Failed to load modules - test functionality will be limited', 'error');
+            }
+        }
+        
+        // Start initialization
+        initialize();
+    </script>
+</body>
+</html>

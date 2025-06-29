@@ -19,10 +19,12 @@ export function switchToView(view) {
     const boardContainer = document.getElementById('boardContainer');
     const taskContainer = document.getElementById('taskContainer');
     const weeklyContainer = document.getElementById('weeklyContainer');
+    const peopleContainer = document.getElementById('peopleContainer');
     
     if (boardContainer) boardContainer.classList.add('hidden');
     if (taskContainer) taskContainer.classList.add('hidden');
     if (weeklyContainer) weeklyContainer.classList.add('hidden');
+    if (peopleContainer) peopleContainer.classList.add('hidden');
     
     // Remove active class from all view buttons (header) - check if they exist
     const boardViewBtn = document.getElementById('boardViewBtn');
@@ -43,7 +45,23 @@ export function switchToView(view) {
         if (boardViewBtn) boardViewBtn.classList.add('active');
         const sidebarBoardView = document.getElementById('sidebarBoardView');
         if (sidebarBoardView) sidebarBoardView.classList.add('active');
-        if (window.renderBoard) window.renderBoard();
+        if (window.renderBoard) {
+            // Check if data is ready before rendering
+            if (window.boardData && window.boardData.columns) {
+                window.renderBoard();
+            } else {
+                console.log('switchToView: Board data not ready, deferring render');
+                // Set up a check for when data becomes available
+                const checkDataReady = () => {
+                    if (window.boardData && window.boardData.columns) {
+                        window.renderBoard();
+                    } else {
+                        setTimeout(checkDataReady, 50);
+                    }
+                };
+                setTimeout(checkDataReady, 100);
+            }
+        }
     } else if (view === 'tasks') {
         if (taskContainer) taskContainer.classList.remove('hidden');
         if (taskViewBtn) taskViewBtn.classList.add('active');
@@ -56,6 +74,11 @@ export function switchToView(view) {
         const sidebarWeeklyView = document.getElementById('sidebarWeeklyView');
         if (sidebarWeeklyView) sidebarWeeklyView.classList.add('active');
         if (window.switchToWeeklyView) window.switchToWeeklyView();
+    } else if (view === 'people') {
+        if (peopleContainer) peopleContainer.classList.remove('hidden');
+        const sidebarPeopleView = document.getElementById('sidebarPeopleView');
+        if (sidebarPeopleView) sidebarPeopleView.classList.add('active');
+        if (window.switchToPeopleView) window.switchToPeopleView();
     }
 }
 
@@ -335,6 +358,7 @@ export function getCurrentView() {
     const boardContainer = document.getElementById('boardContainer');
     const taskContainer = document.getElementById('taskContainer');
     const weeklyContainer = document.getElementById('weeklyContainer');
+    const peopleContainer = document.getElementById('peopleContainer');
     
     if (boardContainer && !boardContainer.classList.contains('hidden')) {
         return 'board';
@@ -342,6 +366,8 @@ export function getCurrentView() {
         return 'tasks';
     } else if (weeklyContainer && !weeklyContainer.classList.contains('hidden')) {
         return 'weekly';
+    } else if (peopleContainer && !peopleContainer.classList.contains('hidden')) {
+        return 'people';
     }
     return 'board'; // default
 }
@@ -352,6 +378,14 @@ export function getCurrentView() {
 export function initializeNavigation() {
     // Initialize sidebar
     initializeSidebar();
+    
+    // Listen for data loaded event to trigger initial render
+    window.addEventListener('gridflow-data-loaded', () => {
+        console.log('Navigation: Data loaded, triggering board render');
+        if (getCurrentView() === 'board' && window.renderBoard) {
+            window.renderBoard();
+        }
+    });
     
     // Set default view
     switchToView('board');

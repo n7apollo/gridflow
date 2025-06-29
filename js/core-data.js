@@ -67,12 +67,16 @@ export function saveData() {
 }
 
 /**
- * Load application data from localStorage
+ * Load application data from localStorage (with IndexedDB fallback)
  */
-export function loadData() {
+export async function loadData() {
     try {
+        // First try localStorage
         const saved = localStorage.getItem('gridflow_data');
         console.log('loadData: localStorage item exists:', !!saved);
+        
+        let appDataToUse = null;
+        
         if (saved) {
             const savedData = JSON.parse(saved);
             console.log('loadData: Parsed data version:', savedData.version);
@@ -83,7 +87,77 @@ export function loadData() {
             console.log('loadData: After migration - version:', migratedData.version);
             console.log('loadData: After migration - boards:', Object.keys(migratedData.boards || {}).length);
             
-            setAppData(migratedData);
+            appDataToUse = migratedData;
+        }
+        
+        // If no boards in localStorage but IndexedDB is available, try loading from IndexedDB
+        if ((!appDataToUse || Object.keys(appDataToUse.boards || {}).length === 0) && 
+            typeof window !== 'undefined' && window.featureFlags && window.featureFlags.isEnabled('INDEXEDDB_ENABLED')) {
+            try {
+                console.log('loadData: Attempting to load boards from IndexedDB...');
+                const entityIndexedDBService = window.entityIndexedDBService;
+                if (entityIndexedDBService) {
+                    const indexedDBBoards = await entityIndexedDBService.getAllBoards();
+                    console.log('loadData: IndexedDB boards found:', indexedDBBoards.length);
+                    
+                    if (indexedDBBoards.length > 0) {
+                        // Convert IndexedDB boards to appData format
+                        if (!appDataToUse) {
+                            appDataToUse = {
+                                currentBoardId: 'default',
+                                boards: {},
+                                entities: {},
+                                templates: [],
+                                templateLibrary: { categories: [], featured: [], taskSets: {}, checklists: {}, noteTemplates: {} },
+                                weeklyPlans: {},
+                                collections: {},
+                                tags: {},
+                                relationships: {},
+                                nextTemplateId: 1,
+                                nextTemplateLibraryId: 1,
+                                nextWeeklyItemId: 1,
+                                nextTaskId: 1,
+                                nextNoteId: 1,
+                                nextChecklistId: 1,
+                                nextProjectId: 1,
+                                nextPersonId: 1,
+                                nextCollectionId: 1,
+                                nextTagId: 1,
+                                version: '5.0'
+                            };
+                        }
+                        
+                        // Add IndexedDB boards to appData
+                        indexedDBBoards.forEach(board => {
+                            appDataToUse.boards[board.id] = board;
+                        });
+                        
+                        // Set current board if not set
+                        if (!appDataToUse.currentBoardId || !appDataToUse.boards[appDataToUse.currentBoardId]) {
+                            appDataToUse.currentBoardId = indexedDBBoards[0].id;
+                        }
+                        
+                        console.log('loadData: Merged IndexedDB boards - total boards:', Object.keys(appDataToUse.boards).length);
+                    }
+                    
+                    // Also check for weekly plans in IndexedDB
+                    const indexedDBWeeklyPlans = await entityIndexedDBService.getAllWeeklyPlans();
+                    console.log('loadData: IndexedDB weekly plans found:', indexedDBWeeklyPlans.length);
+                    
+                    if (indexedDBWeeklyPlans.length > 0) {
+                        indexedDBWeeklyPlans.forEach(plan => {
+                            appDataToUse.weeklyPlans[plan.weekKey] = plan;
+                        });
+                        console.log('loadData: Merged IndexedDB weekly plans - total plans:', Object.keys(appDataToUse.weeklyPlans).length);
+                    }
+                }
+            } catch (error) {
+                console.warn('loadData: Failed to load from IndexedDB, using localStorage only:', error);
+            }
+        }
+        
+        if (appDataToUse) {
+            setAppData(appDataToUse);
             console.log('loadData: Data set successfully');
         } else {
             console.log('loadData: No saved data found, initializing sample data');
@@ -94,7 +168,16 @@ export function loadData() {
         if (!appData.boards[appData.currentBoardId]) {
             appData.currentBoardId = Object.keys(appData.boards)[0] || 'default';
         }
+        
+        // Ensure at least one board exists
+        if (Object.keys(appData.boards).length === 0) {
+            console.log('No boards found, creating default board');
+            appData.boards.default = createDefaultBoard();
+            appData.currentBoardId = 'default';
+        }
+        
         setBoardData(appData.boards[appData.currentBoardId]);
+        console.log('loadData: Final boardData set:', !!boardData, 'columns:', boardData?.columns?.length);
         
         // Initialize Phase 2 sample data for new v5.0 installations
         if (appData.version === '5.0') {
@@ -124,6 +207,14 @@ export function loadData() {
             currentBoardId: appData.currentBoardId,
             firstBoardName: appData.boards ? Object.values(appData.boards)[0]?.name : 'none'
         });
+        
+        // Notify that data is ready for rendering
+        if (typeof window !== 'undefined') {
+            // Dispatch custom event that data is loaded
+            window.dispatchEvent(new CustomEvent('gridflow-data-loaded', {
+                detail: { appData, boardData }
+            }));
+        }
         
         return { appData, boardData };
     } catch (error) {
@@ -766,6 +857,7 @@ export function initializeSampleData() {
         nextNoteId: 1,
         nextChecklistId: 1,
         nextProjectId: 1,
+        nextPersonId: 1,
         nextCollectionId: 1,
         nextTagId: 1,
         version: '5.0'

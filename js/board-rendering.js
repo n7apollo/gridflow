@@ -15,6 +15,20 @@ import { getEntity, CONTEXT_TYPES } from './entity-core.js';
  * Main orchestrator function that coordinates all board rendering
  */
 export function renderBoard() {
+    // Check if boardData is available before rendering
+    if (!boardData || !boardData.columns) {
+        console.warn('renderBoard: boardData not available, delaying render');
+        // Try again after a short delay to allow for async data loading
+        setTimeout(() => {
+            if (boardData && boardData.columns) {
+                renderBoard();
+            } else {
+                console.error('renderBoard: boardData still not available after delay');
+            }
+        }, 100);
+        return;
+    }
+    
     renderColumnHeaders();
     renderGroupsAndRows();
     updateCSSGridColumns();
@@ -37,6 +51,14 @@ export function renderColumnHeaders() {
         console.warn('boardHeader element not found');
         return;
     }
+    
+    // Check if boardData is available
+    if (!boardData || !boardData.columns) {
+        console.warn('boardData or columns not available, skipping render');
+        container.innerHTML = '<div class="p-4 text-center text-base-content/70">Loading board data...</div>';
+        return;
+    }
+    
     // Set a fixed width for kanban columns and enable horizontal scrolling if needed
     const columnCount = boardData.columns.length;
     container.innerHTML = '';

@@ -44,16 +44,30 @@ class ComponentLoader {
         ]).then(() => {
             console.log('All custom elements ready');
             
-            // Initialize the navigation system now that components are loaded
-            if (window.navigation && window.navigation.initializeNavigation) {
-                window.navigation.initializeNavigation();
-            }
-            
-            // Re-run setupEventListeners now that modals exist
-            if (window.utilities && window.utilities.setupEventListeners) {
-                window.utilities.setupEventListeners();
+            // Wait for app initialization to complete before initializing navigation
+            if (window.appInitialized) {
+                this.initializeAfterApp();
+            } else {
+                // Listen for app initialization completion
+                window.addEventListener('gridflow-app-initialized', () => {
+                    this.initializeAfterApp();
+                }, { once: true });
             }
         });
+    }
+
+    initializeAfterApp() {
+        console.log('ComponentLoader: App initialized, now initializing navigation');
+        
+        // Initialize the navigation system now that both components and app data are ready
+        if (window.navigation && window.navigation.initializeNavigation) {
+            window.navigation.initializeNavigation();
+        }
+        
+        // Re-run setupEventListeners now that modals exist
+        if (window.utilities && window.utilities.setupEventListeners) {
+            window.utilities.setupEventListeners();
+        }
     }
 
     // Check if all components are loaded

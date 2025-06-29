@@ -353,6 +353,102 @@ export class PeopleAdapter extends BaseAdapter {
       person.name && person.name.toLowerCase().includes(term)
     );
   }
+
+  /**
+   * Get people by relationship type
+   * @param {string} relationshipType - Type of relationship
+   * @returns {Promise<Array>} People with specified relationship
+   */
+  async getByRelationshipType(relationshipType) {
+    return this.getByIndex('relationshipType', relationshipType);
+  }
+
+  /**
+   * Get people needing follow-up
+   * @param {Date} cutoffDate - Date cutoff for last interaction
+   * @returns {Promise<Array>} People needing follow-up
+   */
+  async getPeopleNeedingFollowUp(cutoffDate) {
+    const allPeople = await this.getAll();
+    return allPeople.filter(person => 
+      new Date(person.lastInteraction) < cutoffDate
+    );
+  }
+}
+
+/**
+ * Relationship adapter for entity-person relationships
+ */
+export class RelationshipAdapter extends BaseAdapter {
+  constructor() {
+    super('entityRelationships');
+  }
+
+  /**
+   * Get relationships by entity ID
+   * @param {string} entityId - Entity ID
+   * @returns {Promise<Array>} Relationships for entity
+   */
+  async getByEntity(entityId) {
+    return this.getByIndex('entityId', entityId);
+  }
+
+  /**
+   * Get relationships by related ID (person ID)
+   * @param {string} relatedId - Related entity/person ID
+   * @returns {Promise<Array>} Relationships for person
+   */
+  async getByRelated(relatedId) {
+    return this.getByIndex('relatedId', relatedId);
+  }
+
+  /**
+   * Get relationships by type
+   * @param {string} relationshipType - Relationship type
+   * @returns {Promise<Array>} Relationships of specified type
+   */
+  async getByType(relationshipType) {
+    return this.getByIndex('relationshipType', relationshipType);
+  }
+
+  /**
+   * Create relationship between entity and person
+   * @param {string} entityId - Entity ID
+   * @param {string} personId - Person ID
+   * @param {string} relationshipType - Type of relationship (mentions, assigned, collaborates)
+   * @param {string} context - Optional context
+   * @returns {Promise<Object>} Created relationship
+   */
+  async createRelationship(entityId, personId, relationshipType = 'mentions', context = '') {
+    const relationship = {
+      id: `rel_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      entityId,
+      relatedId: personId,
+      relationshipType,
+      context,
+      createdAt: new Date().toISOString()
+    };
+
+    await this.save(relationship);
+    return relationship;
+  }
+
+  /**
+   * Remove relationship between entity and person
+   * @param {string} entityId - Entity ID
+   * @param {string} personId - Person ID
+   * @returns {Promise<boolean>} Success status
+   */
+  async removeRelationship(entityId, personId) {
+    const relationships = await this.getByEntity(entityId);
+    const toRemove = relationships.filter(rel => rel.relatedId === personId);
+    
+    for (const rel of toRemove) {
+      await this.delete(rel.id);
+    }
+    
+    return toRemove.length > 0;
+  }
 }
 
 /**
@@ -363,6 +459,7 @@ export const boardAdapter = new BoardAdapter();
 export const weeklyPlanAdapter = new WeeklyPlanAdapter();
 export const weeklyItemAdapter = new WeeklyItemAdapter();
 export const peopleAdapter = new PeopleAdapter();
+export const relationshipAdapter = new RelationshipAdapter();
 
 // Make adapters available globally for debugging
 if (typeof window !== 'undefined') {
@@ -371,6 +468,7 @@ if (typeof window !== 'undefined') {
     board: boardAdapter,
     weeklyPlan: weeklyPlanAdapter,
     weeklyItem: weeklyItemAdapter,
-    people: peopleAdapter
+    people: peopleAdapter,
+    relationship: relationshipAdapter
   };
 }

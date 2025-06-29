@@ -207,6 +207,107 @@ class GridFlowViews extends HTMLElement {
                 </div>
             </div>
 
+            <!-- People Management Interface -->
+            <div class="people-container card bg-base-100 shadow-lg p-4 mt-4 hidden" id="peopleContainer">
+                <div class="people-header mb-4">
+                    <div class="people-controls flex flex-wrap gap-2 items-end">
+                        <div class="form-control">
+                            <label class="label" for="peopleSearch">Search People:</label>
+                            <input type="text" id="peopleSearch" placeholder="Search by name, email, or company..." 
+                                   class="input input-bordered w-64" data-action="searchPeople">
+                        </div>
+                        <div class="form-control">
+                            <label class="label" for="relationshipFilter">Relationship:</label>
+                            <select id="relationshipFilter" data-action="filterPeopleByRelationship" class="select select-bordered min-w-[8rem]">
+                                <option value="">All Relationships</option>
+                                <option value="coworker">Coworkers</option>
+                                <option value="friend">Friends</option>
+                                <option value="family">Family</option>
+                                <option value="partner">Partner</option>
+                                <option value="contact">Contacts</option>
+                            </select>
+                        </div>
+                        <div class="form-control">
+                            <label class="label" for="followUpFilter">Follow-ups:</label>
+                            <select id="followUpFilter" data-action="filterPeopleByFollowUp" class="select select-bordered min-w-[8rem]">
+                                <option value="">All People</option>
+                                <option value="overdue">Overdue</option>
+                                <option value="soon">Due Soon</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" data-action="showCreatePersonModal">
+                            <i data-lucide="user-plus"></i> Add Person
+                        </button>
+                    </div>
+                </div>
+
+                <!-- People Grid -->
+                <div class="people-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4" id="peopleGrid">
+                    <!-- People cards will be populated here -->
+                </div>
+
+                <!-- Person Detail Panel (Initially Hidden) -->
+                <div class="person-detail-panel card bg-base-200 p-4 mt-4 hidden" id="personDetailPanel">
+                    <div class="person-detail-header flex items-center justify-between mb-4">
+                        <h3 class="text-xl font-bold" id="personDetailName">Person Name</h3>
+                        <div class="person-detail-actions flex gap-2">
+                            <button class="btn btn-sm btn-secondary" data-action="editPerson" id="editPersonBtn">
+                                <i data-lucide="edit"></i> Edit
+                            </button>
+                            <button class="btn btn-sm btn-error" data-action="deletePerson" id="deletePersonBtn">
+                                <i data-lucide="trash-2"></i> Delete
+                            </button>
+                            <button class="btn btn-sm btn-neutral" data-action="closePeopleDetail">
+                                <i data-lucide="x"></i> Close
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Person Info -->
+                    <div class="person-info grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div class="person-basic-info">
+                            <h4 class="font-semibold mb-2">Contact Information</h4>
+                            <div class="space-y-1 text-sm">
+                                <div id="personEmail"></div>
+                                <div id="personPhone"></div>
+                                <div id="personCompany"></div>
+                                <div id="personRole"></div>
+                            </div>
+                        </div>
+                        <div class="person-relationship-info">
+                            <h4 class="font-semibold mb-2">Relationship</h4>
+                            <div class="space-y-1 text-sm">
+                                <div id="personRelationshipType"></div>
+                                <div id="personInteractionFrequency"></div>
+                                <div id="personLastInteraction"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Person Timeline -->
+                    <div class="person-timeline">
+                        <div class="timeline-header flex items-center justify-between mb-2">
+                            <h4 class="font-semibold">Timeline</h4>
+                            <div class="timeline-filters flex gap-2">
+                                <select id="timelineTypeFilter" class="select select-sm select-bordered">
+                                    <option value="">All Types</option>
+                                    <option value="task">Tasks</option>
+                                    <option value="note">Notes</option>
+                                    <option value="checklist">Checklists</option>
+                                    <option value="project">Projects</option>
+                                </select>
+                                <button class="btn btn-sm btn-primary" data-action="addNoteForPerson">
+                                    <i data-lucide="plus"></i> Add Note
+                                </button>
+                            </div>
+                        </div>
+                        <div class="timeline-content space-y-2 max-h-96 overflow-y-auto" id="personTimeline">
+                            <!-- Timeline items will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Weekly Planning Interface -->
             <div class="weekly-container card bg-base-100 shadow-lg p-4 mt-4 hidden" id="weeklyContainer">
                 <div class="weekly-header mb-4">

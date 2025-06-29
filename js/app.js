@@ -31,7 +31,11 @@ import * as dragDrop from './drag-drop.js';
 import * as cloudSync from './cloud-sync.js';
 import * as syncUI from './sync-ui.js';
 
-// IndexedDB infrastructure (Phase 1)
+// People System (Phase 3)
+import peopleService from './people-service.js';
+import * as peopleView from './people-view.js';
+
+// IndexedDB infrastructure (Phase 1 & 2)
 import featureFlags, { FLAGS } from './feature-flags.js';
 import database from './indexeddb/database.js';
 import testRunner from './indexeddb/test-runner.js';
@@ -40,6 +44,8 @@ import dataValidator from './indexeddb/validator.js';
 import migrationService from './indexeddb/migration-service.js';
 import entityIndexedDBService from './indexeddb/entity-indexeddb-service.js';
 import * as enhancedEntityCore from './indexeddb/entity-core-enhanced.js';
+import * as indexedDBFirstEntityCore from './indexeddb/entity-core-indexeddb-first.js';
+import * as entityCoreSwitcher from './indexeddb/entity-core-switcher.js';
 
 // Initialize the application
 async function initializeGridFlow() {
@@ -72,6 +78,11 @@ async function initializeGridFlow() {
     window.cloudSync = cloudSync.cloudSync; // Export the instance
     window.syncUI = syncUI;
     
+    // Make People System available globally
+    window.peopleService = peopleService;
+    window.peopleView = peopleView;
+    window.switchToPeopleView = peopleView.switchToPeopleView;
+    
     // Make IndexedDB infrastructure available globally
     window.featureFlags = featureFlags;
     window.FLAGS = FLAGS;
@@ -82,6 +93,8 @@ async function initializeGridFlow() {
     window.migrationService = migrationService;
     window.entityIndexedDBService = entityIndexedDBService;
     window.enhancedEntityCore = enhancedEntityCore;
+    window.indexedDBFirstEntityCore = indexedDBFirstEntityCore;
+    window.entityCoreSwitcher = entityCoreSwitcher;
     
     // Initialize IndexedDB if enabled
     if (featureFlags.isEnabled(FLAGS.INDEXEDDB_ENABLED)) {
@@ -101,6 +114,12 @@ async function initializeGridFlow() {
                     );
                 }
             }
+            
+            // Initialize entity core switcher (Phase 2.2)
+            console.log('🔄 Initializing entity core switcher...');
+            entityCoreSwitcher.autoSwitch();
+            const implementationInfo = entityCoreSwitcher.getImplementationInfo();
+            console.log(`✅ Entity core implementation: ${implementationInfo.current}`);
         } catch (error) {
             console.error('Failed to initialize IndexedDB:', error);
             featureFlags.disable(FLAGS.INDEXEDDB_ENABLED);
@@ -109,7 +128,7 @@ async function initializeGridFlow() {
     }
     
     // Load data first
-    const { appData, boardData } = coreData.loadData();
+    await coreData.loadData();
     
     // Check if entity migration is needed
     if (entityMigration.isMigrationNeeded()) {
@@ -159,6 +178,11 @@ async function initializeGridFlow() {
         console.log('Cloud sync initialized');
     }
     
+    // Signal that app initialization is complete
+    window.appInitialized = true;
+    window.dispatchEvent(new CustomEvent('gridflow-app-initialized'));
+    console.log('🚀 GridFlow app initialization complete');
+    
     // Update UI (will be called by navigation after components are ready)
     // if (window.renderBoard) window.renderBoard();
     // if (window.updateSettingsUI) window.updateSettingsUI();
@@ -171,4 +195,4 @@ document.addEventListener('DOMContentLoaded', initializeGridFlow);
 window.initializeGridFlow = initializeGridFlow;
 
 // Export for potential external use
-export { utilities, coreData, navigation, boardManagement, boardRendering, taskManagement, weeklyPlanning, templateSystem, templateLibrary, importExport, searchSystem, taggingSystem, collections, cardOperations, rowOperations, columnOperations, groupOperations, subtaskManagement, entitySystem, dataMigration, dragDrop };
+export { utilities, coreData, navigation, boardManagement, boardRendering, taskManagement, weeklyPlanning, templateSystem, templateLibrary, importExport, searchSystem, taggingSystem, collections, cardOperations, rowOperations, columnOperations, groupOperations, subtaskManagement, entitySystem, dataMigration, dragDrop, peopleService, peopleView };

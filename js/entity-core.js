@@ -16,7 +16,8 @@ export const ENTITY_TYPES = {
     TASK: 'task',
     NOTE: 'note', 
     CHECKLIST: 'checklist',
-    PROJECT: 'project'
+    PROJECT: 'project',
+    PERSON: 'person'
 };
 
 /**
@@ -60,6 +61,10 @@ export function createEntity(type, data) {
         case ENTITY_TYPES.PROJECT:
             if (!appData.nextProjectId) appData.nextProjectId = 1;
             entityId = `project_${appData.nextProjectId++}`;
+            break;
+        case ENTITY_TYPES.PERSON:
+            if (!appData.nextPersonId) appData.nextPersonId = 1;
+            entityId = `person_${appData.nextPersonId++}`;
             break;
         default:
             // Fallback to timestamp-based ID for unknown types
@@ -128,6 +133,34 @@ function getTypeSpecificFields(type, data) {
                 budget: data.budget || null,
                 team: data.team || [],
                 milestones: data.milestones || []
+            };
+            
+        case ENTITY_TYPES.PERSON:
+            return {
+                // Person-specific properties
+                name: data.name || data.title || '',
+                email: data.email || '',
+                phone: data.phone || '',
+                company: data.company || '',
+                role: data.role || '',
+                relationshipType: data.relationshipType || 'contact', // contact, friend, family, coworker, partner
+                interactionFrequency: data.interactionFrequency || 'monthly', // daily, weekly, monthly, quarterly, yearly
+                lastInteraction: data.lastInteraction || new Date().toISOString(),
+                
+                // Optional personal details
+                birthday: data.birthday || null,
+                location: data.location || '',
+                timezone: data.timezone || '',
+                
+                // Social links
+                socialLinks: data.socialLinks || {},
+                
+                // Relationship context
+                notes: data.notes || '', // Additional notes about this person
+                firstMet: data.firstMet || null,
+                
+                // Override completed for people (not applicable)
+                completed: false
             };
             
         default:
