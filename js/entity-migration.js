@@ -82,8 +82,15 @@ function migrateBoardCards(appData, results) {
                 
                 cards.forEach(card => {
                     try {
-                        // Skip if already an entity ID
-                        if (typeof card === 'string' && card.startsWith('entity_')) {
+                        // Skip if already an entity ID (any string that looks like an entity ID)
+                        if (typeof card === 'string' && (card.startsWith('entity_') || card.startsWith('task_') || card.startsWith('note_') || card.startsWith('checklist_') || card.startsWith('project_'))) {
+                            newCardList.push(card);
+                            return;
+                        }
+                        
+                        // Skip if not a valid object that needs migration
+                        if (typeof card !== 'object' || card === null || Array.isArray(card)) {
+                            console.log('Skipping non-object card:', card);
                             newCardList.push(card);
                             return;
                         }
@@ -140,6 +147,13 @@ function migrateWeeklyItems(appData, results) {
             try {
                 // Skip if already has entityId
                 if (item.entityId) {
+                    newItems.push(item);
+                    return;
+                }
+                
+                // Skip if item doesn't have content that needs migration
+                if (!item.title && !item.content) {
+                    console.log('Skipping weekly item without content:', item);
                     newItems.push(item);
                     return;
                 }
@@ -225,14 +239,13 @@ function determineEntityType(card) {
  * @returns {Object} Entity data
  */
 function convertCardToEntityData(card) {
-    console.log('Converting card to entity:', card);
-    console.log('Card properties:', Object.keys(card));
-    console.log('Card is array:', Array.isArray(card));
-    console.log('Card type:', typeof card);
+    // This function should only be called with valid card objects
+    if (typeof card !== 'object' || card === null) {
+        throw new Error('Invalid card object provided for conversion');
+    }
     
     // Handle array-based card format (legacy)
     if (Array.isArray(card)) {
-        console.log('Array card contents:', card);
         const entityData = {
             title: card[0] || card[1] || 'Untitled', // Try first few array elements
             content: card[1] || card[2] || '',
@@ -240,7 +253,6 @@ function convertCardToEntityData(card) {
             tags: [],
             createdAt: new Date().toISOString()
         };
-        console.log('Converted array card to entity data:', entityData);
         return entityData;
     }
     
