@@ -15,10 +15,11 @@ export function safeShowStatusMessage(message, type = 'info') {
   try {
     const statusMessage = document.getElementById('statusMessage');
     if (statusMessage) {
-      // Use original showStatusMessage if element exists
-      const { showStatusMessage } = await import('../utilities.js');
-      showStatusMessage(message, type);
-      return;
+      // Use original showStatusMessage if element exists and function is available
+      if (typeof window.showStatusMessage === 'function') {
+        window.showStatusMessage(message, type);
+        return;
+      }
     }
   } catch (error) {
     // If import fails or element doesn't exist, continue to fallback
