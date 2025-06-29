@@ -46,9 +46,11 @@ class MigrationService {
       success: false
     };
 
+    let backupData = null;
+
     try {
       // Create backup before migration
-      const backupData = this.createBackup();
+      backupData = this.createBackup();
       this.updateProgress('Creating backup', 0, 6);
       
       // Step 1: Migrate entities
@@ -90,7 +92,7 @@ class MigrationService {
       results.duration = Date.now() - this.migrationState.startTime;
       
       console.log('✅ Migration completed successfully:', results);
-      showStatusMessage(
+      this.safeShowStatusMessage(
         `Migration completed: ${results.entitiesMigrated} entities, ${results.boardsMigrated} boards migrated`, 
         'success'
       );
@@ -107,10 +109,10 @@ class MigrationService {
       // Attempt rollback
       try {
         await this.rollback(backupData);
-        showStatusMessage('Migration failed and rolled back successfully', 'error');
+        this.safeShowStatusMessage('Migration failed and rolled back successfully', 'error');
       } catch (rollbackError) {
         console.error('Rollback also failed:', rollbackError);
-        showStatusMessage('Migration failed and rollback also failed - manual intervention required', 'error');
+        this.safeShowStatusMessage('Migration failed and rollback also failed - manual intervention required', 'error');
       }
       
       throw error;
@@ -516,6 +518,25 @@ class MigrationService {
    */
   isMigrationInProgress() {
     return this.migrationState.inProgress;
+  }
+
+  /**
+   * Safe status message that works in both main app and test environments
+   * @param {string} message - Message to show
+   * @param {string} type - Message type (success, error, warning, info)
+   */
+  safeShowStatusMessage(message, type) {
+    console.log(`[${type.toUpperCase()}] ${message}`);
+    
+    // Try to use showStatusMessage if available (main app)
+    try {
+      if (typeof showStatusMessage === 'function') {
+        showStatusMessage(message, type);
+      }
+    } catch (error) {
+      // If showStatusMessage fails (test environment), just log
+      console.warn('showStatusMessage not available, logged to console instead');
+    }
   }
 }
 
