@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IndexedDB Infrastructure Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-results { margin: 20px 0; padding: 20px; border: 1px solid #ccc; }
+        .success { background: #d4edda; border-color: #28a745; }
+        .error { background: #f8d7da; border-color: #dc3545; }
+        .info { background: #d1ecf1; border-color: #17a2b8; }
+        button { margin: 5px; padding: 10px 15px; font-size: 14px; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>GridFlow IndexedDB Infrastructure Test</h1>
+    
+    <div id="status" class="test-results info">
+        <h3>Status: Loading...</h3>
+        <p>Initializing IndexedDB infrastructure...</p>
+    </div>
+
+    <div>
+        <button onclick="enableIndexedDB()">Enable IndexedDB</button>
+        <button onclick="runTests()">Run Tests</button>
+        <button onclick="testFeatureFlags()">Test Feature Flags</button>
+        <button onclick="validateData()">Validate Data</button>
+        <button onclick="runMigration()">Run Migration</button>
+        <button onclick="showInfo()">Show DB Info</button>
+        <button onclick="clearData()">Clear Test Data</button>
+    </div>
+
+    <div id="results" class="test-results">
+        <h3>Results</h3>
+        <pre id="output">Click a button to run tests...</pre>
+    </div>
+
+    <!-- Load the required modules -->
+    <script type="module">
+        import featureFlags, { FLAGS } from './js/feature-flags.js';
+        import database from './js/indexeddb/database.js';
+        import testRunner from './js/indexeddb/test-runner.js';
+        import dataValidator from './js/indexeddb/validator.js';
+        import migrationService from './js/indexeddb/migration-service.js';
+        import { entityAdapter } from './js/indexeddb/adapters.js';
+
+        // Make available globally for button handlers
+        window.featureFlags = featureFlags;
+        window.FLAGS = FLAGS;
+        window.database = database;
+        window.testRunner = testRunner;
+        window.dataValidator = dataValidator;
+        window.migrationService = migrationService;
+        window.entityAdapter = entityAdapter;
+
+        // Helper functions
+        window.log = function(message, type = 'info') {
+            const output = document.getElementById('output');
+            const timestamp = new Date().toLocaleTimeString();
+            output.textContent += `[${timestamp}] ${message}\n`;
+            
+            // Scroll to bottom
+            output.scrollTop = output.scrollHeight;
+            
+            // Update status
+            const status = document.getElementById('status');
+            status.className = `test-results ${type}`;
+            status.innerHTML = `<h3>Status: ${type.toUpperCase()}</h3><p>${message}</p>`;
+        };
+
+        window.enableIndexedDB = async function() {
+            try {
+                log('Enabling IndexedDB feature flag...');
+                featureFlags.enable(FLAGS.INDEXEDDB_ENABLED);
+                featureFlags.enable(FLAGS.PERFORMANCE_MONITORING);
+                
+                log('Initializing IndexedDB...');
+                await database.init();
+                
+                const info = database.getInfo();
+                log(`IndexedDB initialized: ${info.name} v${info.version}`, 'success');
+                log(`Object stores: ${info.objectStoreNames.join(', ')}`);
+                
+            } catch (error) {
+                log(`Failed to enable IndexedDB: ${error.message}`, 'error');
+            }
+        };
+
+        window.runTests = async function() {
+            try {
+                log('Running IndexedDB infrastructure tests...');
+                const results = await testRunner.runAllTests();
+                
+                if (results.failed === 0) {
+                    log(`All tests passed! ${results.passed}/${results.total} in ${results.duration.toFixed(2)}ms`, 'success');
+                } else {
+                    log(`Some tests failed: ${results.passed}/${results.total} passed`, 'error');
+                }
+                
+                // Show detailed results
+                for (const result of results.results) {
+                    const status = result.passed ? '✅' : '❌';
+                    log(`${status} ${result.name}: ${result.passed ? result.result : result.error}`);
+                }
+                
+            } catch (error) {
+                log(`Test execution failed: ${error.message}`, 'error');
+            }
+        };
+
+        window.testFeatureFlags = function() {
+            try {
+                log('Testing feature flags system...');
+                
+                const testFlag = 'test_flag';
+                log(`Initial state of ${testFlag}: ${featureFlags.isEnabled(testFlag)}`);
+                
+                featureFlags.enable(testFlag);
+                log(`After enable: ${featureFlags.isEnabled(testFlag)}`);
+                
+                featureFlags.disable(testFlag);
+                log(`After disable: ${featureFlags.isEnabled(testFlag)}`);
+                
+                featureFlags.toggle(testFlag);
+                log(`After toggle: ${featureFlags.isEnabled(testFlag)}`);
+                
+                const allFlags = featureFlags.getAll();
+                log(`All flags: ${JSON.stringify(allFlags, null, 2)}`);
+                
+                log('Feature flags system working correctly!', 'success');
+                
+            } catch (error) {
+                log(`Feature flags test failed: ${error.message}`, 'error');
+            }
+        };
+
+        window.validateData = async function() {
+            try {
+                log('Running data validation...');
+                const results = await dataValidator.validateConsistency();
+                
+                if (results.overallValid) {
+                    log('Data validation passed - all systems consistent!', 'success');
+                } else {
+                    log('Data validation found inconsistencies', 'error');
+                }
+                
+                log(`Entities: ${results.entities.matching} matching, ${results.entities.missing.length} missing, ${results.entities.extra.length} extra`);
+                log(`Boards: ${results.boards.matching} matching, ${results.boards.missing.length} missing, ${results.boards.extra.length} extra`);
+                log(`Validation completed in ${results.duration.toFixed(2)}ms`);
+                
+            } catch (error) {
+                log(`Data validation failed: ${error.message}`, 'error');
+            }
+        };
+
+        window.showInfo = async function() {
+            try {
+                if (!database.isReady()) {
+                    log('Database not initialized. Enable IndexedDB first.', 'error');
+                    return;
+                }
+                
+                const info = database.getInfo();
+                log('Database Information:');
+                log(`Name: ${info.name}`);
+                log(`Version: ${info.version}`);
+                log(`Object Stores: ${info.objectStoreNames.length}`);
+                
+                for (const storeName of info.objectStoreNames) {
+                    log(`  - ${storeName}`);
+                }
+                
+                // Get entity counts
+                const entityCount = await entityAdapter.count();
+                log(`Current entity count: ${entityCount}`);
+                
+                log('Database info displayed successfully!', 'success');
+                
+            } catch (error) {
+                log(`Failed to show database info: ${error.message}`, 'error');
+            }
+        };
+
+        window.clearData = async function() {
+            try {
+                if (!database.isReady()) {
+                    log('Database not initialized.', 'error');
+                    return;
+                }
+                
+                log('Clearing test data...');
+                await entityAdapter.clear();
+                
+                const count = await entityAdapter.count();
+                log(`Test data cleared. Entity count: ${count}`, 'success');
+                
+            } catch (error) {
+                log(`Failed to clear test data: ${error.message}`, 'error');
+            }
+        };
+
+        window.runMigration = async function() {
+            try {
+                if (!database.isReady()) {
+                    log('Database not initialized. Enable IndexedDB first.', 'error');
+                    return;
+                }
+                
+                if (migrationService.isMigrationInProgress()) {
+                    log('Migration already in progress', 'error');
+                    return;
+                }
+                
+                log('Starting migration from localStorage to IndexedDB...');
+                const results = await migrationService.migrateFromLocalStorage();
+                
+                if (results.success) {
+                    log(`Migration completed successfully!`, 'success');
+                    log(`Entities: ${results.entitiesMigrated}, Boards: ${results.boardsMigrated}`);
+                    log(`Weekly Plans: ${results.weeklyPlansMigrated}, Weekly Items: ${results.weeklyItemsMigrated}`);
+                    log(`Duration: ${results.duration}ms`);
+                } else {
+                    log(`Migration failed: ${results.errors.join(', ')}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`Migration failed: ${error.message}`, 'error');
+            }
+        };
+
+        // Auto-initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            log('IndexedDB test page loaded');
+            log('Click "Enable IndexedDB" to start testing');
+        });
+    </script>
+</body>
+</html>
