@@ -5,6 +5,7 @@
 
 import featureFlags, { FLAGS } from '../feature-flags.js';
 import { entityAdapter } from './adapters.js';
+import entityIndexedDBService from './entity-indexeddb-service.js';
 import { showStatusMessage } from '../utilities.js';
 
 class DualWriteService {
@@ -53,7 +54,7 @@ class DualWriteService {
     // Also save to IndexedDB if dual write is enabled
     if (this.isDualWriteEnabled()) {
       try {
-        await this.indexedDBService.saveEntity(savedEntity);
+        await entityIndexedDBService.saveEntity(savedEntity);
         console.log(`Entity ${entity.id} saved to both storage systems`);
       } catch (error) {
         this.handleIndexedDBError('saveEntity', error, entity);
@@ -81,7 +82,7 @@ class DualWriteService {
     // Also delete from IndexedDB if dual write is enabled
     if (this.isDualWriteEnabled()) {
       try {
-        await this.indexedDBService.deleteEntity(entityId);
+        await entityIndexedDBService.deleteEntity(entityId);
         console.log(`Entity ${entityId} deleted from both storage systems`);
       } catch (error) {
         this.handleIndexedDBError('deleteEntity', error, { entityId });
@@ -109,7 +110,7 @@ class DualWriteService {
     // Also save to IndexedDB if dual write is enabled
     if (this.isDualWriteEnabled()) {
       try {
-        await this.indexedDBService.saveBoard(savedBoard);
+        await entityIndexedDBService.saveBoard(savedBoard);
         console.log(`Board ${board.id} saved to both storage systems`);
       } catch (error) {
         this.handleIndexedDBError('saveBoard', error, board);

@@ -38,6 +38,8 @@ import testRunner from './indexeddb/test-runner.js';
 import dualWriteService from './indexeddb/dual-writer.js';
 import dataValidator from './indexeddb/validator.js';
 import migrationService from './indexeddb/migration-service.js';
+import entityIndexedDBService from './indexeddb/entity-indexeddb-service.js';
+import * as enhancedEntityCore from './indexeddb/entity-core-enhanced.js';
 
 // Initialize the application
 async function initializeGridFlow() {
@@ -78,6 +80,8 @@ async function initializeGridFlow() {
     window.dualWriteService = dualWriteService;
     window.dataValidator = dataValidator;
     window.migrationService = migrationService;
+    window.entityIndexedDBService = entityIndexedDBService;
+    window.enhancedEntityCore = enhancedEntityCore;
     
     // Initialize IndexedDB if enabled
     if (featureFlags.isEnabled(FLAGS.INDEXEDDB_ENABLED)) {

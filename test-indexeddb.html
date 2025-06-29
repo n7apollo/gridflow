@@ -28,6 +28,9 @@
         <button onclick="testFeatureFlags()">Test Feature Flags</button>
         <button onclick="validateData()">Validate Data</button>
         <button onclick="runMigration()">Run Migration</button>
+        <button onclick="enableDualWrite()">Enable Dual Write</button>
+        <button onclick="testDualWrite()">Test Dual Write</button>
+        <button onclick="showStats()">Show Statistics</button>
         <button onclick="showInfo()">Show DB Info</button>
         <button onclick="clearData()">Clear Test Data</button>
     </div>
@@ -44,6 +47,8 @@
         import testRunner from './js/indexeddb/test-runner.js';
         import dataValidator from './js/indexeddb/validator.js';
         import migrationService from './js/indexeddb/migration-service.js';
+        import entityIndexedDBService from './js/indexeddb/entity-indexeddb-service.js';
+        import * as enhancedEntityCore from './js/indexeddb/entity-core-enhanced.js';
         import { entityAdapter } from './js/indexeddb/adapters.js';
 
         // Make available globally for button handlers
@@ -53,6 +58,8 @@
         window.testRunner = testRunner;
         window.dataValidator = dataValidator;
         window.migrationService = migrationService;
+        window.entityIndexedDBService = entityIndexedDBService;
+        window.enhancedEntityCore = enhancedEntityCore;
         window.entityAdapter = entityAdapter;
 
         // Helper functions
@@ -228,6 +235,118 @@
                 
             } catch (error) {
                 log(`Migration failed: ${error.message}`, 'error');
+            }
+        };
+
+        window.enableDualWrite = function() {
+            try {
+                log('Enabling dual-write mode...');
+                featureFlags.enable(FLAGS.DUAL_WRITE);
+                
+                if (featureFlags.isEnabled(FLAGS.DUAL_WRITE)) {
+                    log('Dual-write mode enabled successfully!', 'success');
+                    log('Entity operations will now save to both localStorage and IndexedDB');
+                } else {
+                    log('Failed to enable dual-write mode', 'error');
+                }
+                
+            } catch (error) {
+                log(`Failed to enable dual-write: ${error.message}`, 'error');
+            }
+        };
+
+        window.testDualWrite = async function() {
+            try {
+                if (!featureFlags.isEnabled(FLAGS.DUAL_WRITE)) {
+                    log('Dual-write not enabled. Enable it first.', 'error');
+                    return;
+                }
+                
+                log('Testing dual-write functionality...');
+                
+                // Create test entity using enhanced entity core
+                const testEntity = {
+                    title: 'Dual Write Test Entity',
+                    content: 'Testing dual write to localStorage and IndexedDB',
+                    priority: 'high',
+                    tags: ['test', 'dual-write']
+                };
+                
+                log('Creating test entity...');
+                const createdEntity = enhancedEntityCore.createEntity('task', testEntity);
+                log(`Created entity: ${createdEntity.id}`);
+                
+                // Wait a moment for async IndexedDB save
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                // Check if entity exists in IndexedDB
+                const indexedDBEntity = await entityIndexedDBService.getEntity(createdEntity.id);
+                
+                if (indexedDBEntity) {
+                    log(`✅ Entity found in IndexedDB: ${indexedDBEntity.title}`, 'success');
+                    
+                    // Test update
+                    log('Testing entity update...');
+                    const updatedEntity = enhancedEntityCore.updateEntity(createdEntity.id, {
+                        title: 'Updated Dual Write Test Entity',
+                        completed: true
+                    });
+                    
+                    // Wait for async update
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    
+                    const updatedIndexedDBEntity = await entityIndexedDBService.getEntity(createdEntity.id);
+                    if (updatedIndexedDBEntity && updatedIndexedDBEntity.completed) {
+                        log('✅ Entity update successful in both systems', 'success');
+                    } else {
+                        log('❌ Entity update failed in IndexedDB', 'error');
+                    }
+                    
+                    // Clean up test entity
+                    enhancedEntityCore.deleteEntity(createdEntity.id);
+                    log('Test entity cleaned up');
+                    
+                } else {
+                    log('❌ Entity not found in IndexedDB - dual write failed', 'error');
+                }
+                
+            } catch (error) {
+                log(`Dual-write test failed: ${error.message}`, 'error');
+            }
+        };
+
+        window.showStats = async function() {
+            try {
+                log('Gathering enhanced statistics...');
+                const stats = await enhancedEntityCore.getEnhancedStatistics();
+                
+                log('=== Enhanced Statistics ===');
+                log(`IndexedDB Enabled: ${stats.indexedDB.enabled}`);
+                if (stats.indexedDB.enabled) {
+                    log(`IndexedDB Entities: ${stats.indexedDB.entities}`);
+                    log(`IndexedDB Boards: ${stats.indexedDB.boards}`);
+                    log(`Tasks: ${stats.indexedDB.tasks}`);
+                    log(`Notes: ${stats.indexedDB.notes}`);
+                    log(`Checklists: ${stats.indexedDB.checklists}`);
+                    log(`Projects: ${stats.indexedDB.projects}`);
+                }
+                
+                log(`Dual Write Enabled: ${stats.dualWrite.enabled}`);
+                
+                // Test consistency if possible
+                const consistency = await enhancedEntityCore.validateEntityConsistency();
+                if (consistency.enabled) {
+                    log(`Data Consistency: ${consistency.consistent ? 'CONSISTENT' : 'INCONSISTENT'}`);
+                    if (consistency.localStorageCount !== undefined) {
+                        log(`localStorage: ${consistency.localStorageCount} entities`);
+                        log(`IndexedDB: ${consistency.indexedDBCount} entities`);
+                    }
+                }
+                
+                log('Statistics displayed successfully!', 'success');
+                
+            } catch (error) {
+                log(`Failed to show statistics: ${error.message}`, 'error');
             }
         };
 
