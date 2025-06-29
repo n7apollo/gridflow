@@ -299,8 +299,13 @@ function convertWeeklyItemToEntityData(item) {
 function isMigrationNeeded() {
     const appData = getAppData();
     
+    console.log('Checking if migration needed...');
+    console.log('Entities exist:', !!appData.entities);
+    console.log('Entity count:', appData.entities ? Object.keys(appData.entities).length : 0);
+    
     // Check if entities structure exists
     if (!appData.entities) {
+        console.log('Migration needed: No entities structure');
         return true;
     }
     
@@ -311,24 +316,45 @@ function isMigrationNeeded() {
             
             return Object.values(row.cards).some(cardList => {
                 return cardList.some(card => {
-                    return typeof card === 'object' && !card.entityId;
+                    const isObject = typeof card === 'object';
+                    const hasEntityId = card && card.entityId;
+                    const needsMigration = isObject && !hasEntityId;
+                    
+                    if (needsMigration) {
+                        console.log('Found card needing migration:', card);
+                        console.log('Card type:', typeof card);
+                        console.log('Card keys:', Object.keys(card || {}));
+                    }
+                    
+                    return needsMigration;
                 });
             });
         });
     });
     
     if (hasObjectCards) {
+        console.log('Migration needed: Found object cards');
         return true;
     }
     
     // Check if any weekly items don't have entityId references
     const hasNonEntityWeeklyItems = Object.values(appData.weeklyPlans || {}).some(plan => {
         return (plan.items || []).some(item => {
-            return !item.entityId && (item.title || item.content);
+            const needsMigration = !item.entityId && (item.title || item.content);
+            if (needsMigration) {
+                console.log('Found weekly item needing migration:', item);
+            }
+            return needsMigration;
         });
     });
     
-    return hasNonEntityWeeklyItems;
+    if (hasNonEntityWeeklyItems) {
+        console.log('Migration needed: Found non-entity weekly items');
+        return true;
+    }
+    
+    console.log('No migration needed');
+    return false;
 }
 
 /**
