@@ -671,6 +671,101 @@ class GridFlowModals extends HTMLElement {
                 </div>
             </div>
 
+            <!-- Create Person Modal -->
+            <div class="modal" id="createPersonModal">
+                <div class="modal-box w-full max-w-2xl">
+                    <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" data-action="closeCreatePersonModal">✕</button>
+                    <h2 id="createPersonModalTitle" class="text-xl font-bold mb-4">Add Person</h2>
+                    <form id="createPersonForm" class="space-y-4">
+                        <!-- Basic Information -->
+                        <div class="form-section">
+                            <h3 class="text-lg font-semibold mb-3">Basic Information</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="form-control">
+                                    <label class="label" for="createPersonName">Name *</label>
+                                    <input type="text" id="createPersonName" name="name" required class="input input-bordered w-full" placeholder="Full name">
+                                </div>
+                                <div class="form-control">
+                                    <label class="label" for="createPersonEmail">Email</label>
+                                    <input type="email" id="createPersonEmail" name="email" class="input input-bordered w-full" placeholder="email@example.com">
+                                </div>
+                                <div class="form-control">
+                                    <label class="label" for="createPersonPhone">Phone</label>
+                                    <input type="tel" id="createPersonPhone" name="phone" class="input input-bordered w-full" placeholder="Phone number">
+                                </div>
+                                <div class="form-control">
+                                    <label class="label" for="createPersonCompany">Company</label>
+                                    <input type="text" id="createPersonCompany" name="company" class="input input-bordered w-full" placeholder="Company name">
+                                </div>
+                                <div class="form-control">
+                                    <label class="label" for="createPersonRole">Role</label>
+                                    <input type="text" id="createPersonRole" name="role" class="input input-bordered w-full" placeholder="Job title or role">
+                                </div>
+                                <div class="form-control">
+                                    <label class="label" for="createPersonLocation">Location</label>
+                                    <input type="text" id="createPersonLocation" name="location" class="input input-bordered w-full" placeholder="City, Country">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Relationship Information -->
+                        <div class="form-section">
+                            <h3 class="text-lg font-semibold mb-3">Relationship</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="form-control">
+                                    <label class="label" for="createPersonRelationshipType">Relationship Type</label>
+                                    <select id="createPersonRelationshipType" name="relationshipType" class="select select-bordered w-full">
+                                        <option value="contact">Contact</option>
+                                        <option value="coworker">Coworker</option>
+                                        <option value="friend">Friend</option>
+                                        <option value="family">Family</option>
+                                        <option value="partner">Partner</option>
+                                    </select>
+                                </div>
+                                <div class="form-control">
+                                    <label class="label" for="createPersonInteractionFrequency">Contact Frequency</label>
+                                    <select id="createPersonInteractionFrequency" name="interactionFrequency" class="select select-bordered w-full">
+                                        <option value="daily">Daily</option>
+                                        <option value="weekly">Weekly</option>
+                                        <option value="monthly" selected>Monthly</option>
+                                        <option value="quarterly">Quarterly</option>
+                                        <option value="yearly">Yearly</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Optional Information -->
+                        <div class="form-section">
+                            <h3 class="text-lg font-semibold mb-3">Additional Details</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="form-control">
+                                    <label class="label" for="createPersonBirthday">Birthday</label>
+                                    <input type="date" id="createPersonBirthday" name="birthday" class="input input-bordered w-full">
+                                </div>
+                                <div class="form-control">
+                                    <label class="label" for="createPersonFirstMet">First Met</label>
+                                    <input type="date" id="createPersonFirstMet" name="firstMet" class="input input-bordered w-full">
+                                </div>
+                            </div>
+                            <div class="form-control">
+                                <label class="label" for="createPersonNotes">Notes</label>
+                                <textarea id="createPersonNotes" name="notes" class="textarea textarea-bordered w-full" placeholder="Additional notes about this person..." rows="3"></textarea>
+                            </div>
+                            <div class="form-control">
+                                <label class="label" for="createPersonTags">Tags</label>
+                                <input type="text" id="createPersonTags" name="tags" class="input input-bordered w-full" placeholder="Comma-separated tags">
+                            </div>
+                        </div>
+
+                        <div class="modal-action flex gap-2 justify-end">
+                            <button type="submit" class="btn btn-primary" data-action="createPerson">Create Person</button>
+                            <button type="button" class="btn btn-secondary" data-action="closeCreatePersonModal">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
             <!-- Create Template Modal -->
             <div class="modal" id="createTemplateModal">
                 <div class="modal-box w-full max-w-lg">

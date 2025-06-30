@@ -446,7 +446,7 @@ function renderProjectCardContent(entity) {
 /**
  * Get icon for entity type
  */
-function getEntityTypeIcon(type, asHTML = false) {
+export function getEntityTypeIcon(type, asHTML = false) {
     const iconData = {
         [ENTITY_TYPES.TASK]: {
             class: "lucide lucide-check w-4 h-4",
@@ -1142,7 +1142,8 @@ if (typeof window !== 'undefined') {
         showEntityDetail,
         toggleCompletion,
         removeFromWeekly,
-        closeEntityDetailModal
+        closeEntityDetailModal,
+        getEntityTypeIcon
     };
 }
 

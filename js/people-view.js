@@ -379,6 +379,159 @@ window.closePeopleDetail = function() {
 };
 
 /**
+ * Show create person modal
+ */
+window.showCreatePersonModal = function() {
+    const modal = document.getElementById('createPersonModal');
+    if (modal) {
+        // Reset form
+        const form = document.getElementById('createPersonForm');
+        if (form) form.reset();
+        
+        modal.classList.add('modal-open');
+    }
+};
+
+/**
+ * Close create person modal
+ */
+window.closeCreatePersonModal = function() {
+    const modal = document.getElementById('createPersonModal');
+    if (modal) {
+        modal.classList.remove('modal-open');
+    }
+};
+
+/**
+ * Create person from modal form
+ */
+window.createPerson = async function() {
+    const form = document.getElementById('createPersonForm');
+    if (!form) return;
+
+    const formData = new FormData(form);
+    const personData = {};
+    
+    // Get all form fields
+    for (const [key, value] of formData.entries()) {
+        if (value.trim()) {
+            personData[key] = value.trim();
+        }
+    }
+
+    // Parse tags
+    if (personData.tags) {
+        personData.tags = personData.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+    }
+
+    // Validate required fields
+    if (!personData.name) {
+        alert('Name is required');
+        return;
+    }
+
+    try {
+        const person = await peopleService.createPerson(personData);
+        console.log('Created person:', person);
+        
+        // Close modal
+        closeCreatePersonModal();
+        
+        // Refresh people grid
+        renderPeopleGrid();
+        
+        // Show success message
+        if (window.showStatusMessage) {
+            window.showStatusMessage(`Added ${person.name} to your people`, 'success');
+        }
+        
+        // Show the person detail
+        showPersonDetail(person.id);
+        
+    } catch (error) {
+        console.error('Failed to create person:', error);
+        if (window.showStatusMessage) {
+            window.showStatusMessage('Failed to create person', 'error');
+        } else {
+            alert('Failed to create person: ' + error.message);
+        }
+    }
+};
+
+/**
+ * Edit person
+ */
+window.editPerson = function() {
+    if (!currentPersonId) return;
+    
+    const person = peopleService.getPerson(currentPersonId);
+    if (!person) return;
+
+    // TODO: Implement edit person modal
+    // For now, just show a message
+    if (window.showStatusMessage) {
+        window.showStatusMessage('Edit person functionality coming soon', 'info');
+    } else {
+        alert('Edit person functionality coming soon');
+    }
+};
+
+/**
+ * Delete person
+ */
+window.deletePerson = async function() {
+    if (!currentPersonId) return;
+    
+    const person = peopleService.getPerson(currentPersonId);
+    if (!person) return;
+
+    const confirmed = confirm(`Are you sure you want to delete ${person.name}? This will also remove all their relationships.`);
+    if (!confirmed) return;
+
+    try {
+        const success = await peopleService.deletePerson(currentPersonId);
+        if (success) {
+            // Close detail panel
+            closePeopleDetail();
+            
+            // Refresh people grid
+            renderPeopleGrid();
+            
+            if (window.showStatusMessage) {
+                window.showStatusMessage(`Deleted ${person.name}`, 'success');
+            }
+        } else {
+            throw new Error('Delete operation failed');
+        }
+    } catch (error) {
+        console.error('Failed to delete person:', error);
+        if (window.showStatusMessage) {
+            window.showStatusMessage('Failed to delete person', 'error');
+        } else {
+            alert('Failed to delete person: ' + error.message);
+        }
+    }
+};
+
+/**
+ * Add note for person
+ */
+window.addNoteForPerson = function() {
+    if (!currentPersonId) return;
+    
+    const person = peopleService.getPerson(currentPersonId);
+    if (!person) return;
+
+    // TODO: Implement add note for person
+    // For now, just show a message
+    if (window.showStatusMessage) {
+        window.showStatusMessage('Add note functionality coming soon', 'info');
+    } else {
+        alert('Add note functionality coming soon');
+    }
+};
+
+/**
  * Show person detail
  */
 window.showPersonDetail = showPersonDetail;
