@@ -134,11 +134,19 @@ class MigrationService {
     const entities = appData.entities || {};
     const entityIds = Object.keys(entities);
     
-    console.log(`Migrating ${entityIds.length} entities...`);
+    // Get existing entities in IndexedDB to avoid duplicates
+    const existingEntities = await entityAdapter.getAll();
+    const existingEntityIds = new Set(existingEntities.map(e => e.id));
+    
+    // Filter out entities that already exist
+    const entitiesToMigrate = entityIds.filter(id => !existingEntityIds.has(id));
+    
+    console.log(`Migrating ${entitiesToMigrate.length} entities (${entityIds.length - entitiesToMigrate.length} already exist)...`);
     
     const results = {
       step: 'entities',
       count: 0,
+      skipped: entityIds.length - entitiesToMigrate.length,
       errors: [],
       duration: 0
     };
@@ -148,18 +156,18 @@ class MigrationService {
     try {
       // Migrate in batches for better performance
       const batchSize = 50;
-      for (let i = 0; i < entityIds.length; i += batchSize) {
-        const batch = entityIds.slice(i, i + batchSize);
+      for (let i = 0; i < entitiesToMigrate.length; i += batchSize) {
+        const batch = entitiesToMigrate.slice(i, i + batchSize);
         await this.migrateBatch(batch, entities, 'entity');
         results.count += batch.length;
         
         // Update progress within this step
-        const stepProgress = Math.round((i / entityIds.length) * 100);
+        const stepProgress = Math.round((i / entitiesToMigrate.length) * 100);
         console.log(`Entity migration progress: ${stepProgress}%`);
       }
       
       results.duration = Date.now() - startTime;
-      console.log(`✅ Migrated ${results.count} entities in ${results.duration}ms`);
+      console.log(`✅ Migrated ${results.count} new entities (skipped ${results.skipped} existing) in ${results.duration}ms`);
       
     } catch (error) {
       results.errors.push(error.message);
@@ -178,11 +186,19 @@ class MigrationService {
     const boards = appData.boards || {};
     const boardIds = Object.keys(boards);
     
-    console.log(`Migrating ${boardIds.length} boards...`);
+    // Get existing boards in IndexedDB to avoid duplicates
+    const existingBoards = await boardAdapter.getAll();
+    const existingBoardIds = new Set(existingBoards.map(b => b.id));
+    
+    // Filter out boards that already exist
+    const boardsToMigrate = boardIds.filter(id => !existingBoardIds.has(id));
+    
+    console.log(`Migrating ${boardsToMigrate.length} boards (${boardIds.length - boardsToMigrate.length} already exist)...`);
     
     const results = {
       step: 'boards',
       count: 0,
+      skipped: boardIds.length - boardsToMigrate.length,
       errors: [],
       duration: 0
     };
@@ -190,7 +206,7 @@ class MigrationService {
     const startTime = Date.now();
     
     try {
-      for (const boardId of boardIds) {
+      for (const boardId of boardsToMigrate) {
         const board = boards[boardId];
         
         // Prepare board for IndexedDB (remove cards arrays, keep references only)
@@ -213,7 +229,7 @@ class MigrationService {
       }
       
       results.duration = Date.now() - startTime;
-      console.log(`✅ Migrated ${results.count} boards in ${results.duration}ms`);
+      console.log(`✅ Migrated ${results.count} new boards (skipped ${results.skipped} existing) in ${results.duration}ms`);
       
     } catch (error) {
       results.errors.push(error.message);
@@ -378,7 +394,7 @@ class MigrationService {
     try {
       const appData = getAppData();
       
-      // Validate entities
+      // Validate entities - check that all localStorage entities exist in IndexedDB
       const sourceEntities = appData.entities || {};
       const migratedEntities = await entityAdapter.getAll();
       const migratedEntitiesObj = {};
@@ -386,28 +402,34 @@ class MigrationService {
         migratedEntitiesObj[entity.id] = entity;
       });
       
-      const sourceEntityCount = Object.keys(sourceEntities).length;
-      const migratedEntityCount = migratedEntities.length;
+      const sourceEntityIds = Object.keys(sourceEntities);
+      const missingEntities = sourceEntityIds.filter(id => !migratedEntitiesObj[id]);
       
-      if (sourceEntityCount === migratedEntityCount) {
+      if (missingEntities.length === 0) {
         results.entityCheck = true;
-        console.log(`✅ Entity count validation passed: ${sourceEntityCount} entities`);
+        console.log(`✅ Entity validation passed: All ${sourceEntityIds.length} localStorage entities found in IndexedDB (IndexedDB has ${migratedEntities.length} total)`);
       } else {
-        results.errors.push(`Entity count mismatch: source=${sourceEntityCount}, migrated=${migratedEntityCount}`);
+        results.errors.push(`Missing entities in IndexedDB: ${missingEntities.length} entities not found`);
+        console.error(`Missing entities:`, missingEntities);
       }
       
-      // Validate boards
+      // Validate boards - check that all localStorage boards exist in IndexedDB
       const sourceBoards = appData.boards || {};
       const migratedBoards = await boardAdapter.getAll();
+      const migratedBoardsObj = {};
+      migratedBoards.forEach(board => {
+        migratedBoardsObj[board.id] = board;
+      });
       
-      const sourceBoardCount = Object.keys(sourceBoards).length;
-      const migratedBoardCount = migratedBoards.length;
+      const sourceBoardIds = Object.keys(sourceBoards);
+      const missingBoards = sourceBoardIds.filter(id => !migratedBoardsObj[id]);
       
-      if (sourceBoardCount === migratedBoardCount) {
+      if (missingBoards.length === 0) {
         results.boardCheck = true;
-        console.log(`✅ Board count validation passed: ${sourceBoardCount} boards`);
+        console.log(`✅ Board validation passed: All ${sourceBoardIds.length} localStorage boards found in IndexedDB (IndexedDB has ${migratedBoards.length} total)`);
       } else {
-        results.errors.push(`Board count mismatch: source=${sourceBoardCount}, migrated=${migratedBoardCount}`);
+        results.errors.push(`Missing boards in IndexedDB: ${missingBoards.length} boards not found`);
+        console.error(`Missing boards:`, missingBoards);
       }
       
       results.valid = results.entityCheck && results.boardCheck;

@@ -31,6 +31,9 @@ import * as dragDrop from './drag-drop.js';
 import * as cloudSync from './cloud-sync.js';
 import * as syncUI from './sync-ui.js';
 
+// Debug tools for development
+import './debug-data-source.js';
+
 // People System (Phase 3)
 import peopleService from './people-service.js';
 import * as peopleView from './people-view.js';
@@ -120,6 +123,26 @@ async function initializeGridFlow() {
             entityCoreSwitcher.autoSwitch();
             const implementationInfo = entityCoreSwitcher.getImplementationInfo();
             console.log(`✅ Entity core implementation: ${implementationInfo.current}`);
+            
+            // Check if we need to migrate existing data to IndexedDB
+            console.log('🔍 Checking if IndexedDB migration is needed...');
+            const needsMigration = await checkIfMigrationNeeded();
+            if (needsMigration) {
+                console.log('📦 Starting automatic migration to IndexedDB...');
+                try {
+                    const migrationResult = await migrationService.migrateFromLocalStorage();
+                    console.log('✅ Migration completed successfully:', migrationResult);
+                    utilities.showStatusMessage(
+                        `Migrated ${migrationResult.entitiesMigrated} entities and ${migrationResult.boardsMigrated} boards to IndexedDB`, 
+                        'success'
+                    );
+                } catch (migrationError) {
+                    console.error('❌ Migration failed:', migrationError);
+                    utilities.showStatusMessage('IndexedDB migration failed, continuing with localStorage', 'warning');
+                }
+            } else {
+                console.log('✅ No migration needed - IndexedDB already has data or localStorage is empty');
+            }
         } catch (error) {
             console.error('Failed to initialize IndexedDB:', error);
             featureFlags.disable(FLAGS.INDEXEDDB_ENABLED);
@@ -186,6 +209,50 @@ async function initializeGridFlow() {
     // Update UI (will be called by navigation after components are ready)
     // if (window.renderBoard) window.renderBoard();
     // if (window.updateSettingsUI) window.updateSettingsUI();
+}
+
+/**
+ * Check if IndexedDB migration is needed
+ * @returns {Promise<boolean>} True if migration is needed
+ */
+async function checkIfMigrationNeeded() {
+    try {
+        // Get current data counts
+        const appData = coreData.getAppData();
+        const localStorageEntityCount = Object.keys(appData.entities || {}).length;
+        const localStorageBoardCount = Object.keys(appData.boards || {}).length;
+        
+        // If localStorage is empty, no migration needed
+        if (localStorageEntityCount === 0 && localStorageBoardCount === 0) {
+            return false;
+        }
+        
+        // Check if IndexedDB already has data
+        const indexedDBEntities = await entityIndexedDBService.getAllEntities();
+        const indexedDBBoards = await entityIndexedDBService.getAllBoards();
+        const indexedDBEntityCount = indexedDBEntities.length;
+        const indexedDBBoardCount = indexedDBBoards.length;
+        
+        // Migration needed if localStorage has significantly more data than IndexedDB
+        const entityDifference = localStorageEntityCount - indexedDBEntityCount;
+        const boardDifference = localStorageBoardCount - indexedDBBoardCount;
+        
+        // Consider migration needed if there's a significant difference (more than 5 entities or any board difference)
+        const needsMigration = entityDifference > 5 || boardDifference > 0;
+        
+        if (needsMigration) {
+            console.log(`Migration needed: localStorage has ${localStorageEntityCount} entities vs IndexedDB ${indexedDBEntityCount} entities (diff: ${entityDifference}), localStorage has ${localStorageBoardCount} boards vs IndexedDB ${indexedDBBoardCount} boards (diff: ${boardDifference})`);
+            return true;
+        } else {
+            console.log(`No migration needed: Data appears synchronized (localStorage: ${localStorageEntityCount} entities, IndexedDB: ${indexedDBEntityCount} entities)`);
+            return false;
+        }
+        
+    } catch (error) {
+        console.error('Error checking migration need:', error);
+        // On error, be conservative and don't migrate
+        return false;
+    }
 }
 
 // Initialize immediately for global scope setup

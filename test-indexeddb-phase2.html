@@ -106,6 +106,9 @@
                 <button class="btn btn-secondary" onclick="syncToIndexedDB()">
                     Sync Missing to IndexedDB
                 </button>
+                <button class="btn btn-primary" onclick="runFullMigration()">
+                    Run Full Migration
+                </button>
                 <button class="btn btn-accent" onclick="showEntityCounts()">
                     Show Entity Counts
                 </button>
@@ -128,6 +131,12 @@
                 </button>
                 <button class="btn btn-info" onclick="testSearchOperations()">
                     Test Search Operations
+                </button>
+                <button class="btn btn-warning" onclick="testMigrationNeeded()">
+                    Test Migration Check
+                </button>
+                <button class="btn btn-info" onclick="testDataSource()">
+                    Test Data Source
                 </button>
             </div>
             
@@ -157,6 +166,7 @@
                 const testRunner = await import('./js/indexeddb/test-runner.js');
                 const entityIndexedDBService = await import('./js/indexeddb/entity-indexeddb-service.js');
                 const entityCoreSwitcher = await import('./js/indexeddb/entity-core-switcher.js');
+                const migrationService = await import('./js/indexeddb/migration-service.js');
                 const coreData = await import('./js/core-data.js');
 
                 // Make modules available globally
@@ -165,14 +175,26 @@
                 window.gridFlowDB = database.default;
                 window.entityIndexedDBService = entityIndexedDBService.default;
                 window.entityCoreSwitcher = entityCoreSwitcher;
+                window.migrationService = migrationService.default;
                 window.testRunner = testRunner.default;
                 window.getAppData = coreData.getAppData;
+                window.coreData = coreData;
+                window.database = database.default;
+                
+                // Enable IndexedDB and performance monitoring for testing
+                featureFlags.default.enable('INDEXEDDB_ENABLED');
+                featureFlags.default.enable('PERFORMANCE_MONITORING');
                 
                 console.log('All modules loaded successfully');
+                log('All modules loaded successfully', 'success');
                 return true;
             } catch (error) {
                 console.error('Module loading error:', error);
-                window.log && window.log(`Module loading error: ${error.message}`, 'error');
+                if (window.log) {
+                    window.log(`Module loading error: ${error.message}`, 'error');
+                } else {
+                    console.error('Log function not available yet');
+                }
                 return false;
             }
         }
@@ -192,11 +214,16 @@
             logDiv.scrollTop = logDiv.scrollHeight;
         };
 
-        // Initialize IndexedDB
+        // Initialize IndexedDB and core data
         async function initializeIndexedDB() {
             try {
                 await database.init();
                 log('IndexedDB initialized successfully', 'success');
+                
+                // Load core data
+                await coreData.loadData();
+                log('Core data loaded', 'success');
+                
                 updateStatus();
             } catch (error) {
                 log(`Failed to initialize IndexedDB: ${error.message}`, 'error');
@@ -205,13 +232,35 @@
 
         // Update status display
         function updateStatus() {
-            const info = entityCoreSwitcher.getImplementationInfo();
-            
-            document.getElementById('currentImpl').textContent = info.current;
-            document.getElementById('indexedDBStatus').textContent = 
-                info.flags.indexedDBEnabled ? 'Enabled' : 'Disabled';
-            document.getElementById('dualWriteStatus').textContent = 
-                info.flags.dualWriteEnabled ? 'Enabled' : 'Disabled';
+            try {
+                const info = entityCoreSwitcher.getImplementationInfo();
+                
+                const currentImpl = info.current || 'Unknown';
+                document.getElementById('currentImpl').textContent = currentImpl;
+                document.getElementById('indexedDBStatus').textContent = 
+                    info.flags?.indexedDBEnabled ? 'Enabled' : 'Disabled';
+                document.getElementById('dualWriteStatus').textContent = 
+                    info.flags?.dualWriteEnabled ? 'Enabled' : 'Disabled';
+                    
+                // Add visual indicator for data source
+                const implElement = document.getElementById('currentImpl');
+                implElement.className = 'stat-value text-lg';
+                if (currentImpl === 'indexeddb_first') {
+                    implElement.classList.add('text-success');
+                    implElement.title = 'Using IndexedDB as primary data source';
+                } else if (currentImpl === 'enhanced') {
+                    implElement.classList.add('text-info');
+                    implElement.title = 'Using dual-write (localStorage + IndexedDB)';
+                } else {
+                    implElement.classList.add('text-warning');
+                    implElement.title = 'Using localStorage only';
+                }
+            } catch (error) {
+                console.error('Failed to update status:', error);
+                document.getElementById('currentImpl').textContent = 'Error';
+                document.getElementById('indexedDBStatus').textContent = 'Unknown';
+                document.getElementById('dualWriteStatus').textContent = 'Unknown';
+            }
         }
 
         // Test functions
@@ -255,52 +304,89 @@
         window.runPerformanceTest = async function() {
             log('Starting performance test...', 'info');
             
-            const impl = entityCoreSwitcher.getCurrentImplementation();
-            
-            if (typeof impl.resetPerformanceStats === 'function') {
-                impl.resetPerformanceStats();
-            }
-            
-            const startTime = performance.now();
-            
-            // Create test entities
-            const entities = [];
-            for (let i = 0; i < 10; i++) {
-                const entity = impl.createEntity('task', {
-                    title: `Performance Test Task ${i}`,
-                    content: `Test content for task ${i}`,
-                    priority: i % 3 === 0 ? 'high' : 'medium'
-                });
-                entities.push(entity);
-            }
-            
-            // Update entities
-            for (const entity of entities) {
-                impl.updateEntity(entity.id, { 
-                    title: entity.title + ' (Updated)',
-                    updatedAt: new Date().toISOString()
-                });
-            }
-            
-            // Get entities
-            for (const entity of entities) {
-                if (typeof impl.getEntity === 'function') {
-                    impl.getEntity(entity.id);
+            try {
+                const impl = entityCoreSwitcher.getCurrentImplementation();
+                if (!impl) {
+                    throw new Error('No entity implementation available');
                 }
-            }
-            
-            // Delete entities
-            for (const entity of entities) {
-                impl.deleteEntity(entity.id);
-            }
-            
-            const totalTime = performance.now() - startTime;
-            
-            log(`Performance test completed in ${totalTime.toFixed(2)}ms`, 'success');
-            
-            if (typeof impl.getPerformanceStats === 'function') {
-                const stats = impl.getPerformanceStats();
-                displayPerformanceStats(stats);
+                
+                if (typeof impl.resetPerformanceStats === 'function') {
+                    impl.resetPerformanceStats();
+                }
+                
+                const startTime = performance.now();
+                
+                // Create test entities
+                const entities = [];
+                for (let i = 0; i < 10; i++) {
+                    const entity = impl.createEntity('task', {
+                        title: `Performance Test Task ${i}`,
+                        content: `Test content for task ${i}`,
+                        priority: i % 3 === 0 ? 'high' : 'medium'
+                    });
+                    entities.push(entity);
+                }
+                
+                // Update entities
+                for (const entity of entities) {
+                    impl.updateEntity(entity.id, { 
+                        title: entity.title + ' (Updated)',
+                        updatedAt: new Date().toISOString()
+                    });
+                }
+                
+                // Get entities
+                for (const entity of entities) {
+                    if (typeof impl.getEntity === 'function') {
+                        impl.getEntity(entity.id);
+                    }
+                }
+                
+                // Delete entities
+                for (const entity of entities) {
+                    impl.deleteEntity(entity.id);
+                }
+                
+                const totalTime = performance.now() - startTime;
+                
+                log(`Performance test completed in ${totalTime.toFixed(2)}ms`, 'success');
+                
+                // Display performance results
+                if (typeof impl.getPerformanceStats === 'function') {
+                    const stats = impl.getPerformanceStats();
+                    displayPerformanceStats(stats);
+                } else {
+                    // Fallback display for implementations without performance stats
+                    const resultsDiv = document.getElementById('performanceResults');
+                    resultsDiv.innerHTML = `
+                        <div class="stat bg-base-100 rounded">
+                            <div class="stat-title">Test Operations</div>
+                            <div class="stat-value">40</div>
+                            <div class="stat-desc">10 create, 10 update, 10 read, 10 delete</div>
+                        </div>
+                        <div class="stat bg-base-100 rounded">
+                            <div class="stat-title">Total Time</div>
+                            <div class="stat-value">${totalTime.toFixed(2)}ms</div>
+                        </div>
+                        <div class="stat bg-base-100 rounded">
+                            <div class="stat-title">Avg Time per Op</div>
+                            <div class="stat-value">${(totalTime / 40).toFixed(2)}ms</div>
+                        </div>
+                        <div class="stat bg-base-100 rounded">
+                            <div class="stat-title">Implementation</div>
+                            <div class="stat-value text-sm">${entityCoreSwitcher.getImplementationInfo().current}</div>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                log(`Performance test failed: ${error.message}`, 'error');
+                const resultsDiv = document.getElementById('performanceResults');
+                resultsDiv.innerHTML = `
+                    <div class="alert alert-error">
+                        <span>❌ Performance test failed: ${error.message}</span>
+                    </div>
+                `;
             }
         };
 
@@ -343,27 +429,33 @@
         window.syncToIndexedDB = async function() {
             log('Syncing data to IndexedDB...', 'info');
             
-            const impl = entityCoreSwitcher.getCurrentImplementation();
-            
-            if (typeof impl.syncToIndexedDB === 'function') {
-                try {
+            try {
+                const impl = entityCoreSwitcher.getCurrentImplementation();
+                
+                if (typeof impl.syncToIndexedDB === 'function') {
                     const results = await impl.syncToIndexedDB();
                     log(`Sync completed: ${results.synced}/${results.total} entities synced`, 'success');
-                } catch (error) {
-                    log(`Sync failed: ${error.message}`, 'error');
+                } else {
+                    // Fallback: Use migration service for full migration
+                    log('Using migration service for complete data sync...', 'info');
+                    const migrationResult = await migrationService.migrateFromLocalStorage();
+                    log(`Migration completed: ${migrationResult.entitiesMigrated} entities, ${migrationResult.boardsMigrated} boards migrated`, 'success');
                 }
-            } else {
-                log('Current implementation does not support sync to IndexedDB', 'warning');
+            } catch (error) {
+                log(`Sync failed: ${error.message}`, 'error');
             }
         };
 
         window.testRealOperations = async function() {
             log('Testing real entity operations...', 'info');
             
-            const impl = entityCoreSwitcher.getCurrentImplementation();
-            
-            // Test create, read, update, delete cycle
             try {
+                const impl = entityCoreSwitcher.getCurrentImplementation();
+                if (!impl) {
+                    throw new Error('No entity implementation available');
+                }
+                
+                // Test create, read, update, delete cycle
                 // Create
                 const task = impl.createEntity('task', {
                     title: 'Real Test Task',
@@ -385,15 +477,449 @@
                 log(`Updated entity: ${updated.title}`, 'success');
                 
                 // Toggle completion
-                const toggled = impl.toggleEntityCompletion(task.id);
-                log(`Toggled completion: ${toggled.completed}`, 'success');
+                if (typeof impl.toggleEntityCompletion === 'function') {
+                    const toggled = impl.toggleEntityCompletion(task.id);
+                    log(`Toggled completion: ${toggled.completed}`, 'success');
+                }
                 
                 // Delete
                 const deleted = impl.deleteEntity(task.id);
                 log(`Deleted entity: ${deleted ? 'success' : 'failed'}`, deleted ? 'success' : 'error');
                 
+                // Display results
+                const resultsDiv = document.getElementById('realOperationsResults');
+                resultsDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        <span>✅ Real operations test completed successfully</span>
+                    </div>
+                `;
+                
             } catch (error) {
                 log(`Real operations test failed: ${error.message}`, 'error');
+                const resultsDiv = document.getElementById('realOperationsResults');
+                resultsDiv.innerHTML = `
+                    <div class="alert alert-error">
+                        <span>❌ Real operations test failed: ${error.message}</span>
+                    </div>
+                `;
+            }
+        };
+
+        window.testBoardOperations = async function() {
+            log('Testing board operations...', 'info');
+            
+            try {
+                const appData = getAppData();
+                const currentBoard = appData.boards[appData.currentBoardId];
+                
+                if (!currentBoard) {
+                    throw new Error('No current board available');
+                }
+                
+                log(`Current board: ${currentBoard.name}`, 'info');
+                log(`Groups: ${currentBoard.groups?.length || 0}`, 'info');
+                log(`Rows: ${currentBoard.rows?.length || 0}`, 'info');
+                log(`Columns: ${currentBoard.columns?.length || 0}`, 'info');
+                
+                // Test board structure
+                const boardEntities = [];
+                if (currentBoard.rows) {
+                    for (const row of currentBoard.rows) {
+                        if (row.cards) {
+                            for (const [columnKey, entityIds] of Object.entries(row.cards)) {
+                                boardEntities.push(...entityIds);
+                            }
+                        }
+                    }
+                }
+                
+                log(`Total entities in board: ${boardEntities.length}`, 'info');
+                
+                const resultsDiv = document.getElementById('realOperationsResults');
+                resultsDiv.innerHTML = `
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="stat bg-base-100 rounded">
+                            <div class="stat-title">Board Name</div>
+                            <div class="stat-value text-sm">${currentBoard.name}</div>
+                        </div>
+                        <div class="stat bg-base-100 rounded">
+                            <div class="stat-title">Groups</div>
+                            <div class="stat-value">${currentBoard.groups?.length || 0}</div>
+                        </div>
+                        <div class="stat bg-base-100 rounded">
+                            <div class="stat-title">Rows</div>
+                            <div class="stat-value">${currentBoard.rows?.length || 0}</div>
+                        </div>
+                        <div class="stat bg-base-100 rounded">
+                            <div class="stat-title">Board Entities</div>
+                            <div class="stat-value">${boardEntities.length}</div>
+                        </div>
+                    </div>
+                `;
+                
+            } catch (error) {
+                log(`Board operations test failed: ${error.message}`, 'error');
+                const resultsDiv = document.getElementById('realOperationsResults');
+                resultsDiv.innerHTML = `
+                    <div class="alert alert-error">
+                        <span>❌ Board operations test failed: ${error.message}</span>
+                    </div>
+                `;
+            }
+        };
+
+        window.testSearchOperations = async function() {
+            log('Testing search operations...', 'info');
+            
+            try {
+                const appData = getAppData();
+                const entities = appData.entities || {};
+                const entityTypes = {};
+                
+                // Count entities by type
+                for (const entity of Object.values(entities)) {
+                    entityTypes[entity.type] = (entityTypes[entity.type] || 0) + 1;
+                }
+                
+                log(`Total entities: ${Object.keys(entities).length}`, 'info');
+                log(`Entity types: ${JSON.stringify(entityTypes)}`, 'info');
+                
+                // Test search functionality
+                const searchTerm = 'test';
+                const searchResults = Object.values(entities).filter(entity => 
+                    entity.title?.toLowerCase().includes(searchTerm) ||
+                    entity.content?.toLowerCase().includes(searchTerm)
+                );
+                
+                log(`Search results for "${searchTerm}": ${searchResults.length}`, 'info');
+                
+                const resultsDiv = document.getElementById('realOperationsResults');
+                resultsDiv.innerHTML = `
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="stat bg-base-100 rounded">
+                                <div class="stat-title">Total Entities</div>
+                                <div class="stat-value">${Object.keys(entities).length}</div>
+                            </div>
+                            <div class="stat bg-base-100 rounded">
+                                <div class="stat-title">Search Results</div>
+                                <div class="stat-value">${searchResults.length}</div>
+                            </div>
+                        </div>
+                        <div class="bg-base-100 p-4 rounded">
+                            <h4 class="font-semibold mb-2">Entity Types:</h4>
+                            ${Object.entries(entityTypes).map(([type, count]) => 
+                                `<div class="badge badge-outline mr-2">${type}: ${count}</div>`
+                            ).join('')}
+                        </div>
+                    </div>
+                `;
+                
+            } catch (error) {
+                log(`Search operations test failed: ${error.message}`, 'error');
+                const resultsDiv = document.getElementById('realOperationsResults');
+                resultsDiv.innerHTML = `
+                    <div class="alert alert-error">
+                        <span>❌ Search operations test failed: ${error.message}</span>
+                    </div>
+                `;
+            }
+        };
+
+        window.runFullMigration = async function() {
+            log('Starting full migration from localStorage to IndexedDB...', 'info');
+            
+            try {
+                const migrationResult = await migrationService.migrateFromLocalStorage();
+                
+                log(`Migration completed successfully!`, 'success');
+                log(`- Entities migrated: ${migrationResult.entitiesMigrated}`, 'success');
+                log(`- Boards migrated: ${migrationResult.boardsMigrated}`, 'success');
+                log(`- Weekly plans migrated: ${migrationResult.weeklyPlansMigrated}`, 'success');
+                log(`- Duration: ${migrationResult.duration}ms`, 'info');
+                
+                const resultsDiv = document.getElementById('consistencyResults');
+                resultsDiv.innerHTML = `
+                    <div class="space-y-4">
+                        <h3 class="text-lg font-semibold text-success">✅ Migration Completed Successfully</h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="stat bg-base-100 rounded">
+                                <div class="stat-title">Entities Migrated</div>
+                                <div class="stat-value text-success">${migrationResult.entitiesMigrated}</div>
+                            </div>
+                            <div class="stat bg-base-100 rounded">
+                                <div class="stat-title">Boards Migrated</div>
+                                <div class="stat-value text-success">${migrationResult.boardsMigrated}</div>
+                            </div>
+                            <div class="stat bg-base-100 rounded">
+                                <div class="stat-title">Weekly Plans Migrated</div>
+                                <div class="stat-value text-success">${migrationResult.weeklyPlansMigrated}</div>
+                            </div>
+                            <div class="stat bg-base-100 rounded">
+                                <div class="stat-title">Migration Time</div>
+                                <div class="stat-value text-info">${migrationResult.duration}ms</div>
+                            </div>
+                        </div>
+                        <div class="alert alert-success">
+                            <span>🎉 All your localStorage data has been successfully migrated to IndexedDB!</span>
+                        </div>
+                    </div>
+                `;
+                
+            } catch (error) {
+                log(`Migration failed: ${error.message}`, 'error');
+                const resultsDiv = document.getElementById('consistencyResults');
+                resultsDiv.innerHTML = `
+                    <div class="alert alert-error">
+                        <span>❌ Migration failed: ${error.message}</span>
+                    </div>
+                `;
+            }
+        };
+
+        window.testMigrationNeeded = async function() {
+            log('Testing migration check logic...', 'info');
+            
+            try {
+                const appData = getAppData();
+                const localStorageEntityCount = Object.keys(appData.entities || {}).length;
+                const localStorageBoardCount = Object.keys(appData.boards || {}).length;
+                
+                const indexedDBEntities = await entityIndexedDBService.getAllEntities();
+                const indexedDBBoards = await entityIndexedDBService.getAllBoards();
+                const indexedDBEntityCount = indexedDBEntities.length;
+                const indexedDBBoardCount = indexedDBBoards.length;
+                
+                log(`localStorage: ${localStorageEntityCount} entities, ${localStorageBoardCount} boards`, 'info');
+                log(`IndexedDB: ${indexedDBEntityCount} entities, ${indexedDBBoardCount} boards`, 'info');
+                
+                // Migration needed if localStorage has significantly more data than IndexedDB
+                const entityDifference = localStorageEntityCount - indexedDBEntityCount;
+                const boardDifference = localStorageBoardCount - indexedDBBoardCount;
+                
+                // Consider migration needed if there's a significant difference (more than 5 entities or any board difference)
+                const migrationNeeded = entityDifference > 5 || boardDifference > 0;
+                
+                log(`Migration needed: ${migrationNeeded}`, migrationNeeded ? 'warning' : 'success');
+                
+                const resultsDiv = document.getElementById('realOperationsResults');
+                resultsDiv.innerHTML = `
+                    <div class="space-y-4">
+                        <h3 class="text-lg font-semibold">Migration Check Results</h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="stat bg-base-100 rounded">
+                                <div class="stat-title">localStorage Entities</div>
+                                <div class="stat-value">${localStorageEntityCount}</div>
+                            </div>
+                            <div class="stat bg-base-100 rounded">
+                                <div class="stat-title">IndexedDB Entities</div>
+                                <div class="stat-value">${indexedDBEntityCount}</div>
+                            </div>
+                            <div class="stat bg-base-100 rounded">
+                                <div class="stat-title">localStorage Boards</div>
+                                <div class="stat-value">${localStorageBoardCount}</div>
+                            </div>
+                            <div class="stat bg-base-100 rounded">
+                                <div class="stat-title">IndexedDB Boards</div>
+                                <div class="stat-value">${indexedDBBoardCount}</div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="stat bg-base-100 rounded">
+                                <div class="stat-title">Entity Difference</div>
+                                <div class="stat-value ${entityDifference > 0 ? 'text-warning' : 'text-success'}">${entityDifference > 0 ? '+' : ''}${entityDifference}</div>
+                                <div class="stat-desc">${entityDifference > 5 ? 'Significant difference' : 'Minor difference'}</div>
+                            </div>
+                            <div class="stat bg-base-100 rounded">
+                                <div class="stat-title">Board Difference</div>
+                                <div class="stat-value ${boardDifference > 0 ? 'text-warning' : 'text-success'}">${boardDifference > 0 ? '+' : ''}${boardDifference}</div>
+                                <div class="stat-desc">${boardDifference > 0 ? 'Boards missing' : 'Boards synced'}</div>
+                            </div>
+                        </div>
+                        <div class="alert ${migrationNeeded ? 'alert-warning' : 'alert-success'}">
+                            <span>${migrationNeeded ? '⚠️ Migration needed' : '✅ No migration needed'}</span>
+                        </div>
+                    </div>
+                `;
+                
+            } catch (error) {
+                log(`Migration check failed: ${error.message}`, 'error');
+                const resultsDiv = document.getElementById('realOperationsResults');
+                resultsDiv.innerHTML = `
+                    <div class="alert alert-error">
+                        <span>❌ Migration check failed: ${error.message}</span>
+                    </div>
+                `;
+            }
+        };
+
+        window.testDataSource = async function() {
+            log('Testing data source (IndexedDB vs localStorage)...', 'info');
+            
+            try {
+                const impl = entityCoreSwitcher.getCurrentImplementation();
+                const implName = entityCoreSwitcher.getCurrentImplementationName();
+                
+                log(`Current implementation: ${implName}`, 'info');
+                
+                // Test entity retrieval
+                const appData = getAppData();
+                const firstEntityId = Object.keys(appData.entities || {})[0];
+                
+                if (!firstEntityId) {
+                    throw new Error('No entities found to test');
+                }
+                
+                log(`Testing entity retrieval for: ${firstEntityId}`, 'info');
+                
+                // Time localStorage access
+                const startLS = performance.now();
+                const localStorageEntity = appData.entities[firstEntityId];
+                const lsTime = performance.now() - startLS;
+                
+                // Time IndexedDB access
+                const startIDB = performance.now();
+                let indexedDBEntity = null;
+                try {
+                    indexedDBEntity = await entityIndexedDBService.getEntity(firstEntityId);
+                } catch (error) {
+                    log(`IndexedDB access failed: ${error.message}`, 'warning');
+                }
+                const idbTime = performance.now() - startIDB;
+                
+                // Time current implementation access
+                const startImpl = performance.now();
+                const implEntity = impl.getEntity ? impl.getEntity(firstEntityId) : null;
+                const implTime = performance.now() - startImpl;
+                
+                // Check feature flags
+                const flags = {
+                    indexedDBEnabled: featureFlags.isEnabled(FLAGS.INDEXEDDB_ENABLED),
+                    dualWriteEnabled: featureFlags.isEnabled(FLAGS.DUAL_WRITE),
+                    indexedDBPrimaryTest: featureFlags.isEnabled('INDEXEDDB_PRIMARY_TEST')
+                };
+                
+                // Test a few more entities to see consistency
+                const entityIds = Object.keys(appData.entities || {}).slice(0, 5);
+                const dataSourceTest = [];
+                
+                for (const entityId of entityIds) {
+                    const lsExists = !!appData.entities[entityId];
+                    let idbExists = false;
+                    try {
+                        const idbEntity = await entityIndexedDBService.getEntity(entityId);
+                        idbExists = !!idbEntity;
+                    } catch (error) {
+                        idbExists = false;
+                    }
+                    
+                    dataSourceTest.push({
+                        entityId,
+                        localStorage: lsExists,
+                        indexedDB: idbExists
+                    });
+                }
+                
+                log('Data source test completed', 'success');
+                
+                const resultsDiv = document.getElementById('realOperationsResults');
+                resultsDiv.innerHTML = `
+                    <div class="space-y-4">
+                        <h3 class="text-lg font-semibold">Data Source Analysis</h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="space-y-2">
+                                <h4 class="font-semibold">Current Implementation</h4>
+                                <div class="bg-base-100 p-3 rounded">
+                                    <div class="text-lg font-mono">${implName}</div>
+                                    <div class="text-sm text-base-content/70">Active entity core implementation</div>
+                                </div>
+                            </div>
+                            
+                            <div class="space-y-2">
+                                <h4 class="font-semibold">Feature Flags</h4>
+                                <div class="bg-base-100 p-3 rounded space-y-1">
+                                    <div class="flex justify-between">
+                                        <span>IndexedDB Enabled:</span>
+                                        <span class="badge ${flags.indexedDBEnabled ? 'badge-success' : 'badge-error'}">${flags.indexedDBEnabled}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>Dual Write:</span>
+                                        <span class="badge ${flags.dualWriteEnabled ? 'badge-success' : 'badge-error'}">${flags.dualWriteEnabled}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>IndexedDB Primary:</span>
+                                        <span class="badge ${flags.indexedDBPrimaryTest ? 'badge-success' : 'badge-error'}">${flags.indexedDBPrimaryTest}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <h4 class="font-semibold">Performance Test (Entity: ${firstEntityId})</h4>
+                            <div class="grid grid-cols-3 gap-4">
+                                <div class="stat bg-base-100 rounded">
+                                    <div class="stat-title">localStorage</div>
+                                    <div class="stat-value text-sm">${lsTime.toFixed(3)}ms</div>
+                                    <div class="stat-desc">${localStorageEntity ? 'Found' : 'Not found'}</div>
+                                </div>
+                                <div class="stat bg-base-100 rounded">
+                                    <div class="stat-title">IndexedDB</div>
+                                    <div class="stat-value text-sm">${idbTime.toFixed(3)}ms</div>
+                                    <div class="stat-desc">${indexedDBEntity ? 'Found' : 'Not found'}</div>
+                                </div>
+                                <div class="stat bg-base-100 rounded">
+                                    <div class="stat-title">Implementation</div>
+                                    <div class="stat-value text-sm">${implTime.toFixed(3)}ms</div>
+                                    <div class="stat-desc">${implEntity ? 'Found' : 'Not found'}</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <h4 class="font-semibold">Data Availability Test (First 5 Entities)</h4>
+                            <div class="overflow-x-auto">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Entity ID</th>
+                                            <th>localStorage</th>
+                                            <th>IndexedDB</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${dataSourceTest.map(test => `
+                                            <tr>
+                                                <td class="font-mono text-xs">${test.entityId}</td>
+                                                <td><span class="badge ${test.localStorage ? 'badge-success' : 'badge-error'} badge-xs">${test.localStorage ? '✓' : '✗'}</span></td>
+                                                <td><span class="badge ${test.indexedDB ? 'badge-success' : 'badge-error'} badge-xs">${test.indexedDB ? '✓' : '✗'}</span></td>
+                                                <td><span class="badge ${test.localStorage && test.indexedDB ? 'badge-success' : 'badge-warning'} badge-xs">${test.localStorage && test.indexedDB ? 'Synced' : 'Partial'}</span></td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div class="alert ${implName === 'indexeddb_first' ? 'alert-success' : implName === 'enhanced' ? 'alert-info' : 'alert-warning'}">
+                            <span>
+                                ${implName === 'indexeddb_first' ? '🎯 App is using IndexedDB as primary data source' : 
+                                  implName === 'enhanced' ? '🔄 App is using dual-write (localStorage + IndexedDB)' : 
+                                  '⚠️ App is using localStorage only'}
+                            </span>
+                        </div>
+                    </div>
+                `;
+                
+            } catch (error) {
+                log(`Data source test failed: ${error.message}`, 'error');
+                const resultsDiv = document.getElementById('realOperationsResults');
+                resultsDiv.innerHTML = `
+                    <div class="alert alert-error">
+                        <span>❌ Data source test failed: ${error.message}</span>
+                    </div>
+                `;
             }
         };
 
@@ -431,31 +957,36 @@
         };
 
         function displayPerformanceStats(stats) {
+            if (!stats) {
+                log('No performance stats available', 'warning');
+                return;
+            }
+            
             const resultsDiv = document.getElementById('performanceResults');
             resultsDiv.innerHTML = `
                 <div class="stat bg-base-100 rounded">
                     <div class="stat-title">Total Operations</div>
-                    <div class="stat-value">${stats.totalOperations}</div>
+                    <div class="stat-value">${stats.totalOperations || 0}</div>
                 </div>
                 <div class="stat bg-base-100 rounded">
                     <div class="stat-title">IndexedDB Success Rate</div>
-                    <div class="stat-value">${stats.indexedDBSuccessRate.toFixed(1)}%</div>
+                    <div class="stat-value">${stats.indexedDBSuccessRate ? stats.indexedDBSuccessRate.toFixed(1) : 0}%</div>
                 </div>
                 <div class="stat bg-base-100 rounded">
                     <div class="stat-title">Average Read Time</div>
-                    <div class="stat-value">${stats.averageReadTime.toFixed(2)}ms</div>
+                    <div class="stat-value">${stats.averageReadTime ? stats.averageReadTime.toFixed(2) : 0}ms</div>
                 </div>
                 <div class="stat bg-base-100 rounded">
                     <div class="stat-title">IndexedDB Reads</div>
-                    <div class="stat-value">${stats.indexedDBReads}</div>
+                    <div class="stat-value">${stats.indexedDBReads || 0}</div>
                 </div>
                 <div class="stat bg-base-100 rounded">
                     <div class="stat-title">IndexedDB Writes</div>
-                    <div class="stat-value">${stats.indexedDBWrites}</div>
+                    <div class="stat-value">${stats.indexedDBWrites || 0}</div>
                 </div>
                 <div class="stat bg-base-100 rounded">
                     <div class="stat-title">IndexedDB Errors</div>
-                    <div class="stat-value">${stats.indexedDBErrors}</div>
+                    <div class="stat-value">${stats.indexedDBErrors || 0}</div>
                 </div>
             `;
         }
@@ -526,6 +1057,24 @@
 
         window.clearLog = function() {
             document.getElementById('log').innerHTML = '';
+        };
+
+        window.exportLog = function() {
+            const logContent = document.getElementById('log').innerText;
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const filename = `gridflow-indexeddb-test-log-${timestamp}.txt`;
+            
+            const blob = new Blob([logContent], { type: 'text/plain' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+            log(`Log exported as ${filename}`, 'success');
         };
 
         window.resetPerformanceStats = function() {
