@@ -1,9 +1,17 @@
 /**
- * GridFlow - Core Data Management Module
- * Handles data persistence, migration, and state management
+ * GridFlow - Core Data Management Module (IndexedDB-Only)
+ * Handles data persistence, migration, and state management using IndexedDB exclusively
  */
 
 import { showStatusMessage } from './utilities.js';
+import { 
+    entityAdapter, 
+    boardAdapter, 
+    weeklyPlanAdapter, 
+    weeklyItemAdapter,
+    appMetadataAdapter,
+    entityPositionsAdapter
+} from './indexeddb/adapters.js';
 
 // Central application state
 export let appData = {};
@@ -40,20 +48,50 @@ export function getCurrentEditingWeeklyItem() { return currentEditingWeeklyItem;
 export function getCurrentOutlineData() { return currentOutlineData; }
 
 /**
- * Save application data to localStorage
+ * Save application data to IndexedDB
  */
-export function saveData() {
+export async function saveData() {
     try {
-        // Update collections before saving (Phase 2 feature)
-        if (appData.version === '5.0' && Object.keys(appData.collections || {}).length > 0) {
-            // Call updateAllCollections if available (will be moved to collections module later)
-            if (window.updateAllCollections) {
-                window.updateAllCollections();
+        // Update app metadata
+        await appMetadataAdapter.updateAppConfig({
+            currentBoardId: appData.currentBoardId,
+            version: appData.version || '6.0',
+            lastUpdated: new Date().toISOString()
+        });
+
+        // Save all boards
+        if (appData.boards) {
+            for (const [boardId, board] of Object.entries(appData.boards)) {
+                await boardAdapter.save({
+                    id: boardId,
+                    ...board,
+                    updatedAt: new Date().toISOString()
+                });
             }
         }
-        
-        localStorage.setItem('gridflow_data', JSON.stringify(appData));
-        
+
+        // Save all entities
+        if (appData.entities) {
+            for (const [entityId, entity] of Object.entries(appData.entities)) {
+                await entityAdapter.save({
+                    id: entityId,
+                    ...entity,
+                    updatedAt: new Date().toISOString()
+                });
+            }
+        }
+
+        // Save weekly plans
+        if (appData.weeklyPlans) {
+            for (const [weekKey, weeklyPlan] of Object.entries(appData.weeklyPlans)) {
+                await weeklyPlanAdapter.save({
+                    weekKey,
+                    ...weeklyPlan,
+                    updatedAt: new Date().toISOString()
+                });
+            }
+        }
+
         // Mark changes for cloud sync
         if (window.cloudSync && window.cloudSync.isEnabled) {
             window.cloudSync.markChanges();
@@ -63,108 +101,112 @@ export function saveData() {
     } catch (error) {
         console.error('Failed to save data:', error);
         showStatusMessage('Failed to save data', 'error');
+        throw error;
     }
 }
 
 /**
- * Load application data from localStorage (with IndexedDB fallback)
+ * Load application data from IndexedDB
  */
 export async function loadData() {
     try {
-        // First try localStorage
-        const saved = localStorage.getItem('gridflow_data');
-        console.log('loadData: localStorage item exists:', !!saved);
+        console.log('loadData: Loading from IndexedDB...');
         
-        let appDataToUse = null;
+        // Load app configuration
+        const appConfig = await appMetadataAdapter.getAppConfig();
+        console.log('loadData: App config loaded:', appConfig);
         
-        if (saved) {
-            const savedData = JSON.parse(saved);
-            console.log('loadData: Parsed data version:', savedData.version);
-            console.log('loadData: Number of boards:', Object.keys(savedData.boards || {}).length);
-            console.log('loadData: First board name:', Object.keys(savedData.boards || {})[0]);
-            
-            const migratedData = migrateData(savedData);
-            console.log('loadData: After migration - version:', migratedData.version);
-            console.log('loadData: After migration - boards:', Object.keys(migratedData.boards || {}).length);
-            
-            appDataToUse = migratedData;
-        }
+        // Load all boards
+        const boards = await boardAdapter.getAll();
+        console.log('loadData: Boards loaded:', boards.length);
         
-        // If no boards in localStorage but IndexedDB is available, try loading from IndexedDB
-        if ((!appDataToUse || Object.keys(appDataToUse.boards || {}).length === 0) && 
-            typeof window !== 'undefined' && window.featureFlags && window.featureFlags.isEnabled('INDEXEDDB_ENABLED')) {
-            try {
-                console.log('loadData: Attempting to load boards from IndexedDB...');
-                const entityIndexedDBService = window.entityIndexedDBService;
-                if (entityIndexedDBService) {
-                    const indexedDBBoards = await entityIndexedDBService.getAllBoards();
-                    console.log('loadData: IndexedDB boards found:', indexedDBBoards.length);
-                    
-                    if (indexedDBBoards.length > 0) {
-                        // Convert IndexedDB boards to appData format
-                        if (!appDataToUse) {
-                            appDataToUse = {
-                                currentBoardId: 'default',
-                                boards: {},
-                                entities: {},
-                                templates: [],
-                                templateLibrary: { categories: [], featured: [], taskSets: {}, checklists: {}, noteTemplates: {} },
-                                weeklyPlans: {},
-                                collections: {},
-                                tags: {},
-                                relationships: {},
-                                nextTemplateId: 1,
-                                nextTemplateLibraryId: 1,
-                                nextWeeklyItemId: 1,
-                                nextTaskId: 1,
-                                nextNoteId: 1,
-                                nextChecklistId: 1,
-                                nextProjectId: 1,
-                                nextPersonId: 1,
-                                nextCollectionId: 1,
-                                nextTagId: 1,
-                                version: '5.0'
-                            };
+        // Load all entities
+        const entities = await entityAdapter.getAll();
+        console.log('loadData: Entities loaded:', entities.length);
+        
+        // Load weekly plans
+        const weeklyPlans = await weeklyPlanAdapter.getAll();
+        console.log('loadData: Weekly plans loaded:', weeklyPlans.length);
+        
+        // Construct appData object
+        const boardsObj = {};
+        boards.forEach(board => {
+            // Ensure board rows have proper cards structure
+            if (board.rows) {
+                board.rows.forEach(row => {
+                    if (!row.cards) {
+                        console.warn(`Fixing missing cards for row ${row.id}:`, row);
+                        row.cards = {};
+                        // Initialize empty cards for each column
+                        if (board.columns) {
+                            board.columns.forEach(col => {
+                                row.cards[col.key] = [];
+                            });
                         }
-                        
-                        // Add IndexedDB boards to appData
-                        indexedDBBoards.forEach(board => {
-                            appDataToUse.boards[board.id] = board;
-                        });
-                        
-                        // Set current board if not set
-                        if (!appDataToUse.currentBoardId || !appDataToUse.boards[appDataToUse.currentBoardId]) {
-                            appDataToUse.currentBoardId = indexedDBBoards[0].id;
-                        }
-                        
-                        console.log('loadData: Merged IndexedDB boards - total boards:', Object.keys(appDataToUse.boards).length);
                     }
-                    
-                    // Also check for weekly plans in IndexedDB
-                    const indexedDBWeeklyPlans = await entityIndexedDBService.getAllWeeklyPlans();
-                    console.log('loadData: IndexedDB weekly plans found:', indexedDBWeeklyPlans.length);
-                    
-                    if (indexedDBWeeklyPlans.length > 0) {
-                        indexedDBWeeklyPlans.forEach(plan => {
-                            appDataToUse.weeklyPlans[plan.weekKey] = plan;
-                        });
-                        console.log('loadData: Merged IndexedDB weekly plans - total plans:', Object.keys(appDataToUse.weeklyPlans).length);
-                    }
-                }
-            } catch (error) {
-                console.warn('loadData: Failed to load from IndexedDB, using localStorage only:', error);
+                });
             }
+            boardsObj[board.id] = board;
+        });
+        
+        const entitiesObj = {};
+        entities.forEach(entity => {
+            entitiesObj[entity.id] = entity;
+        });
+        
+        const weeklyPlansObj = {};
+        weeklyPlans.forEach(plan => {
+            weeklyPlansObj[plan.weekKey] = plan;
+        });
+        
+        // Build complete appData structure
+        const loadedAppData = {
+            currentBoardId: appConfig.currentBoardId || 'default',
+            version: appConfig.version || '6.0',
+            boards: boardsObj,
+            entities: entitiesObj,
+            weeklyPlans: weeklyPlansObj,
+            templates: [], // Will be loaded separately when template system is migrated
+            templateLibrary: appConfig.templateLibrary || {
+                categories: ['Project Management', 'Personal', 'Business', 'Education'],
+                featured: [],
+                taskSets: {},
+                checklists: {},
+                noteTemplates: {}
+            },
+            collections: {}, // Will be loaded separately when collections system is migrated
+            tags: {}, // Will be loaded separately when tags system is migrated
+            relationships: {
+                entityTasks: {},
+                cardToWeeklyPlans: {},
+                weeklyPlanToCards: {},
+                entityTags: {},
+                collectionEntities: {},
+                templateUsage: {}
+            },
+            // ID counters from app config
+            nextTemplateId: appConfig.nextTemplateId || 1,
+            nextTemplateLibraryId: appConfig.nextTemplateLibraryId || 1,
+            nextWeeklyItemId: appConfig.nextWeeklyItemId || 1,
+            nextTaskId: appConfig.nextTaskId || 1,
+            nextNoteId: appConfig.nextNoteId || 1,
+            nextChecklistId: appConfig.nextChecklistId || 1,
+            nextProjectId: appConfig.nextProjectId || 1,
+            nextPersonId: appConfig.nextPersonId || 1,
+            nextCollectionId: appConfig.nextCollectionId || 1,
+            nextTagId: appConfig.nextTagId || 1
+        };
+        
+        // If no data found, initialize sample data
+        if (boards.length === 0) {
+            console.log('loadData: No data found, initializing sample data');
+            await initializeSampleData();
+            return { appData, boardData };
         }
         
-        if (appDataToUse) {
-            setAppData(appDataToUse);
-            console.log('loadData: Data set successfully');
-        } else {
-            console.log('loadData: No saved data found, initializing sample data');
-            initializeSampleData();
-        }
+        setAppData(loadedAppData);
         
-        // Ensure current board exists and is set
+        // Set current board
         if (!appData.boards[appData.currentBoardId]) {
             appData.currentBoardId = Object.keys(appData.boards)[0] || 'default';
         }
@@ -172,38 +214,23 @@ export async function loadData() {
         // Ensure at least one board exists
         if (Object.keys(appData.boards).length === 0) {
             console.log('No boards found, creating default board');
-            appData.boards.default = createDefaultBoard();
+            const defaultBoard = createDefaultBoard();
+            await boardAdapter.save({
+                id: 'default',
+                ...defaultBoard
+            });
+            appData.boards.default = defaultBoard;
             appData.currentBoardId = 'default';
+            await appMetadataAdapter.setCurrentBoardId('default');
         }
         
         setBoardData(appData.boards[appData.currentBoardId]);
         console.log('loadData: Final boardData set:', !!boardData, 'columns:', boardData?.columns?.length);
         
-        // Initialize Phase 2 sample data for new v5.0 installations
-        if (appData.version === '5.0') {
-            try {
-                if (window.initializeSampleTemplates) window.initializeSampleTemplates();
-            } catch (error) {
-                console.error('Failed to initialize sample templates:', error);
-            }
-            
-            try {
-                if (window.initializeSampleCollections) window.initializeSampleCollections();
-            } catch (error) {
-                console.error('Failed to initialize sample collections:', error);
-            }
-        }
-        
-        // Auto-save migrated data (but avoid infinite loop)
-        try {
-            localStorage.setItem('gridflow_data', JSON.stringify(appData));
-        } catch (error) {
-            console.error('Failed to save migrated data:', error);
-        }
-        
         console.log('loadData: Final appData check:', {
             version: appData.version,
             boardCount: Object.keys(appData.boards || {}).length,
+            entityCount: Object.keys(appData.entities || {}).length,
             currentBoardId: appData.currentBoardId,
             firstBoardName: appData.boards ? Object.values(appData.boards)[0]?.name : 'none'
         });
@@ -220,619 +247,110 @@ export async function loadData() {
     } catch (error) {
         console.error('Failed to load data:', error);
         showStatusMessage('Failed to load data, initializing new board', 'error');
-        initializeSampleData();
+        await initializeSampleData();
         return { appData, boardData };
     }
 }
 
 /**
- * Debug function to check localStorage content
- */
-export function debugLocalStorage() {
-    const saved = localStorage.getItem('gridflow_data');
-    if (saved) {
-        const data = JSON.parse(saved);
-        console.log('Debug localStorage:', {
-            hasData: !!saved,
-            version: data.version,
-            boardCount: Object.keys(data.boards || {}).length,
-            boardNames: Object.keys(data.boards || {}),
-            currentBoardId: data.currentBoardId,
-            firstBoardData: data.boards ? Object.values(data.boards)[0] : null
-        });
-        return data;
-    } else {
-        console.log('Debug localStorage: No data found');
-        return null;
-    }
-}
-
-/**
- * Migrate data from older versions to current version
- * @param {Object} data - Raw data to migrate
- * @returns {Object} Migrated data
- */
-export function migrateData(data) {
-    console.log('Starting data migration...');
-    const currentVersion = '5.0';
-    const dataVersion = data.version || detectVersion(data);
-    
-    console.log(`Migrating from version ${dataVersion} to ${currentVersion}`);
-    
-    let migratedData = { ...data };
-    
-    // Migration chain - apply migrations in order
-    if (compareVersions(dataVersion, '1.0') <= 0) {
-        migratedData = migrateToV2(migratedData);
-    }
-    if (compareVersions(dataVersion, '2.0') <= 0) {
-        migratedData = migrateToV2_5(migratedData);
-    }
-    if (compareVersions(dataVersion, '2.5') <= 0) {
-        migratedData = migrateToV3(migratedData);
-    }
-    if (compareVersions(dataVersion, '3.0') <= 0) {
-        migratedData = migrateToV4(migratedData);
-    }
-    if (compareVersions(dataVersion, '4.0') <= 0) {
-        migratedData = migrateToV5(migratedData);
-    }
-    
-    // Final validation and cleanup
-    migratedData = validateAndCleanData(migratedData);
-    migratedData.version = currentVersion;
-    
-    console.log('Data migration completed successfully');
-    return migratedData;
-}
-
-/**
- * Detect version from data structure
- * @param {Object} data - Data to analyze
- * @returns {string} Version string
- */
-export function detectVersion(data) {
-    if (data.version) return data.version;
-    
-    // Version detection based on structure
-    if (data.rows && !data.boards) {
-        return '1.0'; // Original single-board format
-    } else if (data.boards && !data.templates) {
-        return '2.0'; // Multi-board format without templates
-    } else if (data.boards && data.templates && !data.weeklyPlans) {
-        return '2.5'; // Has templates but no weekly planning
-    } else if (data.boards && data.templates && data.weeklyPlans && !data.entities) {
-        return '3.0'; // Has weekly planning but no unified entities
-    } else if (data.boards && data.templates && data.weeklyPlans && data.entities && !data.templateLibrary) {
-        return '4.0'; // Has unified entities but no template library
-    } else {
-        return '5.0'; // Current template library & smart collections format
-    }
-}
-
-/**
- * Compare version strings (simple semantic versioning)
- * @param {string} v1 - First version
- * @param {string} v2 - Second version
- * @returns {number} -1 if v1 < v2, 0 if equal, 1 if v1 > v2
- */
-export function compareVersions(v1, v2) {
-    const parts1 = v1.split('.').map(Number);
-    const parts2 = v2.split('.').map(Number);
-    
-    for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
-        const part1 = parts1[i] || 0;
-        const part2 = parts2[i] || 0;
-        
-        if (part1 < part2) return -1;
-        if (part1 > part2) return 1;
-    }
-    return 0;
-}
-
-/**
- * Migration to v2.0 (single-board to multi-board)
- * @param {Object} data - Data to migrate
- * @returns {Object} Migrated data
- */
-export function migrateToV2(data) {
-    console.log('Migrating to v2.0: Converting to multi-board format');
-    
-    if (data.rows && !data.boards) {
-        return {
-            currentBoardId: 'default',
-            boards: {
-                'default': {
-                    name: data.name || 'My Board',
-                    ...data
-                }
-            },
-            version: '2.0'
-        };
-    }
-    return data;
-}
-
-/**
- * Migration to v2.5 (add templates)
- * @param {Object} data - Data to migrate
- * @returns {Object} Migrated data
- */
-export function migrateToV2_5(data) {
-    console.log('Migrating to v2.5: Adding template system');
-    
-    // Ensure templates structure exists
-    if (!data.templates) {
-        data.templates = [];
-        data.nextTemplateId = 1;
-    }
-    
-    data.version = '2.5';
-    return data;
-}
-
-/**
- * Migration to v3.0 (add weekly planning)
- * @param {Object} data - Data to migrate
- * @returns {Object} Migrated data
- */
-export function migrateToV3(data) {
-    console.log('Migrating to v3.0: Adding weekly planning system');
-    
-    // Ensure weekly planning structure exists
-    if (!data.weeklyPlans) {
-        data.weeklyPlans = {};
-        data.nextWeeklyItemId = 1;
-    }
-    
-    data.version = '3.0';
-    return data;
-}
-
-/**
- * Migration to v4.0 (unified entity system)
- * @param {Object} data - Data to migrate
- * @returns {Object} Migrated data
- */
-export function migrateToV4(data) {
-    console.log('Migrating to v4.0: Implementing unified entity system');
-    
-    // Initialize unified entity system
-    if (!data.entities) {
-        data.entities = {
-            tasks: {},
-            notes: {},
-            checklists: {}
-        };
-        data.relationships = {
-            entityTasks: {},
-            cardToWeeklyPlans: {},
-            weeklyPlanToCards: {},
-            entityTags: {},
-            collectionEntities: {},
-            templateUsage: {}
-        };
-        data.nextTaskId = 1;
-        data.nextNoteId = 1;
-        data.nextChecklistId = 1;
-    }
-    
-    // Migrate existing subtasks to unified task system
-    Object.keys(data.boards || {}).forEach(boardId => {
-        const board = data.boards[boardId];
-        if (board.rows) {
-            board.rows.forEach(row => {
-                Object.keys(row.cards || {}).forEach(columnKey => {
-                    row.cards[columnKey].forEach(card => {
-                        if (card.subtasks && card.subtasks.length > 0) {
-                            const taskIds = [];
-                            card.subtasks.forEach(subtask => {
-                                const taskId = `task_${data.nextTaskId++}`;
-                                data.entities.tasks[taskId] = {
-                                    id: taskId,
-                                    text: subtask.text,
-                                    completed: subtask.completed || false,
-                                    dueDate: null,
-                                    priority: 'medium',
-                                    parentType: 'card',
-                                    parentId: card.id.toString(),
-                                    tags: [],
-                                    createdAt: new Date().toISOString(),
-                                    updatedAt: new Date().toISOString()
-                                };
-                                taskIds.push(taskId);
-                            });
-                            
-                            if (taskIds.length > 0) {
-                                data.relationships.entityTasks[card.id.toString()] = taskIds;
-                                card.taskIds = taskIds;
-                            }
-                            
-                            // Keep original subtasks for now for compatibility
-                            // delete card.subtasks; // Will remove in later version
-                        }
-                    });
-                });
-            });
-        }
-    });
-    
-    data.version = '4.0';
-    return data;
-}
-
-/**
- * Migration to v5.0 (template library & smart collections)
- * @param {Object} data - Data to migrate
- * @returns {Object} Migrated data
- */
-export function migrateToV5(data) {
-    console.log('Migrating to v5.0: Adding template library and smart collections');
-    
-    // Initialize template library
-    if (!data.templateLibrary) {
-        data.templateLibrary = {
-            categories: ['Project Management', 'Personal', 'Business', 'Education'],
-            featured: [],
-            taskSets: {},
-            checklists: {},
-            noteTemplates: {}
-        };
-    }
-    
-    // Ensure all template library sub-structures exist
-    if (!data.templateLibrary.taskSets) data.templateLibrary.taskSets = {};
-    if (!data.templateLibrary.checklists) data.templateLibrary.checklists = {};
-    if (!data.templateLibrary.noteTemplates) data.templateLibrary.noteTemplates = {};
-    if (!data.nextTemplateLibraryId) data.nextTemplateLibraryId = 1;
-    
-    // Initialize smart collections system
-    if (!data.collections) {
-        data.collections = {};
-        data.nextCollectionId = 1;
-    }
-    
-    // Migrate v4 entity structure to v5 unified entity structure
-    if (data.entities && (data.entities.tasks || data.entities.notes || data.entities.checklists)) {
-        console.log('Migrating v4 entity structure to v5 unified format...');
-        
-        const newEntities = {};
-        
-        // Migrate tasks
-        if (data.entities.tasks) {
-            Object.keys(data.entities.tasks).forEach(taskId => {
-                const task = data.entities.tasks[taskId];
-                // Skip if task is already a string (entity ID) or null/undefined
-                if (typeof task !== 'object' || task === null) {
-                    console.warn(`Skipping task ${taskId} - invalid or already migrated`);
-                    return;
-                }
-                
-                newEntities[taskId] = {
-                    id: taskId,
-                    type: 'task',
-                    title: task.text || 'Untitled Task',
-                    content: task.description || '',
-                    completed: task.completed || false,
-                    priority: task.priority || 'medium',
-                    dueDate: task.dueDate || null,
-                    tags: task.tags || [],
-                    createdAt: task.createdAt || new Date().toISOString(),
-                    updatedAt: task.updatedAt || new Date().toISOString(),
-                    // Preserve task-specific fields
-                    parentType: task.parentType,
-                    parentId: task.parentId
-                };
-            });
-        }
-        
-        // Migrate notes
-        if (data.entities.notes) {
-            Object.keys(data.entities.notes).forEach(noteId => {
-                const note = data.entities.notes[noteId];
-                // Skip if note is already a string (entity ID) or null/undefined
-                if (typeof note !== 'object' || note === null) {
-                    console.warn(`Skipping note ${noteId} - invalid or already migrated`);
-                    return;
-                }
-                
-                newEntities[noteId] = {
-                    id: noteId,
-                    type: 'note',
-                    title: note.title || 'Untitled Note',
-                    content: note.content || '',
-                    completed: false,
-                    tags: note.tags || [],
-                    createdAt: note.createdAt || new Date().toISOString(),
-                    updatedAt: note.updatedAt || new Date().toISOString(),
-                    // Preserve note-specific fields
-                    attachedTo: note.attachedTo
-                };
-            });
-        }
-        
-        // Migrate checklists
-        if (data.entities.checklists) {
-            Object.keys(data.entities.checklists).forEach(checklistId => {
-                const checklist = data.entities.checklists[checklistId];
-                // Skip if checklist is already a string (entity ID) or null/undefined
-                if (typeof checklist !== 'object' || checklist === null) {
-                    console.warn(`Skipping checklist ${checklistId} - invalid or already migrated`);
-                    return;
-                }
-                
-                newEntities[checklistId] = {
-                    id: checklistId,
-                    type: 'checklist',
-                    title: checklist.title || 'Untitled Checklist',
-                    content: checklist.description || '',
-                    completed: false,
-                    items: checklist.items || [],
-                    tags: checklist.tags || [],
-                    createdAt: checklist.createdAt || new Date().toISOString(),
-                    updatedAt: checklist.updatedAt || new Date().toISOString()
-                };
-            });
-        }
-        
-        // Replace the old structure with the new unified structure
-        data.entities = newEntities;
-        
-        console.log(`Migrated ${Object.keys(newEntities).length} entities to unified format`);
-    }
-    
-    // Migrate board cards to entity references
-    if (data.boards) {
-        console.log('Converting board cards to entity references...');
-        let cardsConverted = 0;
-        
-        // Ensure ID counters are set based on existing entities
-        if (!data.nextTaskId && data.entities) {
-            const existingTaskIds = Object.keys(data.entities).filter(id => id.startsWith('task_'))
-                .map(id => parseInt(id.replace('task_', '')) || 0);
-            data.nextTaskId = existingTaskIds.length > 0 ? Math.max(...existingTaskIds) + 1 : 1;
-        }
-        if (!data.nextNoteId && data.entities) {
-            const existingNoteIds = Object.keys(data.entities).filter(id => id.startsWith('note_'))
-                .map(id => parseInt(id.replace('note_', '')) || 0);
-            data.nextNoteId = existingNoteIds.length > 0 ? Math.max(...existingNoteIds) + 1 : 1;
-        }
-        
-        Object.keys(data.boards).forEach(boardId => {
-            const board = data.boards[boardId];
-            if (!board.rows) return;
-            
-            board.rows.forEach(row => {
-                if (!row.cards) return;
-                
-                Object.keys(row.cards).forEach(columnKey => {
-                    const cards = row.cards[columnKey];
-                    const newCardList = [];
-                    
-                    cards.forEach(card => {
-                        // Skip if already an entity ID
-                        if (typeof card === 'string' && card.startsWith('entity_')) {
-                            newCardList.push(card);
-                            return;
-                        }
-                        
-                        // Convert card object to entity
-                        if (typeof card === 'object' && card.id) {
-                            try {
-                                // Determine entity type
-                                let entityType = 'task'; // default
-                                if (card.subtasks && card.subtasks.length > 0) {
-                                    entityType = 'task';
-                                } else if (card.priority || card.dueDate) {
-                                    entityType = 'task';
-                                } else {
-                                    entityType = 'note';
-                                }
-                                
-                                // Create entity ID using sequential format
-                                let entityId;
-                                if (entityType === 'task') {
-                                    if (!data.nextTaskId) data.nextTaskId = 1;
-                                    entityId = `task_${data.nextTaskId++}`;
-                                } else if (entityType === 'note') {
-                                    if (!data.nextNoteId) data.nextNoteId = 1;
-                                    entityId = `note_${data.nextNoteId++}`;
-                                } else {
-                                    // Fallback
-                                    entityId = `${entityType}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-                                }
-                                
-                                // Create entity
-                                const entity = {
-                                    id: entityId,
-                                    type: entityType,
-                                    title: card.title || 'Untitled',
-                                    content: card.description || '',
-                                    completed: card.completed || false,
-                                    priority: card.priority || 'medium',
-                                    dueDate: card.dueDate || null,
-                                    tags: card.tags || [],
-                                    createdAt: card.createdAt || new Date().toISOString(),
-                                    updatedAt: new Date().toISOString()
-                                };
-                                
-                                // Add task-specific fields
-                                if (entityType === 'task' && card.subtasks) {
-                                    entity.subtasks = card.subtasks;
-                                }
-                                
-                                // Store entity
-                                if (!data.entities) data.entities = {};
-                                data.entities[entityId] = entity;
-                                
-                                // Replace card with entity ID
-                                newCardList.push(entityId);
-                                cardsConverted++;
-                                
-                                console.log(`Converted card "${card.title}" to entity ${entityId}`);
-                                
-                            } catch (error) {
-                                console.error('Failed to convert card:', card, error);
-                                // Keep original card as fallback
-                                newCardList.push(card);
-                            }
-                        } else {
-                            // Keep non-object cards as-is
-                            newCardList.push(card);
-                        }
-                    });
-                    
-                    // Replace card list with entity IDs
-                    row.cards[columnKey] = newCardList;
-                });
-            });
-        });
-        
-        console.log(`Converted ${cardsConverted} board cards to entity references`);
-    }
-    
-    data.version = '5.0';
-    return data;
-}
-
-/**
- * Validate and clean data structure
- * @param {Object} data - Data to validate
- * @returns {Object} Cleaned data
- */
-export function validateAndCleanData(data) {
-    console.log('Validating and cleaning data...');
-    
-    // Ensure basic structure exists
-    if (!data.boards) data.boards = {};
-    if (!data.currentBoardId) data.currentBoardId = 'default';
-    if (!data.templates) data.templates = [];
-    if (!data.weeklyPlans) data.weeklyPlans = {};
-    if (!data.entities) {
-        data.entities = {
-            tasks: {},
-            notes: {},
-            checklists: {}
-        };
-    }
-    if (!data.relationships) {
-        data.relationships = {
-            entityTasks: {},
-            cardToWeeklyPlans: {},
-            weeklyPlanToCards: {},
-            entityTags: {},
-            collectionEntities: {},
-            templateUsage: {}
-        };
-    }
-    if (!data.collections) data.collections = {};
-    if (!data.tags) data.tags = {};
-    
-    // Ensure template library structure exists
-    if (!data.templateLibrary) {
-        data.templateLibrary = {
-            categories: ['Project Management', 'Personal', 'Business', 'Education'],
-            featured: [],
-            taskSets: {},
-            checklists: {},
-            noteTemplates: {}
-        };
-    }
-    if (!data.templateLibrary.taskSets) data.templateLibrary.taskSets = {};
-    if (!data.templateLibrary.checklists) data.templateLibrary.checklists = {};
-    if (!data.templateLibrary.noteTemplates) data.templateLibrary.noteTemplates = {};
-    
-    // Ensure board structure is valid
-    Object.keys(data.boards).forEach(boardId => {
-        const board = data.boards[boardId];
-        if (!board.name) board.name = 'Untitled Board';
-        if (!board.groups) board.groups = [];
-        if (!board.rows) board.rows = [];
-        if (!board.columns) board.columns = [
-            { id: 1, name: 'To Do', key: 'todo' },
-            { id: 2, name: 'In Progress', key: 'inprogress' },
-            { id: 3, name: 'Done', key: 'done' }
-        ];
-        if (!board.settings) board.settings = { showCheckboxes: true, showSubtaskProgress: true };
-        
-        // Ensure ID counters exist
-        if (!board.nextRowId) board.nextRowId = 1;
-        if (!board.nextCardId) board.nextCardId = 1;
-        if (!board.nextColumnId) board.nextColumnId = 4;
-        if (!board.nextGroupId) board.nextGroupId = 1;
-        
-        // Validate and fix ID sequences
-        if (board.rows.length > 0) {
-            const maxRowId = Math.max(...board.rows.map(r => r.id || 0));
-            board.nextRowId = Math.max(board.nextRowId || 1, maxRowId + 1);
-        }
-        
-        if (board.columns.length > 0) {
-            const maxColumnId = Math.max(...board.columns.map(c => c.id || 0));
-            board.nextColumnId = Math.max(board.nextColumnId || 1, maxColumnId + 1);
-        }
-        
-        if (board.groups.length > 0) {
-            const maxGroupId = Math.max(...board.groups.map(g => g.id || 0));
-            board.nextGroupId = Math.max(board.nextGroupId || 1, maxGroupId + 1);
-        }
-        
-        // Fix card IDs and calculate next card ID
-        let maxCardId = 0;
-        board.rows.forEach(row => {
-            if (!row.cards) row.cards = {};
-            board.columns.forEach(column => {
-                if (!row.cards[column.key]) row.cards[column.key] = [];
-                row.cards[column.key].forEach(card => {
-                    // Skip entity ID strings (new unified system)
-                    if (typeof card === 'string') {
-                        return; // Entity IDs don't need ID validation
-                    }
-                    
-                    // Handle legacy card objects
-                    if (typeof card === 'object' && card !== null) {
-                        if (!card.id) card.id = maxCardId + 1;
-                        maxCardId = Math.max(maxCardId, card.id);
-                    }
-                });
-            });
-        });
-        board.nextCardId = Math.max(board.nextCardId || 1, maxCardId + 1);
-    });
-    
-    // Ensure global ID counters exist
-    if (!data.nextTemplateId) data.nextTemplateId = Math.max(1, ...(data.templates.map(t => t.id || 0))) + 1;
-    if (!data.nextTemplateLibraryId) data.nextTemplateLibraryId = 1;
-    if (!data.nextWeeklyItemId) data.nextWeeklyItemId = 1;
-    if (!data.nextTaskId) data.nextTaskId = Math.max(1, ...Object.keys(data.entities.tasks || {}).map(id => parseInt(id.replace('task_', '')) || 0)) + 1;
-    if (!data.nextNoteId) data.nextNoteId = 1;
-    if (!data.nextChecklistId) data.nextChecklistId = 1;
-    if (!data.nextProjectId) data.nextProjectId = 1;
-    if (!data.nextCollectionId) data.nextCollectionId = 1;
-    if (!data.nextTagId) data.nextTagId = 1;
-    
-    console.log('Data validation completed');
-    return data;
-}
-
-/**
  * Initialize sample data for new installations
  */
-export function initializeSampleData() {
+export async function initializeSampleData() {
     console.log('Initializing sample data...');
     
+    // Create default app configuration
+    const defaultConfig = {
+        currentBoardId: 'default',
+        version: '6.0',
+        nextTaskId: 1,
+        nextNoteId: 1,
+        nextChecklistId: 1,
+        nextProjectId: 1,
+        nextPersonId: 1,
+        nextBoardId: 2,
+        nextGroupId: 4,
+        nextRowId: 3,
+        nextColumnId: 4,
+        nextTemplateId: 1,
+        nextCollectionId: 1,
+        nextTagId: 1,
+        nextWeeklyItemId: 1,
+        templateLibrary: {
+            categories: ['Project Management', 'Personal', 'Business', 'Education'],
+            featured: [],
+            taskSets: {},
+            checklists: {},
+            noteTemplates: {}
+        }
+    };
+    
+    // Save app configuration
+    await appMetadataAdapter.updateAppConfig(defaultConfig);
+    
+    // Create and save default board
+    const defaultBoard = createDefaultBoard();
+    await boardAdapter.save({
+        id: 'default',
+        ...defaultBoard
+    });
+    
+    // Create sample entities from default board cards
+    let entityIdCounter = 1;
+    const sampleEntities = [];
+    
+    defaultBoard.rows.forEach(row => {
+        Object.keys(row.cards).forEach(columnKey => {
+            row.cards[columnKey].forEach(card => {
+                const entityId = `task_${entityIdCounter++}`;
+                const entity = {
+                    id: entityId,
+                    type: 'task',
+                    title: card.title,
+                    content: card.description || '',
+                    completed: card.completed || false,
+                    priority: card.priority || 'medium',
+                    dueDate: card.dueDate || null,
+                    tags: card.tags || [],
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+                sampleEntities.push(entity);
+                
+                // Replace card object with entity ID in board
+                const cardIndex = row.cards[columnKey].indexOf(card);
+                row.cards[columnKey][cardIndex] = entityId;
+            });
+        });
+    });
+    
+    // Save entities
+    for (const entity of sampleEntities) {
+        await entityAdapter.save(entity);
+    }
+    
+    // Update board with entity references
+    await boardAdapter.save({
+        id: 'default',
+        ...defaultBoard
+    });
+    
+    // Update next entity ID counter
+    await appMetadataAdapter.updateAppConfig({
+        nextTaskId: entityIdCounter
+    });
+    
+    // Build appData structure
     appData = {
         currentBoardId: 'default',
         boards: {
-            'default': createDefaultBoard()
+            'default': defaultBoard
         },
+        entities: {},
         templates: [],
         weeklyPlans: {},
-        entities: {
-            tasks: {},
-            notes: {},
-            checklists: {}
-        },
+        templateLibrary: defaultConfig.templateLibrary,
+        collections: {},
+        tags: {},
         relationships: {
             entityTasks: {},
             cardToWeeklyPlans: {},
@@ -841,27 +359,14 @@ export function initializeSampleData() {
             collectionEntities: {},
             templateUsage: {}
         },
-        collections: {},
-        tags: {},
-        templateLibrary: {
-            categories: ['Project Management', 'Personal', 'Business', 'Education'],
-            featured: [],
-            taskSets: {},
-            checklists: {},
-            noteTemplates: {}
-        },
-        nextTemplateId: 1,
-        nextTemplateLibraryId: 1,
-        nextWeeklyItemId: 1,
-        nextTaskId: 1,
-        nextNoteId: 1,
-        nextChecklistId: 1,
-        nextProjectId: 1,
-        nextPersonId: 1,
-        nextCollectionId: 1,
-        nextTagId: 1,
-        version: '5.0'
+        ...defaultConfig,
+        version: '6.0'
     };
+    
+    // Add entities to appData
+    sampleEntities.forEach(entity => {
+        appData.entities[entity.id] = entity;
+    });
     
     boardData = appData.boards.default;
     
@@ -869,7 +374,7 @@ export function initializeSampleData() {
     window.appData = appData;
     window.boardData = boardData;
     
-    console.log('Sample data initialized');
+    console.log('Sample data initialized in IndexedDB');
 }
 
 /**
@@ -969,13 +474,211 @@ export function getBoardData() {
     return boardData;
 }
 
+/**
+ * Switch to a different board
+ * @param {string} boardId - ID of board to switch to
+ */
+export async function switchBoard(boardId) {
+    try {
+        if (!appData.boards[boardId]) {
+            throw new Error(`Board ${boardId} not found`);
+        }
+        
+        appData.currentBoardId = boardId;
+        setBoardData(appData.boards[boardId]);
+        
+        // Update app config
+        await appMetadataAdapter.setCurrentBoardId(boardId);
+        
+        console.log(`Switched to board: ${boardId}`);
+    } catch (error) {
+        console.error('Failed to switch board:', error);
+        showStatusMessage('Failed to switch board', 'error');
+        throw error;
+    }
+}
+
+/**
+ * Get next ID for a specific type
+ * @param {string} type - Type of entity (task, note, board, etc.)
+ * @returns {Promise<number>} Next ID
+ */
+export async function getNextId(type) {
+    return await appMetadataAdapter.getNextId(type);
+}
+
+/**
+ * Increment and get next ID for a specific type
+ * @param {string} type - Type of entity (task, note, board, etc.)
+ * @returns {Promise<number>} The ID to use
+ */
+export async function incrementNextId(type) {
+    const nextId = await appMetadataAdapter.incrementNextId(type);
+    
+    // Update local appData cache
+    const key = `next${type.charAt(0).toUpperCase()}${type.slice(1)}Id`;
+    if (appData[key] !== undefined) {
+        appData[key] = nextId + 1;
+    }
+    
+    return nextId;
+}
+
+/**
+ * Debug function to check IndexedDB content
+ */
+export async function debugIndexedDB() {
+    try {
+        const appConfig = await appMetadataAdapter.getAppConfig();
+        const boards = await boardAdapter.getAll();
+        const entities = await entityAdapter.getAll();
+        const weeklyPlans = await weeklyPlanAdapter.getAll();
+        
+        const debugInfo = {
+            appConfig,
+            boardCount: boards.length,
+            boardNames: boards.map(b => b.name),
+            entityCount: entities.length,
+            weeklyPlanCount: weeklyPlans.length,
+            currentBoardId: appConfig.currentBoardId
+        };
+        
+        console.log('Debug IndexedDB:', debugInfo);
+        return debugInfo;
+    } catch (error) {
+        console.error('Failed to debug IndexedDB:', error);
+        return null;
+    }
+}
+
+/**
+ * Recover orphaned entities and place them in the first row, first column
+ * @param {string} boardId - Board ID to recover entities for
+ * @returns {Promise<Object>} Recovery results
+ */
+export async function recoverOrphanedEntities(boardId = null) {
+    try {
+        console.log('🔄 Starting orphaned entity recovery...');
+        
+        // Use current board if none specified
+        const targetBoardId = boardId || appData.currentBoardId || 'default';
+        const board = appData.boards[targetBoardId];
+        
+        if (!board) {
+            throw new Error(`Board ${targetBoardId} not found`);
+        }
+        
+        // Get all entities
+        const allEntities = await entityAdapter.getAll();
+        const allEntityIds = allEntities.map(e => e.id);
+        
+        console.log(`📊 Total entities found: ${allEntityIds.length}`);
+        
+        // Find orphaned entities (entities not positioned on this board)
+        const orphanedEntityIds = await entityPositionsAdapter.getOrphanedEntities(
+            allEntityIds, 
+            targetBoardId, 
+            'board'
+        );
+        
+        console.log(`🏠 Orphaned entities found: ${orphanedEntityIds.length}`);
+        
+        if (orphanedEntityIds.length === 0) {
+            return {
+                success: true,
+                orphanedCount: 0,
+                recoveredCount: 0,
+                message: 'No orphaned entities found'
+            };
+        }
+        
+        // Find the first row and first column for placement
+        const firstRow = board.rows && board.rows.length > 0 ? board.rows[0] : null;
+        const firstColumn = board.columns && board.columns.length > 0 ? board.columns[0] : null;
+        
+        if (!firstRow || !firstColumn) {
+            throw new Error('Board has no rows or columns for entity placement');
+        }
+        
+        console.log(`📍 Placing orphaned entities in row "${firstRow.name}" (${firstRow.id}), column "${firstColumn.name}" (${firstColumn.key})`);
+        
+        // Create positions for orphaned entities
+        const positions = orphanedEntityIds.map((entityId, index) => ({
+            entityId,
+            boardId: targetBoardId,
+            context: 'board',
+            rowId: firstRow.id.toString(),
+            columnKey: firstColumn.key,
+            order: index
+        }));
+        
+        // Batch create positions
+        await entityPositionsAdapter.batchSetPositions(positions);
+        
+        // Update the board's cards structure to include these entities
+        if (!firstRow.cards) {
+            firstRow.cards = {};
+        }
+        if (!firstRow.cards[firstColumn.key]) {
+            firstRow.cards[firstColumn.key] = [];
+        }
+        
+        // Add entity references to the row's cards
+        const entityReferences = orphanedEntityIds.map(entityId => {
+            const entity = allEntities.find(e => e.id === entityId);
+            return {
+                id: entityId,
+                title: entity?.title || 'Untitled',
+                description: entity?.content || '',
+                completed: entity?.completed || false,
+                priority: entity?.priority || 'medium',
+                entityId: entityId // Reference to the actual entity
+            };
+        });
+        
+        // Add to the beginning of the column to make them visible
+        firstRow.cards[firstColumn.key].unshift(...entityReferences);
+        
+        // Save the updated board
+        await boardAdapter.save(board);
+        
+        // Update the in-memory board data
+        appData.boards[targetBoardId] = board;
+        if (targetBoardId === appData.currentBoardId) {
+            setBoardData(board);
+        }
+        
+        console.log(`✅ Successfully recovered ${orphanedEntityIds.length} orphaned entities`);
+        
+        return {
+            success: true,
+            orphanedCount: orphanedEntityIds.length,
+            recoveredCount: orphanedEntityIds.length,
+            placementLocation: {
+                rowName: firstRow.name,
+                columnName: firstColumn.name
+            },
+            message: `Recovered ${orphanedEntityIds.length} orphaned entities to "${firstRow.name}" → "${firstColumn.name}"`
+        };
+        
+    } catch (error) {
+        console.error('❌ Failed to recover orphaned entities:', error);
+        return {
+            success: false,
+            orphanedCount: 0,
+            recoveredCount: 0,
+            error: error.message
+        };
+    }
+}
+
 // Make functions available globally for backwards compatibility during transition
 window.saveData = saveData;
 window.loadData = loadData;
-window.migrateData = migrateData;
-window.detectVersion = detectVersion;
-window.compareVersions = compareVersions;
-window.validateAndCleanData = validateAndCleanData;
 window.initializeSampleData = initializeSampleData;
 window.createDefaultBoard = createDefaultBoard;
-window.debugLocalStorage = debugLocalStorage;
+window.debugIndexedDB = debugIndexedDB;
+window.switchBoard = switchBoard;
+window.getNextId = getNextId;
+window.incrementNextId = incrementNextId;
+window.recoverOrphanedEntities = recoverOrphanedEntities;

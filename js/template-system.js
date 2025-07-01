@@ -5,6 +5,7 @@
 
 import { getAppData, setAppData, saveData, createDefaultBoard } from './core-data.js';
 import { showStatusMessage } from './utilities.js';
+import { templateAdapter } from './indexeddb/adapters.js';
 
 // Template selection state
 let selectedTemplateId = null;
@@ -60,7 +61,7 @@ export function updateTemplatePreview() {
  * Save current board as template
  * @param {Event} event - Form submit event
  */
-export function saveAsTemplate(event) {
+export async function saveAsTemplate(event) {
     event.preventDefault();
     
     const name = document.getElementById('saveTemplateName').value.trim();
@@ -74,15 +75,12 @@ export function saveAsTemplate(event) {
         return;
     }
     
-    const appData = getAppData();
     const boardData = window.boardData;
     
     const newTemplate = {
-        id: appData.nextTemplateId++,
         name,
         description,
         category,
-        createdAt: new Date().toISOString(),
         groups: includeStructure ? JSON.parse(JSON.stringify(boardData.groups)) : [],
         rows: [],
         columns: JSON.parse(JSON.stringify(boardData.columns))
@@ -123,12 +121,16 @@ export function saveAsTemplate(event) {
         });
     }
     
-    appData.templates.push(newTemplate);
-    setAppData(appData);
-    saveData();
+    try {
+        await templateAdapter.createTemplate(newTemplate);
+    } catch (error) {
+        console.error('Failed to save template:', error);
+        showStatusMessage('Failed to save template', 'error');
+        return;
+    }
     
     closeSaveAsTemplateModal();
-    updateTemplatesUI();
+    await updateTemplatesUI();
     
     showStatusMessage('Template saved successfully', 'success');
 }
@@ -151,7 +153,7 @@ export function closeCreateTemplateModal() {
  * Create new template from scratch
  * @param {Event} event - Form submit event
  */
-export function createTemplate(event) {
+export async function createTemplate(event) {
     event.preventDefault();
     
     const name = document.getElementById('templateName').value.trim();
@@ -163,14 +165,10 @@ export function createTemplate(event) {
         return;
     }
     
-    const appData = getAppData();
-    
     const newTemplate = {
-        id: appData.nextTemplateId++,
         name,
         description,
         category,
-        createdAt: new Date().toISOString(),
         groups: [],
         rows: [],
         columns: [
@@ -180,12 +178,16 @@ export function createTemplate(event) {
         ]
     };
     
-    appData.templates.push(newTemplate);
-    setAppData(appData);
-    saveData();
+    try {
+        await templateAdapter.createTemplate(newTemplate);
+    } catch (error) {
+        console.error('Failed to create template:', error);
+        showStatusMessage('Failed to create template', 'error');
+        return;
+    }
     
     closeCreateTemplateModal();
-    updateTemplatesUI();
+    await updateTemplatesUI();
     
     showStatusMessage('Template created successfully', 'success');
 }
@@ -210,9 +212,9 @@ export function closeApplyTemplateModal() {
 /**
  * Populate template categories dropdown
  */
-export function populateTemplateCategories() {
-    const appData = getAppData();
-    const categories = ['All', ...new Set(appData.templates.map(t => t.category).filter(Boolean))];
+export async function populateTemplateCategories() {
+    const templates = await templateAdapter.getAll();
+    const categories = ['All', ...new Set(templates.map(t => t.category).filter(Boolean))];
     
     const container = document.getElementById('templateCategories');
     if (!container) return;
@@ -242,11 +244,11 @@ export function filterTemplatesByCategory(category) {
  * Populate template list
  * @param {string} filterCategory - Category to filter by
  */
-export function populateTemplateList(filterCategory = 'All') {
-    const appData = getAppData();
+export async function populateTemplateList(filterCategory = 'All') {
+    const allTemplates = await templateAdapter.getAll();
     const templates = filterCategory === 'All' 
-        ? appData.templates 
-        : appData.templates.filter(t => t.category === filterCategory);
+        ? allTemplates 
+        : allTemplates.filter(t => t.category === filterCategory);
     
     const container = document.getElementById('templateList');
     if (!container) return;
@@ -303,14 +305,13 @@ export function selectTemplate(templateId) {
 /**
  * Apply selected template
  */
-export function applySelectedTemplate() {
+export async function applySelectedTemplate() {
     if (!selectedTemplateId) {
         showStatusMessage('Please select a template first', 'error');
         return;
     }
     
-    const appData = getAppData();
-    const template = appData.templates.find(t => t.id === selectedTemplateId);
+    const template = await templateAdapter.getById(selectedTemplateId);
     if (!template) {
         showStatusMessage('Template not found', 'error');
         return;
@@ -325,9 +326,9 @@ export function applySelectedTemplate() {
             return;
         }
         
-        createBoardFromTemplate(template, newBoardName);
+        await createBoardFromTemplate(template, newBoardName);
     } else {
-        addTemplateToCurrentBoard(template);
+        await addTemplateToCurrentBoard(template);
     }
     
     closeApplyTemplateModal();
@@ -338,7 +339,7 @@ export function applySelectedTemplate() {
  * @param {Object} template - Template object
  * @param {string} boardName - Name for new board
  */
-export function createBoardFromTemplate(template, boardName) {
+export async function createBoardFromTemplate(template, boardName) {
     const appData = getAppData();
     const newBoard = createDefaultBoard();
     
@@ -449,7 +450,7 @@ export function createBoardFromTemplate(template, boardName) {
  * Add template to current board
  * @param {Object} template - Template object
  */
-export function addTemplateToCurrentBoard(template) {
+export async function addTemplateToCurrentBoard(template) {
     const appData = getAppData();
     const boardData = window.boardData;
     
@@ -518,18 +519,18 @@ export function addTemplateToCurrentBoard(template) {
 /**
  * Update templates UI display
  */
-export function updateTemplatesUI() {
+export async function updateTemplatesUI() {
     const templatesGrid = document.getElementById('templatesGrid');
     if (!templatesGrid) return;
     
-    const appData = getAppData();
+    const templates = await templateAdapter.getAll();
     
-    if (appData.templates.length === 0) {
+    if (templates.length === 0) {
         templatesGrid.innerHTML = '<div class="no-templates">No templates created yet.</div>';
         return;
     }
     
-    templatesGrid.innerHTML = appData.templates.map(template => `
+    templatesGrid.innerHTML = templates.map(template => `
         <div class="template-card">
             <div class="template-card-header">
                 <div class="template-card-name">${template.name}</div>
@@ -557,11 +558,10 @@ export function updateTemplatesUI() {
  * Apply template quickly (to current board)
  * @param {number} templateId - Template ID
  */
-export function applyTemplateQuick(templateId) {
-    const appData = getAppData();
-    const template = appData.templates.find(t => t.id === templateId);
+export async function applyTemplateQuick(templateId) {
+    const template = await templateAdapter.getById(templateId);
     if (template) {
-        addTemplateToCurrentBoard(template);
+        await addTemplateToCurrentBoard(template);
     }
 }
 
@@ -569,9 +569,8 @@ export function applyTemplateQuick(templateId) {
  * Delete template
  * @param {number} templateId - Template ID to delete
  */
-export function deleteTemplate(templateId) {
-    const appData = getAppData();
-    const template = appData.templates.find(t => t.id === templateId);
+export async function deleteTemplate(templateId) {
+    const template = await templateAdapter.getById(templateId);
     
     if (!template) {
         showStatusMessage('Template not found', 'error');
@@ -579,25 +578,27 @@ export function deleteTemplate(templateId) {
     }
     
     if (confirm(`Are you sure you want to delete the template "${template.name}"?`)) {
-        appData.templates = appData.templates.filter(t => t.id !== templateId);
-        setAppData(appData);
-        saveData();
-        updateTemplatesUI();
-        showStatusMessage('Template deleted', 'success');
+        try {
+            await templateAdapter.delete(templateId);
+            await updateTemplatesUI();
+            showStatusMessage('Template deleted', 'success');
+        } catch (error) {
+            console.error('Failed to delete template:', error);
+            showStatusMessage('Failed to delete template', 'error');
+        }
     }
 }
 
 /**
  * Populate default templates for new installations
  */
-export function populateDefaultTemplates() {
-    const appData = getAppData();
+export async function populateDefaultTemplates() {
+    const existingTemplates = await templateAdapter.getAll();
     
-    if (appData.templates.length > 0) return; // Already has templates
+    if (existingTemplates.length > 0) return; // Already has templates
     
     const defaultTemplates = [
         {
-            id: appData.nextTemplateId++,
             name: 'Grant Application Process',
             description: 'Complete workflow for managing grant applications from research to submission',
             category: 'Business',
@@ -645,7 +646,6 @@ export function populateDefaultTemplates() {
             ]
         },
         {
-            id: appData.nextTemplateId++,
             name: 'Employee Onboarding',
             description: 'Comprehensive checklist for new employee onboarding process',
             category: 'HR',
@@ -693,9 +693,13 @@ export function populateDefaultTemplates() {
         }
     ];
     
-    appData.templates.push(...defaultTemplates);
-    setAppData(appData);
-    saveData();
+    try {
+        for (const template of defaultTemplates) {
+            await templateAdapter.createTemplate(template);
+        }
+    } catch (error) {
+        console.error('Failed to populate default templates:', error);
+    }
 }
 
 // Templates menu navigation functions moved to js/navigation.js

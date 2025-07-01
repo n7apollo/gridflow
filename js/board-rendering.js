@@ -248,6 +248,12 @@ export function createColumnElement(row, column) {
     cardsContainer.dataset.rowId = row.id;
     cardsContainer.dataset.columnKey = column.key;
     cardsContainer.style.cssText = 'flex: 1; min-height: 80px;';
+    
+    // Ensure row.cards exists
+    if (!row.cards) {
+        console.warn('Row missing cards property:', row);
+        row.cards = {};
+    }
     if (!row.cards[column.key]) {
         row.cards[column.key] = [];
     }

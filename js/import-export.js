@@ -4,7 +4,124 @@
  */
 
 import { showStatusMessage } from './utilities.js';
-import { saveData, appData, boardData, migrateData, detectVersion } from './core-data.js';
+import { saveData, appData, boardData, setAppData } from './core-data.js';
+import { 
+    settingsAdapter, 
+    entityAdapter, 
+    boardAdapter, 
+    appMetadataAdapter,
+    entityPositionsAdapter,
+    weeklyPlanAdapter,
+    peopleAdapter,
+    templateAdapter,
+    tagsAdapter,
+    collectionsAdapter
+} from './indexeddb/adapters.js';
+
+/**
+ * Detect data version for imported data
+ * @param {Object} data - Data to detect version for
+ * @returns {string} Version string
+ */
+function detectVersion(data) {
+    if (data.version) return data.version;
+    
+    // Version detection based on structure
+    if (data.rows && !data.boards) {
+        return '1.0'; // Original single-board format
+    } else if (data.boards && !data.templates) {
+        return '2.0'; // Multi-board format without templates
+    } else if (data.boards && data.templates && !data.weeklyPlans) {
+        return '2.5'; // Has templates but no weekly planning
+    } else if (data.boards && data.templates && data.weeklyPlans && !data.entities) {
+        return '3.0'; // Has weekly planning but no entities
+    } else if (data.boards && data.templates && data.weeklyPlans && data.entities) {
+        return '4.0'; // Has entities but structured entities
+    } else if (data.entities && Object.values(data.entities)[0]?.type) {
+        return '5.0'; // Flat entity structure
+    }
+    
+    return '6.0'; // Current IndexedDB-only version
+}
+
+/**
+ * Simple migration for IndexedDB-only architecture
+ * @param {Object} data - Data to migrate
+ * @returns {Object} Migrated data
+ */
+function migrateData(data) {
+    console.log('🔄 Migrating imported data to IndexedDB-only format...');
+    
+    // For IndexedDB-only architecture, we accept data as-is
+    // The individual adapters will handle any necessary transformations
+    const migratedData = {
+        ...data,
+        version: '6.0' // Mark as IndexedDB-only version
+    };
+    
+    return migratedData;
+}
+
+/**
+ * Create entity position records from board data structure
+ * This converts localStorage format (entities in board.rows.cards) to IndexedDB positions
+ */
+async function createEntityPositionsFromBoardData() {
+    try {
+        console.log('🔄 Creating entity position records from board data...');
+        
+        const positions = [];
+        let positionCount = 0;
+        
+        // Clear existing positions to avoid duplicates
+        await entityPositionsAdapter.clear();
+        
+        // Process each board
+        for (const [boardId, board] of Object.entries(appData.boards)) {
+            if (!board.rows) continue;
+            
+            // Process each row
+            for (const row of board.rows) {
+                if (!row.cards) continue;
+                
+                // Process each column in the row
+                for (const [columnKey, cardList] of Object.entries(row.cards)) {
+                    if (!Array.isArray(cardList)) continue;
+                    
+                    // Create position record for each entity
+                    cardList.forEach((entityId, index) => {
+                        if (typeof entityId === 'string' && entityId.includes('_')) {
+                            positions.push({
+                                entityId: entityId,
+                                boardId: boardId,
+                                context: 'board',
+                                rowId: row.id.toString(),
+                                columnKey: columnKey,
+                                order: index
+                            });
+                            positionCount++;
+                        }
+                    });
+                }
+            }
+        }
+        
+        // Batch create all positions
+        if (positions.length > 0) {
+            await entityPositionsAdapter.batchSetPositions(positions);
+            console.log(`✅ Created ${positionCount} entity position records`);
+            addMigrationLog(`Created ${positionCount} entity position records`, 'success');
+        } else {
+            console.log('ℹ️ No entity positions to create');
+            addMigrationLog('No entity positions found in imported data', 'info');
+        }
+        
+    } catch (error) {
+        console.error('Failed to create entity positions:', error);
+        addMigrationLog(`Entity position creation failed: ${error.message}`, 'warning');
+        // Don't throw - this is not critical for import success
+    }
+}
 
 /**
  * Generate a unique board ID when merging data
@@ -90,10 +207,14 @@ export function showDataManagementModal() {
         console.log('Data management modal found, opening...');
         modal.classList.add('modal-open');
         
-        // Update sync status in data management modal
-        if (window.updateDataManagementSyncStatus) {
-            window.updateDataManagementSyncStatus();
-        }
+        // Cloud sync disabled - no longer using jsonstorage.net
+        // try {
+        //     if (window.updateDataManagementSyncStatus && window.gridFlowDB && window.gridFlowDB.isReady()) {
+        //         window.updateDataManagementSyncStatus();
+        //     }
+        // } catch (error) {
+        //     console.warn('Failed to update sync status:', error);
+        // }
     } else {
         console.error('Data management modal not found!');
     }
@@ -284,14 +405,81 @@ export function exportToExcel() {
 /**
  * Export application data to JSON format
  */
-export function exportToJSON() {
+export async function exportToJSON() {
     try {
-        // Export all boards with metadata
+        console.log('🔄 Starting IndexedDB export...');
+        
+        // Export all data from IndexedDB
+        const [
+            entities,
+            boards,
+            appConfig,
+            entityPositions,
+            weeklyPlans,
+            people,
+            templates,
+            tags,
+            collections
+        ] = await Promise.all([
+            entityAdapter.getAll(),
+            boardAdapter.getAll(),
+            appMetadataAdapter.getAppConfig(),
+            entityPositionsAdapter.getAll(),
+            weeklyPlanAdapter.getAll(),
+            peopleAdapter.getAll(),
+            templateAdapter.getAll(),
+            tagsAdapter.getAll(),
+            collectionsAdapter.getAll()
+        ]);
+        
+        console.log('📊 Export data gathered:', {
+            entities: entities.length,
+            boards: boards.length,
+            positions: entityPositions.length,
+            weeklyPlans: weeklyPlans.length,
+            people: people.length,
+            templates: templates.length,
+            tags: tags.length,
+            collections: collections.length
+        });
+        
+        // Convert arrays to objects for compatibility
+        const boardsObj = {};
+        boards.forEach(board => {
+            boardsObj[board.id] = board;
+        });
+        
+        const entitiesObj = {};
+        entities.forEach(entity => {
+            entitiesObj[entity.id] = entity;
+        });
+        
+        const weeklyPlansObj = {};
+        weeklyPlans.forEach(plan => {
+            weeklyPlansObj[plan.weekKey] = plan;
+        });
+        
+        // Create comprehensive export data
         const exportData = {
-            ...appData,
+            // Core app data (localStorage compatible format)
+            currentBoardId: appConfig.currentBoardId || 'default',
+            version: '6.0', // IndexedDB-only version
+            boards: boardsObj,
+            entities: entitiesObj,
+            weeklyPlans: weeklyPlansObj,
+            
+            // IndexedDB-specific data
+            entityPositions: entityPositions,
+            people: people,
+            templates: templates,
+            tags: tags,
+            collections: collections,
+            
+            // Metadata
             exportedAt: new Date().toISOString(),
-            exportedFrom: 'GridFlow',
-            version: appData.version || '3.0' // Use current version
+            exportedFrom: 'GridFlow IndexedDB',
+            exportFormat: 'indexeddb',
+            appConfig: appConfig
         };
         
         const dataStr = JSON.stringify(exportData, null, 2);
@@ -300,22 +488,23 @@ export function exportToJSON() {
         const a = document.createElement('a');
         a.href = url;
         
-        // Create filename with timestamp for easier cloud storage organization
+        // Create filename with timestamp
         const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-        const boardCount = Object.keys(appData.boards).length;
-        a.download = `gridflow-backup-${boardCount}boards-${timestamp}.json`;
+        const boardCount = boards.length;
+        a.download = `gridflow-indexeddb-backup-${boardCount}boards-${timestamp}.json`;
         
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        // Store last export time in localStorage
-        localStorage.setItem('gridflow_last_export', new Date().toISOString());
         
-        showStatusMessage(`JSON backup saved (${boardCount} boards)! Upload to your cloud storage to sync across devices.`, 'success');
+        // Store last export time in IndexedDB
+        await settingsAdapter.setLastExportTimestamp(new Date().toISOString());
+        
+        showStatusMessage(`IndexedDB backup saved (${entities.length} entities, ${boards.length} boards)! Upload to your cloud storage to sync across devices.`, 'success');
     } catch (error) {
-        console.error('JSON export failed:', error);
-        showStatusMessage('JSON export failed', 'error');
+        console.error('IndexedDB export failed:', error);
+        showStatusMessage('IndexedDB export failed: ' + error.message, 'error');
     }
     closeDataManagementModal();
 }
@@ -506,10 +695,75 @@ function clearMigrationLog() {
 }
 
 /**
+ * Ensure appData is properly initialized for import
+ */
+function ensureAppDataInitialized() {
+    if (!appData || typeof appData !== 'object') {
+        console.log('Initializing appData for import...');
+        setAppData({
+            currentBoardId: 'default',
+            boards: {},
+            entities: {},
+            templates: [],
+            weeklyPlans: {},
+            templateLibrary: {
+                categories: ['Project Management', 'Personal', 'Business', 'Education'],
+                featured: [],
+                taskSets: {},
+                checklists: {},
+                noteTemplates: {}
+            },
+            collections: {},
+            tags: {},
+            relationships: {
+                entityTasks: {},
+                cardToWeeklyPlans: {},
+                weeklyPlanToCards: {},
+                entityTags: {},
+                collectionEntities: {},
+                templateUsage: {}
+            },
+            nextTemplateId: 1,
+            nextTemplateLibraryId: 1,
+            nextWeeklyItemId: 1,
+            nextTaskId: 1,
+            nextNoteId: 1,
+            nextChecklistId: 1,
+            nextProjectId: 1,
+            nextCollectionId: 1,
+            nextTagId: 1,
+            version: '6.0'
+        });
+    } else if (!appData.boards) {
+        // Ensure boards object exists
+        appData.boards = {};
+    }
+}
+
+/**
  * Perform import with progress updates
  */
 async function performImportWithProgress(fileContent, fileName) {
     addMigrationLog(`Starting import of ${fileName}`);
+    
+    // Ensure appData is properly initialized
+    ensureAppDataInitialized();
+    
+    // IndexedDB should already be initialized by app startup
+    addMigrationLog('Using existing IndexedDB connection...', 'info');
+    
+    // Set up a completion timeout as a fallback
+    const forceCompletion = setTimeout(() => {
+        console.warn('Import taking too long, forcing completion...');
+        updateProgress(100, 'Import completed (with timeout)');
+        addMigrationLog('Import completed with forced timeout', 'warning');
+        
+        // Show completion actions
+        const actions = document.getElementById('importActions');
+        if (actions) actions.style.display = 'flex';
+        
+        showStatusMessage('Import may have completed with issues. Check the migration log for details.', 'warning');
+    }, 60000); // 60 second timeout to allow for store creation
     
     // Step 1: Parse JSON
     updateProgress(10, 'Parsing JSON file...');
@@ -571,7 +825,7 @@ async function performImportWithProgress(fileContent, fileName) {
     
     try {
         // Check if user needs to choose import mode
-        const hasExistingData = Object.keys(appData.boards).length > 0;
+        const hasExistingData = appData && appData.boards && Object.keys(appData.boards).length > 0;
         
         if (hasExistingData) {
             // Show choice section and wait for user decision
@@ -603,23 +857,89 @@ async function performImportWithProgress(fileContent, fileName) {
     await delay(200);
     
     try {
+        addMigrationLog('Starting data save process...', 'info');
+        
         // Ensure current board exists and is set
         if (!appData.boards[appData.currentBoardId]) {
             appData.currentBoardId = Object.keys(appData.boards)[0] || 'default';
+            addMigrationLog(`Set current board to: ${appData.currentBoardId}`, 'info');
         }
         
         // Update boardData reference
         const currentBoard = appData.boards[appData.currentBoardId];
-        Object.assign(boardData, currentBoard);
+        if (currentBoard) {
+            Object.assign(boardData, currentBoard);
+            addMigrationLog('Updated boardData reference', 'info');
+        } else {
+            addMigrationLog('Warning: No current board found', 'warning');
+        }
         
-        // Save data
-        saveData();
+        // Save data directly using IndexedDB adapters (bypassing problematic saveData function)
+        addMigrationLog('Saving data using IndexedDB adapters...', 'info');
+        
+        let savedEntities = 0, savedBoards = 0;
+        
+        // Save entities in batches
+        if (appData.entities && Object.keys(appData.entities).length > 0) {
+            addMigrationLog('Saving entities...', 'info');
+            const entities = Object.values(appData.entities);
+            for (const entity of entities) {
+                try {
+                    await entityAdapter.save(entity);
+                    savedEntities++;
+                } catch (error) {
+                    addMigrationLog(`Failed to save entity ${entity.id}: ${error.message}`, 'warning');
+                }
+            }
+            addMigrationLog(`Saved ${savedEntities}/${entities.length} entities`, 'success');
+        }
+        
+        // Save boards
+        if (appData.boards && Object.keys(appData.boards).length > 0) {
+            addMigrationLog('Saving boards...', 'info');
+            const boards = Object.entries(appData.boards);
+            for (const [boardId, board] of boards) {
+                try {
+                    await boardAdapter.save({ id: boardId, ...board });
+                    savedBoards++;
+                } catch (error) {
+                    addMigrationLog(`Failed to save board ${boardId}: ${error.message}`, 'warning');
+                }
+            }
+            addMigrationLog(`Saved ${savedBoards}/${boards.length} boards`, 'success');
+        }
+        
+        // Save app metadata
+        try {
+            addMigrationLog('Saving app metadata...', 'info');
+            await appMetadataAdapter.updateAppConfig({
+                currentBoardId: appData.currentBoardId,
+                version: appData.version || '6.0'
+            });
+            addMigrationLog('App metadata saved', 'success');
+        } catch (error) {
+            addMigrationLog(`Failed to save app metadata: ${error.message}`, 'warning');
+        }
+        
+        addMigrationLog(`Data save complete: ${savedEntities} entities, ${savedBoards} boards`, 'success');
+        
+        // Handle entity positions - create position records for all entities in boards
+        addMigrationLog('Creating entity position records...', 'info');
+        try {
+            await createEntityPositionsFromBoardData();
+            addMigrationLog('Entity positions created successfully', 'success');
+        } catch (error) {
+            addMigrationLog(`Entity positions creation failed: ${error.message}`, 'warning');
+            // Don't throw - this is not critical for import success
+        }
         
         updateImportStep('save', 'completed', 'Saved');
-        addMigrationLog('Data saved to localStorage', 'success');
+        addMigrationLog('Data saved to IndexedDB with position tracking', 'success');
     } catch (error) {
+        console.error('Save step failed:', error);
         updateImportStep('save', 'error', 'Failed');
         addMigrationLog(`Save failed: ${error.message}`, 'error');
+        addMigrationLog(`Error stack: ${error.stack}`, 'error');
         throw error;
     }
     
@@ -639,6 +959,21 @@ async function performImportWithProgress(fileContent, fileName) {
         addMigrationLog(`UI update warning: ${error.message}`, 'warning');
     }
     
+    // Recover any orphaned entities (entities not positioned in any board)
+    try {
+        if (window.recoverOrphanedEntities) {
+            const recoveryResult = await window.recoverOrphanedEntities();
+            if (recoveryResult.success && recoveryResult.recoveredCount > 0) {
+                addMigrationLog(`Recovered ${recoveryResult.recoveredCount} orphaned entities to "${recoveryResult.placementLocation.rowName}" → "${recoveryResult.placementLocation.columnName}"`, 'success');
+            }
+        }
+    } catch (error) {
+        addMigrationLog(`Orphaned entity recovery warning: ${error.message}`, 'warning');
+    }
+    
+    // Clear the force completion timeout
+    clearTimeout(forceCompletion);
+    
     // Show completion actions
     const actions = document.getElementById('importActions');
     if (actions) actions.style.display = 'flex';
@@ -654,6 +989,9 @@ async function performImportWithProgress(fileContent, fileName) {
         `(Version ${importVersion} data from ${importDate})`, 
         'success'
     );
+    
+    // Force a page refresh if needed to ensure data is visible
+    addMigrationLog('Import completed successfully. Use "Refresh Page" if data is not visible.', 'success');
 }
 
 /**
@@ -815,8 +1153,31 @@ export function mergeImportedData(importedData) {
         appData.boards[finalBoardId] = importedData.boards[boardId];
     });
     
+    // Merge entities
+    if (importedData.entities) {
+        // Ensure appData.entities exists
+        if (!appData.entities || typeof appData.entities !== 'object') {
+            appData.entities = {};
+        }
+        
+        Object.keys(importedData.entities).forEach(entityId => {
+            // Only merge if entity doesn't already exist
+            if (!appData.entities[entityId]) {
+                appData.entities[entityId] = importedData.entities[entityId];
+            }
+        });
+    }
+    
     // Merge templates (avoid duplicates by name)
     if (importedData.templates) {
+        // Ensure appData.templates exists and is an array
+        if (!appData.templates || !Array.isArray(appData.templates)) {
+            appData.templates = [];
+        }
+        if (!appData.nextTemplateId) {
+            appData.nextTemplateId = 1;
+        }
+        
         importedData.templates.forEach(template => {
             const existingTemplate = appData.templates.find(t => t.name === template.name);
             if (!existingTemplate) {
@@ -828,6 +1189,11 @@ export function mergeImportedData(importedData) {
     
     // Merge weekly plans (by week key)
     if (importedData.weeklyPlans) {
+        // Ensure appData.weeklyPlans exists
+        if (!appData.weeklyPlans || typeof appData.weeklyPlans !== 'object') {
+            appData.weeklyPlans = {};
+        }
+        
         Object.keys(importedData.weeklyPlans).forEach(weekKey => {
             if (!appData.weeklyPlans[weekKey]) {
                 appData.weeklyPlans[weekKey] = importedData.weeklyPlans[weekKey];
@@ -871,11 +1237,11 @@ export function clearAllData() {
     }
     
     try {
-        // Clear localStorage
+        // Clear legacy localStorage entries (cleanup only)
         localStorage.removeItem('gridflow_data');
-        
-        // Clear any backup data
         localStorage.removeItem('gridflow_data_pre_entity_migration');
+        
+        // Note: Actual data is now stored in IndexedDB and cleared by other mechanisms
         
         // Show success message
         showStatusMessage('All data cleared successfully. Refreshing page...', 'success');

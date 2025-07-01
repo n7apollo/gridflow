@@ -308,6 +308,179 @@ class GridFlowViews extends HTMLElement {
                 </div>
             </div>
 
+            <!-- Collections Management Interface -->
+            <div class="collections-container card bg-base-100 shadow-lg p-4 mt-4 hidden" id="collectionsContainer">
+                <div class="collections-header mb-4">
+                    <div class="collections-controls flex flex-wrap gap-2 items-end">
+                        <div class="form-control">
+                            <label class="label" for="collectionsSearch">Search Collections:</label>
+                            <input type="text" id="collectionsSearch" placeholder="Search by name or description..." 
+                                   class="input input-bordered w-64" data-action="searchCollections">
+                        </div>
+                        <div class="form-control">
+                            <label class="label" for="collectionTypeFilter">Type:</label>
+                            <select id="collectionTypeFilter" data-action="filterCollectionsByType" class="select select-bordered min-w-[8rem]">
+                                <option value="">All Types</option>
+                                <option value="saved_search">Saved Search</option>
+                                <option value="manual">Manual</option>
+                                <option value="smart">Smart</option>
+                            </select>
+                        </div>
+                        <div class="form-control">
+                            <label class="label" for="collectionCategoryFilter">Category:</label>
+                            <select id="collectionCategoryFilter" data-action="filterCollectionsByCategory" class="select select-bordered min-w-[8rem]">
+                                <option value="">All Categories</option>
+                                <option value="productivity">Productivity</option>
+                                <option value="work">Work</option>
+                                <option value="personal">Personal</option>
+                                <option value="time">Time</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" data-action="showCreateCollectionModal">
+                            <i data-lucide="folder-plus"></i> Create Collection
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Collections Grid -->
+                <div class="collections-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4" id="collectionsGrid">
+                    <!-- Collection cards will be populated here -->
+                </div>
+
+                <!-- Collection Detail Panel (Initially Hidden) -->
+                <div class="collection-detail-panel card bg-base-200 p-4 mt-4 hidden" id="collectionDetailPanel">
+                    <div class="collection-detail-header flex items-center justify-between mb-4">
+                        <h3 class="text-xl font-bold" id="collectionDetailName">Collection Name</h3>
+                        <div class="collection-detail-actions flex gap-2">
+                            <button class="btn btn-sm btn-secondary" data-action="editCollection" id="editCollectionBtn">
+                                <i data-lucide="edit"></i> Edit
+                            </button>
+                            <button class="btn btn-sm btn-error" data-action="deleteCollection" id="deleteCollectionBtn">
+                                <i data-lucide="trash-2"></i> Delete
+                            </button>
+                            <button class="btn btn-sm btn-neutral" data-action="closeCollectionDetail">
+                                <i data-lucide="x"></i> Close
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Collection Info -->
+                    <div class="collection-info mb-4">
+                        <div class="collection-description text-sm mb-2" id="collectionDescription"></div>
+                        <div class="collection-metadata flex gap-4 text-sm text-gray-500">
+                            <span id="collectionType"></span>
+                            <span id="collectionCategory"></span>
+                            <span id="collectionItemCount"></span>
+                            <span id="collectionLastUpdated"></span>
+                        </div>
+                    </div>
+
+                    <!-- Collection Items -->
+                    <div class="collection-items">
+                        <div class="items-header flex items-center justify-between mb-2">
+                            <h4 class="font-semibold">Items</h4>
+                            <button class="btn btn-sm btn-primary" data-action="refreshCollectionItems">
+                                <i data-lucide="refresh-cw"></i> Refresh
+                            </button>
+                        </div>
+                        <div class="items-content space-y-2 max-h-96 overflow-y-auto" id="collectionItems">
+                            <!-- Collection items will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tags Management Interface -->
+            <div class="tags-container card bg-base-100 shadow-lg p-4 mt-4 hidden" id="tagsContainer">
+                <div class="tags-header mb-4">
+                    <div class="tags-controls flex flex-wrap gap-2 items-end">
+                        <div class="form-control">
+                            <label class="label" for="tagsSearch">Search Tags:</label>
+                            <input type="text" id="tagsSearch" placeholder="Search by name or description..." 
+                                   class="input input-bordered w-64" data-action="searchTags">
+                        </div>
+                        <div class="form-control">
+                            <label class="label" for="tagCategoryFilter">Category:</label>
+                            <select id="tagCategoryFilter" data-action="filterTagsByCategory" class="select select-bordered min-w-[8rem]">
+                                <option value="">All Categories</option>
+                                <option value="work">Work</option>
+                                <option value="personal">Personal</option>
+                                <option value="priority">Priority</option>
+                                <option value="general">General</option>
+                                <option value="action">Action</option>
+                            </select>
+                        </div>
+                        <div class="form-control">
+                            <label class="label" for="tagSortBy">Sort by:</label>
+                            <select id="tagSortBy" data-action="sortTags" class="select select-bordered min-w-[8rem]">
+                                <option value="usage">Usage</option>
+                                <option value="name">Name</option>
+                                <option value="created">Created</option>
+                                <option value="updated">Updated</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" data-action="showCreateTagModal">
+                            <i data-lucide="tag"></i> Create Tag
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tags Grid -->
+                <div class="tags-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4" id="tagsGrid">
+                    <!-- Tag cards will be populated here -->
+                </div>
+
+                <!-- Tag Detail Panel (Initially Hidden) -->
+                <div class="tag-detail-panel card bg-base-200 p-4 mt-4 hidden" id="tagDetailPanel">
+                    <div class="tag-detail-header flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-2">
+                            <div class="tag-color-indicator w-4 h-4 rounded-full" id="tagDetailColorIndicator"></div>
+                            <h3 class="text-xl font-bold" id="tagDetailName">Tag Name</h3>
+                        </div>
+                        <div class="tag-detail-actions flex gap-2">
+                            <button class="btn btn-sm btn-secondary" data-action="editTag" id="editTagBtn">
+                                <i data-lucide="edit"></i> Edit
+                            </button>
+                            <button class="btn btn-sm btn-error" data-action="deleteTag" id="deleteTagBtn">
+                                <i data-lucide="trash-2"></i> Delete
+                            </button>
+                            <button class="btn btn-sm btn-neutral" data-action="closeTagDetail">
+                                <i data-lucide="x"></i> Close
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tag Info -->
+                    <div class="tag-info mb-4">
+                        <div class="tag-description text-sm mb-2" id="tagDescription"></div>
+                        <div class="tag-metadata flex gap-4 text-sm text-gray-500">
+                            <span id="tagCategory"></span>
+                            <span id="tagUsageCount"></span>
+                            <span id="tagCreatedAt"></span>
+                        </div>
+                    </div>
+
+                    <!-- Tagged Entities -->
+                    <div class="tagged-entities">
+                        <div class="entities-header flex items-center justify-between mb-2">
+                            <h4 class="font-semibold">Tagged Items</h4>
+                            <div class="entities-filters flex gap-2">
+                                <select id="taggedEntitiesTypeFilter" class="select select-sm select-bordered">
+                                    <option value="">All Types</option>
+                                    <option value="task">Tasks</option>
+                                    <option value="note">Notes</option>
+                                    <option value="checklist">Checklists</option>
+                                    <option value="project">Projects</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="entities-content space-y-2 max-h-96 overflow-y-auto" id="taggedEntities">
+                            <!-- Tagged entities will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Weekly Planning Interface -->
             <div class="weekly-container card bg-base-100 shadow-lg p-4 mt-4 hidden" id="weeklyContainer">
                 <div class="weekly-header mb-4">

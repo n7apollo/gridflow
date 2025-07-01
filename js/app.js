@@ -1,6 +1,6 @@
 /**
- * GridFlow - Main Application Module
- * Coordinates module loading and initialization
+ * GridFlow - Main Application Module (IndexedDB-Only)
+ * Coordinates module loading and initialization with IndexedDB as exclusive data source
  */
 
 import * as utilities from './utilities.js';
@@ -24,242 +24,333 @@ import * as subtaskManagement from './subtask-management.js';
 import * as entitySystem from './entity-system.js';
 import * as entityCore from './entity-core.js';
 import * as entityRenderer from './entity-renderer.js';
-import * as entityMigration from './entity-migration.js';
 import * as entitySync from './entity-sync.js';
 import * as dataMigration from './data-migration.js';
 import * as dragDrop from './drag-drop.js';
-import * as cloudSync from './cloud-sync.js';
-import * as syncUI from './sync-ui.js';
+// Cloud sync disabled - no longer using jsonstorage.net
+// import * as cloudSync from './cloud-sync.js';
+// import * as syncUI from './sync-ui.js';
 
 // Debug tools for development
 import './debug-data-source.js';
 
-// People System (Phase 3)
+// People System
 import peopleService from './people-service.js';
 import * as peopleView from './people-view.js';
 
-// IndexedDB infrastructure (Phase 1 & 2)
-import featureFlags, { FLAGS } from './feature-flags.js';
+// Collections and Tags System
+import * as collectionsView from './collections-view.js';
+import * as tagsView from './tags-view.js';
+
+// IndexedDB infrastructure (IndexedDB-only)
 import database from './indexeddb/database.js';
-import testRunner from './indexeddb/test-runner.js';
-import dualWriteService from './indexeddb/dual-writer.js';
-import dataValidator from './indexeddb/validator.js';
-import migrationService from './indexeddb/migration-service.js';
-import entityIndexedDBService from './indexeddb/entity-indexeddb-service.js';
-import * as enhancedEntityCore from './indexeddb/entity-core-enhanced.js';
-import * as indexedDBFirstEntityCore from './indexeddb/entity-core-indexeddb-first.js';
-import * as entityCoreSwitcher from './indexeddb/entity-core-switcher.js';
+import { entityAdapter, boardAdapter, appMetadataAdapter } from './indexeddb/adapters.js';
 
 // Initialize the application
 async function initializeGridFlow() {
-    // Make modules available globally for backward compatibility
-    window.utilities = utilities;
-    window.coreData = coreData;
-    window.navigation = navigation;
-    window.boardManagement = boardManagement;
-    window.boardRendering = boardRendering;
-    window.taskManagement = taskManagement;
-    window.weeklyPlanning = weeklyPlanning;
-    window.templateSystem = templateSystem;
-    window.templateLibrary = templateLibrary;
-    window.importExport = importExport;
-    window.searchSystem = searchSystem;
-    window.taggingSystem = taggingSystem;
-    window.collections = collections;
-    window.cardOperations = cardOperations;
-    window.rowOperations = rowOperations;
-    window.columnOperations = columnOperations;
-    window.groupOperations = groupOperations;
-    window.subtaskManagement = subtaskManagement;
-    window.entitySystem = entitySystem;
-    window.entityCore = entityCore;
-    window.entityRenderer = entityRenderer;
-    window.entityMigration = entityMigration;
-    window.entitySync = entitySync;
-    window.dataMigration = dataMigration;
-    window.dragDrop = dragDrop;
-    window.cloudSync = cloudSync.cloudSync; // Export the instance
-    window.syncUI = syncUI;
-    
-    // Make People System available globally
-    window.peopleService = peopleService;
-    window.peopleView = peopleView;
-    window.switchToPeopleView = peopleView.switchToPeopleView;
-    
-    // Make IndexedDB infrastructure available globally
-    window.featureFlags = featureFlags;
-    window.FLAGS = FLAGS;
-    window.gridFlowDB = database;
-    window.indexedDBTests = testRunner;
-    window.dualWriteService = dualWriteService;
-    window.dataValidator = dataValidator;
-    window.migrationService = migrationService;
-    window.entityIndexedDBService = entityIndexedDBService;
-    window.enhancedEntityCore = enhancedEntityCore;
-    window.indexedDBFirstEntityCore = indexedDBFirstEntityCore;
-    window.entityCoreSwitcher = entityCoreSwitcher;
-    
-    // Initialize IndexedDB if enabled
-    if (featureFlags.isEnabled(FLAGS.INDEXEDDB_ENABLED)) {
-        try {
-            console.log('🗄️ Initializing IndexedDB infrastructure...');
-            await database.init();
-            console.log('✅ IndexedDB initialized successfully');
-            
-            // Run basic tests in development
-            if (featureFlags.isEnabled(FLAGS.PERFORMANCE_MONITORING)) {
-                console.log('🧪 Running IndexedDB infrastructure tests...');
-                const testResults = await testRunner.runAllTests();
-                if (testResults.failed > 0) {
-                    utilities.showStatusMessage(
-                        `IndexedDB tests failed: ${testResults.failed}/${testResults.total}`, 
-                        'warning'
-                    );
-                }
-            }
-            
-            // Initialize entity core switcher (Phase 2.2)
-            console.log('🔄 Initializing entity core switcher...');
-            entityCoreSwitcher.autoSwitch();
-            const implementationInfo = entityCoreSwitcher.getImplementationInfo();
-            console.log(`✅ Entity core implementation: ${implementationInfo.current}`);
-            
-            // Check if we need to migrate existing data to IndexedDB
-            console.log('🔍 Checking if IndexedDB migration is needed...');
-            const needsMigration = await checkIfMigrationNeeded();
-            if (needsMigration) {
-                console.log('📦 Starting automatic migration to IndexedDB...');
-                try {
-                    const migrationResult = await migrationService.migrateFromLocalStorage();
-                    console.log('✅ Migration completed successfully:', migrationResult);
-                    utilities.showStatusMessage(
-                        `Migrated ${migrationResult.entitiesMigrated} entities and ${migrationResult.boardsMigrated} boards to IndexedDB`, 
-                        'success'
-                    );
-                } catch (migrationError) {
-                    console.error('❌ Migration failed:', migrationError);
-                    utilities.showStatusMessage('IndexedDB migration failed, continuing with localStorage', 'warning');
-                }
-            } else {
-                console.log('✅ No migration needed - IndexedDB already has data or localStorage is empty');
-            }
-        } catch (error) {
-            console.error('Failed to initialize IndexedDB:', error);
-            featureFlags.disable(FLAGS.INDEXEDDB_ENABLED);
-            utilities.showStatusMessage('IndexedDB failed to initialize, using localStorage only', 'warning');
-        }
-    }
-    
-    // Load data first
-    await coreData.loadData();
-    
-    // Check if entity migration is needed
-    if (entityMigration.isMigrationNeeded()) {
-        console.log('Entity migration needed, starting migration...');
-        const migrationResult = entityMigration.migrateToEntitySystem();
-        console.log('Migration completed:', migrationResult);
+    try {
+        console.log('🚀 Initializing GridFlow (IndexedDB-Only Architecture)...');
         
-        // Show migration status to user
-        const status = entityMigration.getMigrationStatus();
-        utilities.showStatusMessage(
-            `Migration completed: ${status.entities.total} entities, ${status.cards.migrated} cards migrated`, 
-            'success'
-        );
-    } else {
-        console.log('Entity system already up to date');
+        // Initialize IndexedDB first (required for all operations)
+        console.log('🗄️ Initializing IndexedDB database...');
+        await database.init();
+        console.log('✅ IndexedDB initialized successfully');
+        
+        // Make modules available globally for backward compatibility
+        window.utilities = utilities;
+        window.coreData = coreData;
+        window.navigation = navigation;
+        window.boardManagement = boardManagement;
+        window.boardRendering = boardRendering;
+        window.taskManagement = taskManagement;
+        window.weeklyPlanning = weeklyPlanning;
+        window.templateSystem = templateSystem;
+        window.templateLibrary = templateLibrary;
+        window.importExport = importExport;
+        window.searchSystem = searchSystem;
+        window.taggingSystem = taggingSystem;
+        window.collections = collections;
+        window.cardOperations = cardOperations;
+        window.rowOperations = rowOperations;
+        window.columnOperations = columnOperations;
+        window.groupOperations = groupOperations;
+        window.subtaskManagement = subtaskManagement;
+        window.entitySystem = entitySystem;
+        window.entityCore = entityCore;
+        window.entityRenderer = entityRenderer;
+        window.entitySync = entitySync;
+        window.dataMigration = dataMigration;
+        window.dragDrop = dragDrop;
+        // Cloud sync disabled
+        // window.cloudSync = cloudSync.cloudSync; // Export the instance
+        // window.syncUI = syncUI;
+        
+        // Make People System available globally
+        window.peopleService = peopleService;
+        window.peopleView = peopleView;
+        window.switchToPeopleView = peopleView.switchToPeopleView;
+        
+        // Make IndexedDB adapters available globally for debugging
+        window.gridFlowDB = database;
+        window.entityAdapter = entityAdapter;
+        window.boardAdapter = boardAdapter;
+        window.appMetadataAdapter = appMetadataAdapter;
+        
+        // Load application data from IndexedDB
+        console.log('📊 Loading application data from IndexedDB...');
+        await coreData.loadData();
+        console.log('✅ Application data loaded successfully');
+        
+        // Cloud sync disabled - no longer using jsonstorage.net
+        // console.log('☁️ Initializing cloud sync...');
+        // await cloudSync.cloudSync.initialize();
+        // console.log('✅ Cloud sync initialized');
+        
+        // Initialize entity synchronization system
+        console.log('🔄 Initializing entity synchronization...');
+        entitySync.initializeEntitySync();
+        
+        // Initialize utilities (will handle missing DOM elements gracefully)
+        console.log('⚙️ Setting up event listeners...');
+        utilities.setupEventListeners();
+        
+        // Initialize board management
+        console.log('📋 Initializing board management...');
+        boardManagement.updateBoardTitle();
+        boardManagement.updateCurrentBoardDisplay();
+        
+        // Initialize weekly planning
+        console.log('📅 Initializing weekly planning...');
+        weeklyPlanning.initializeWeeklyPlanning();
+        weeklyPlanning.initializeWeeklyEventListeners();
+        
+        // Initialize templates (populate defaults if needed)
+        console.log('📄 Initializing template system...');
+        templateSystem.populateDefaultTemplates();
+        
+        // Initialize template library (populate sample templates if needed)
+        templateLibrary.initializeSampleTemplates();
+        
+        // Initialize collections (populate defaults if needed)
+        collections.initializeSampleCollections();
+        
+        // Initialize cloud sync (load settings and start auto-sync if enabled)
+        if (window.cloudSync) {
+            console.log('☁️ Initializing cloud sync...');
+            window.cloudSync.loadSyncSettings();
+            console.log('✅ Cloud sync initialized');
+        }
+        
+        // Verify data integrity
+        await verifyDataIntegrity();
+        
+        // Signal that app initialization is complete
+        window.appInitialized = true;
+        window.dispatchEvent(new CustomEvent('gridflow-app-initialized'));
+        console.log('🎉 GridFlow app initialization complete (IndexedDB-Only)');
+        
+    } catch (error) {
+        console.error('❌ Failed to initialize GridFlow:', error);
+        utilities.showStatusMessage('Failed to initialize app. Please refresh the page.', 'error');
+        throw error;
     }
-    
-    // Initialize entity synchronization system
-    entitySync.initializeEntitySync();
-    
-    // Initialize utilities (will now handle missing DOM elements gracefully)
-    utilities.setupEventListeners();
-    
-    // Initialize navigation system (will be called by component loader)
-    // navigation.initializeNavigation();
-    
-    // Initialize board management
-    boardManagement.updateBoardTitle();
-    boardManagement.updateCurrentBoardDisplay();
-    
-    // Initialize weekly planning
-    weeklyPlanning.initializeWeeklyPlanning();
-    weeklyPlanning.initializeWeeklyEventListeners();
-    
-    // Initialize templates (populate defaults if needed)
-    templateSystem.populateDefaultTemplates();
-    
-    // Initialize template library (populate sample templates if needed)
-    templateLibrary.initializeSampleTemplates();
-    
-    // Initialize collections (populate defaults if needed)
-    collections.initializeSampleCollections();
-    
-    // Initialize cloud sync (load settings and start auto-sync if enabled)
-    if (window.cloudSync) {
-        window.cloudSync.loadSyncSettings();
-        console.log('Cloud sync initialized');
-    }
-    
-    // Signal that app initialization is complete
-    window.appInitialized = true;
-    window.dispatchEvent(new CustomEvent('gridflow-app-initialized'));
-    console.log('🚀 GridFlow app initialization complete');
-    
-    // Update UI (will be called by navigation after components are ready)
-    // if (window.renderBoard) window.renderBoard();
-    // if (window.updateSettingsUI) window.updateSettingsUI();
 }
 
 /**
- * Check if IndexedDB migration is needed
- * @returns {Promise<boolean>} True if migration is needed
+ * Verify data integrity in IndexedDB
  */
-async function checkIfMigrationNeeded() {
+async function verifyDataIntegrity() {
     try {
-        // Get current data counts
-        const appData = coreData.getAppData();
-        const localStorageEntityCount = Object.keys(appData.entities || {}).length;
-        const localStorageBoardCount = Object.keys(appData.boards || {}).length;
+        console.log('🔍 Verifying data integrity...');
         
-        // If localStorage is empty, no migration needed
-        if (localStorageEntityCount === 0 && localStorageBoardCount === 0) {
-            return false;
+        // Get data counts
+        const entities = await entityAdapter.getAll();
+        const boards = await boardAdapter.getAll();
+        const appConfig = await appMetadataAdapter.getAppConfig();
+        
+        console.log(`📊 Data verification: ${entities.length} entities, ${boards.length} boards, version ${appConfig.version}`);
+        
+        // Verify at least one board exists
+        if (boards.length === 0) {
+            console.log('⚠️ No boards found, sample data should be created during loadData()');
         }
         
-        // Check if IndexedDB already has data
-        const indexedDBEntities = await entityIndexedDBService.getAllEntities();
-        const indexedDBBoards = await entityIndexedDBService.getAllBoards();
-        const indexedDBEntityCount = indexedDBEntities.length;
-        const indexedDBBoardCount = indexedDBBoards.length;
-        
-        // Migration needed if localStorage has significantly more data than IndexedDB
-        const entityDifference = localStorageEntityCount - indexedDBEntityCount;
-        const boardDifference = localStorageBoardCount - indexedDBBoardCount;
-        
-        // Consider migration needed if there's a significant difference (more than 5 entities or any board difference)
-        const needsMigration = entityDifference > 5 || boardDifference > 0;
-        
-        if (needsMigration) {
-            console.log(`Migration needed: localStorage has ${localStorageEntityCount} entities vs IndexedDB ${indexedDBEntityCount} entities (diff: ${entityDifference}), localStorage has ${localStorageBoardCount} boards vs IndexedDB ${indexedDBBoardCount} boards (diff: ${boardDifference})`);
-            return true;
-        } else {
-            console.log(`No migration needed: Data appears synchronized (localStorage: ${localStorageEntityCount} entities, IndexedDB: ${indexedDBEntityCount} entities)`);
-            return false;
+        // Verify app config is valid
+        if (!appConfig.currentBoardId) {
+            console.warn('⚠️ No current board ID set in app config');
         }
+        
+        // Check for orphaned entities (entities not referenced in any board)
+        let orphanedEntities = 0;
+        const referencedEntityIds = new Set();
+        
+        boards.forEach(board => {
+            board.rows?.forEach(row => {
+                if (row.cards) {
+                    Object.values(row.cards).forEach(cardList => {
+                        cardList.forEach(entityId => {
+                            if (typeof entityId === 'string' && entityId.includes('_')) {
+                                referencedEntityIds.add(entityId);
+                            }
+                        });
+                    });
+                }
+            });
+        });
+        
+        entities.forEach(entity => {
+            if (!referencedEntityIds.has(entity.id)) {
+                orphanedEntities++;
+            }
+        });
+        
+        if (orphanedEntities > 0) {
+            console.log(`ℹ️ Found ${orphanedEntities} orphaned entities (not referenced in any board)`);
+            
+            // Automatically recover orphaned entities
+            const recoveryResult = await coreData.recoverOrphanedEntities();
+            if (recoveryResult.success) {
+                console.log(`🔧 ${recoveryResult.message}`);
+            } else {
+                console.warn(`⚠️ Entity recovery failed: ${recoveryResult.error}`);
+            }
+        }
+        
+        console.log('✅ Data integrity verification complete');
         
     } catch (error) {
-        console.error('Error checking migration need:', error);
-        // On error, be conservative and don't migrate
-        return false;
+        console.error('❌ Data integrity verification failed:', error);
+        // Don't throw - this is just a diagnostic
+    }
+}
+
+/**
+ * Get application health status
+ * @returns {Promise<Object>} Health status information
+ */
+async function getAppHealthStatus() {
+    try {
+        const entities = await entityAdapter.getAll();
+        const boards = await boardAdapter.getAll();
+        const appConfig = await appMetadataAdapter.getAppConfig();
+        const dbInfo = database.getInfo();
+        
+        return {
+            healthy: true,
+            version: appConfig.version,
+            database: {
+                name: dbInfo.name,
+                version: dbInfo.version,
+                stores: dbInfo.objectStoreNames
+            },
+            data: {
+                entities: entities.length,
+                boards: boards.length,
+                currentBoardId: appConfig.currentBoardId
+            },
+            features: {
+                peopleSystem: !!window.peopleService,
+                cloudSync: !!window.cloudSync,
+                weeklyPlanning: !!window.weeklyPlanning
+            }
+        };
+        
+    } catch (error) {
+        return {
+            healthy: false,
+            error: error.message,
+            timestamp: new Date().toISOString()
+        };
+    }
+}
+
+/**
+ * Emergency data recovery function
+ * @returns {Promise<Object>} Recovery status
+ */
+async function emergencyDataRecovery() {
+    try {
+        console.log('🚨 Starting emergency data recovery...');
+        
+        // Try to load from IndexedDB
+        const entities = await entityAdapter.getAll();
+        const boards = await boardAdapter.getAll();
+        
+        if (boards.length === 0) {
+            console.log('📋 No boards found, creating default board...');
+            await coreData.initializeSampleData();
+        }
+        
+        // Verify app config
+        const appConfig = await appMetadataAdapter.getAppConfig();
+        if (!appConfig.currentBoardId) {
+            const firstBoard = boards[0] || { id: 'default' };
+            await appMetadataAdapter.setCurrentBoardId(firstBoard.id);
+            console.log(`📌 Set current board to ${firstBoard.id}`);
+        }
+        
+        // Reload app data
+        await coreData.loadData();
+        
+        console.log('✅ Emergency data recovery completed');
+        return {
+            success: true,
+            entitiesRecovered: entities.length,
+            boardsRecovered: boards.length
+        };
+        
+    } catch (error) {
+        console.error('❌ Emergency data recovery failed:', error);
+        return {
+            success: false,
+            error: error.message
+        };
     }
 }
 
 // Initialize immediately for global scope setup
 document.addEventListener('DOMContentLoaded', initializeGridFlow);
 
-// Make initialization function available for component loader
+// Make functions available globally
 window.initializeGridFlow = initializeGridFlow;
+window.getAppHealthStatus = getAppHealthStatus;
+window.emergencyDataRecovery = emergencyDataRecovery;
+
+// Manual entity recovery function for debugging
+window.recoverOrphanedEntities = async () => {
+    const result = await coreData.recoverOrphanedEntities();
+    console.log('Recovery result:', result);
+    if (result.success && window.renderBoard) {
+        window.renderBoard(); // Re-render the board to show recovered entities
+    }
+    return result;
+};
 
 // Export for potential external use
-export { utilities, coreData, navigation, boardManagement, boardRendering, taskManagement, weeklyPlanning, templateSystem, templateLibrary, importExport, searchSystem, taggingSystem, collections, cardOperations, rowOperations, columnOperations, groupOperations, subtaskManagement, entitySystem, dataMigration, dragDrop, peopleService, peopleView };
+export { 
+    utilities, 
+    coreData, 
+    navigation, 
+    boardManagement, 
+    boardRendering, 
+    taskManagement, 
+    weeklyPlanning, 
+    templateSystem, 
+    templateLibrary, 
+    importExport, 
+    searchSystem, 
+    taggingSystem, 
+    collections, 
+    cardOperations, 
+    rowOperations, 
+    columnOperations, 
+    groupOperations, 
+    subtaskManagement, 
+    entitySystem, 
+    dataMigration, 
+    dragDrop, 
+    peopleService, 
+    peopleView,
+    getAppHealthStatus,
+    emergencyDataRecovery
+};

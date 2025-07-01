@@ -320,10 +320,17 @@ function closeMobileMenu() {
 // ============================================
 
 function initializeEnhancedNavigation() {
-    // Update current board display
-    if (window.updateCurrentBoardDisplay) {
+    // Update current board display (only if data is ready)
+    if (window.updateCurrentBoardDisplay && window.appData && window.appData.boards) {
         window.updateCurrentBoardDisplay();
     }
+    
+    // Listen for data loaded event to update board display
+    window.addEventListener('gridflow-data-loaded', () => {
+        if (window.updateCurrentBoardDisplay) {
+            window.updateCurrentBoardDisplay();
+        }
+    });
     
     // Add click outside listeners to close dropdowns
     document.addEventListener('click', function(event) {
@@ -333,15 +340,15 @@ function initializeEnhancedNavigation() {
         
         // Close board dropdown if clicked outside
         if (boardSelector && !boardSelector.contains(event.target)) {
-            if (window.navigation?.closeBoardDropdown) {
-                window.navigation.closeBoardDropdown();
+            if (window.closeBoardDropdown) {
+                window.closeBoardDropdown();
             }
         }
         
         // Close templates dropdown if clicked outside
         if (templatesMenu && !templatesMenu.contains(event.target)) {
-            if (window.navigation?.closeTemplatesMenu) {
-                window.navigation.closeTemplatesMenu();
+            if (window.closeTemplatesMenu) {
+                window.closeTemplatesMenu();
             }
         }
         

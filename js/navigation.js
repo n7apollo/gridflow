@@ -11,8 +11,8 @@ import { showStatusMessage } from './utilities.js';
 // ============================================
 
 /**
- * Switch between different views (board, tasks, weekly)
- * @param {string} view - View to switch to ('board', 'tasks', 'weekly')
+ * Switch between different views (board, tasks, weekly, people, collections, tags)
+ * @param {string} view - View to switch to ('board', 'tasks', 'weekly', 'people', 'collections', 'tags')
  */
 export function switchToView(view) {
     // Hide all containers using CSS classes
@@ -20,11 +20,15 @@ export function switchToView(view) {
     const taskContainer = document.getElementById('taskContainer');
     const weeklyContainer = document.getElementById('weeklyContainer');
     const peopleContainer = document.getElementById('peopleContainer');
+    const collectionsContainer = document.getElementById('collectionsContainer');
+    const tagsContainer = document.getElementById('tagsContainer');
     
     if (boardContainer) boardContainer.classList.add('hidden');
     if (taskContainer) taskContainer.classList.add('hidden');
     if (weeklyContainer) weeklyContainer.classList.add('hidden');
     if (peopleContainer) peopleContainer.classList.add('hidden');
+    if (collectionsContainer) collectionsContainer.classList.add('hidden');
+    if (tagsContainer) tagsContainer.classList.add('hidden');
     
     // Remove active class from all view buttons (header) - check if they exist
     const boardViewBtn = document.getElementById('boardViewBtn');
@@ -79,6 +83,16 @@ export function switchToView(view) {
         const sidebarPeopleView = document.getElementById('sidebarPeopleView');
         if (sidebarPeopleView) sidebarPeopleView.classList.add('active');
         if (window.switchToPeopleView) window.switchToPeopleView();
+    } else if (view === 'collections') {
+        if (collectionsContainer) collectionsContainer.classList.remove('hidden');
+        const sidebarCollectionsView = document.getElementById('sidebarCollectionsView');
+        if (sidebarCollectionsView) sidebarCollectionsView.classList.add('active');
+        if (window.initializeCollectionsView) window.initializeCollectionsView();
+    } else if (view === 'tags') {
+        if (tagsContainer) tagsContainer.classList.remove('hidden');
+        const sidebarTagsView = document.getElementById('sidebarTagsView');
+        if (sidebarTagsView) sidebarTagsView.classList.add('active');
+        if (window.initializeTagsView) window.initializeTagsView();
     }
 }
 
@@ -352,13 +366,15 @@ export function hideSettings() {
 
 /**
  * Get current active view
- * @returns {string} Current view ('board', 'tasks', 'weekly')
+ * @returns {string} Current view ('board', 'tasks', 'weekly', 'people', 'collections', 'tags')
  */
 export function getCurrentView() {
     const boardContainer = document.getElementById('boardContainer');
     const taskContainer = document.getElementById('taskContainer');
     const weeklyContainer = document.getElementById('weeklyContainer');
     const peopleContainer = document.getElementById('peopleContainer');
+    const collectionsContainer = document.getElementById('collectionsContainer');
+    const tagsContainer = document.getElementById('tagsContainer');
     
     if (boardContainer && !boardContainer.classList.contains('hidden')) {
         return 'board';
@@ -368,6 +384,10 @@ export function getCurrentView() {
         return 'weekly';
     } else if (peopleContainer && !peopleContainer.classList.contains('hidden')) {
         return 'people';
+    } else if (collectionsContainer && !collectionsContainer.classList.contains('hidden')) {
+        return 'collections';
+    } else if (tagsContainer && !tagsContainer.classList.contains('hidden')) {
+        return 'tags';
     }
     return 'board'; // default
 }

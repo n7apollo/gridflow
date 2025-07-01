@@ -5,9 +5,7 @@
 
 import { createEntity, updateEntity, deleteEntity, getEntity, ENTITY_TYPES } from './entity-core.js';
 import { getAppData } from './core-data.js';
-import entityIndexedDBService from './indexeddb/entity-indexeddb-service.js';
 import { peopleAdapter, relationshipAdapter } from './indexeddb/adapters.js';
-import featureFlags, { FLAGS } from './feature-flags.js';
 
 class PeopleService {
   /**
@@ -23,17 +21,7 @@ class PeopleService {
       name: personData.name || personData.title
     };
 
-    const person = createEntity(ENTITY_TYPES.PERSON, enrichedData);
-    
-    // Also save to IndexedDB if enabled
-    if (featureFlags.isEnabled(FLAGS.INDEXEDDB_ENABLED)) {
-      try {
-        await entityIndexedDBService.saveEntity(person);
-        await peopleAdapter.save(person);
-      } catch (error) {
-        console.warn('Failed to save person to IndexedDB:', error);
-      }
-    }
+    const person = await createEntity(ENTITY_TYPES.PERSON, enrichedData);
     
     console.log('Created person:', person);
     return person;
@@ -58,17 +46,7 @@ class PeopleService {
       updates.name = updates.title;
     }
 
-    const updatedPerson = updateEntity(personId, updates);
-    
-    // Also update in IndexedDB if enabled
-    if (featureFlags.isEnabled(FLAGS.INDEXEDDB_ENABLED)) {
-      try {
-        await entityIndexedDBService.saveEntity(updatedPerson);
-        await peopleAdapter.save(updatedPerson);
-      } catch (error) {
-        console.warn('Failed to update person in IndexedDB:', error);
-      }
-    }
+    const updatedPerson = await updateEntity(personId, updates);
     
     return updatedPerson;
   }
@@ -83,16 +61,7 @@ class PeopleService {
     await this.removeAllRelationships(personId);
     
     // Delete the person entity
-    const success = deleteEntity(personId);
-    
-    // Also delete from IndexedDB if enabled
-    if (featureFlags.isEnabled(FLAGS.INDEXEDDB_ENABLED)) {
-      try {
-        await peopleAdapter.delete(personId);
-      } catch (error) {
-        console.warn('Failed to delete person from IndexedDB:', error);
-      }
-    }
+    const success = await deleteEntity(personId);
     
     return success;
   }
@@ -147,37 +116,13 @@ class PeopleService {
       lastInteraction: new Date().toISOString()
     });
 
-    // Create relationship in IndexedDB if enabled
-    if (featureFlags.isEnabled(FLAGS.INDEXEDDB_ENABLED)) {
-      try {
-        return await relationshipAdapter.createRelationship(entityId, personId, relationshipType, context);
-      } catch (error) {
-        console.warn('Failed to create relationship in IndexedDB:', error);
-      }
+    // Create relationship in IndexedDB
+    try {
+      return await relationshipAdapter.createRelationship(entityId, personId, relationshipType, context);
+    } catch (error) {
+      console.error('Failed to create relationship in IndexedDB:', error);
+      throw error;
     }
-
-    // Fallback: create relationship in memory
-    const relationship = {
-      id: `rel_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      entityId,
-      relatedId: personId,
-      relationshipType,
-      context,
-      createdAt: new Date().toISOString()
-    };
-
-    // Store in appData relationships (for localStorage compatibility)
-    const appData = getAppData();
-    if (!appData.relationships) {
-      appData.relationships = {};
-    }
-    if (!appData.relationships.entityPeople) {
-      appData.relationships.entityPeople = {};
-    }
-    
-    appData.relationships.entityPeople[relationship.id] = relationship;
-    
-    return relationship;
   }
 
   /**
@@ -187,27 +132,12 @@ class PeopleService {
    * @returns {boolean} Success status
    */
   async removeRelationship(entityId, personId) {
-    if (featureFlags.isEnabled(FLAGS.INDEXEDDB_ENABLED)) {
-      try {
-        return await relationshipAdapter.removeRelationship(entityId, personId);
-      } catch (error) {
-        console.warn('Failed to remove relationship from IndexedDB:', error);
-      }
+    try {
+      return await relationshipAdapter.removeRelationship(entityId, personId);
+    } catch (error) {
+      console.error('Failed to remove relationship from IndexedDB:', error);
+      throw error;
     }
-
-    // Fallback: remove from localStorage
-    const appData = getAppData();
-    const relationships = appData.relationships?.entityPeople || {};
-    
-    let removed = false;
-    for (const [id, rel] of Object.entries(relationships)) {
-      if (rel.entityId === entityId && rel.relatedId === personId) {
-        delete relationships[id];
-        removed = true;
-      }
-    }
-    
-    return removed;
   }
 
   /**
@@ -216,31 +146,16 @@ class PeopleService {
    * @returns {number} Number of relationships removed
    */
   async removeAllRelationships(personId) {
-    if (featureFlags.isEnabled(FLAGS.INDEXEDDB_ENABLED)) {
-      try {
-        const relationships = await relationshipAdapter.getByRelated(personId);
-        for (const rel of relationships) {
-          await relationshipAdapter.delete(rel.id);
-        }
-        return relationships.length;
-      } catch (error) {
-        console.warn('Failed to remove relationships from IndexedDB:', error);
+    try {
+      const relationships = await relationshipAdapter.getByRelated(personId);
+      for (const rel of relationships) {
+        await relationshipAdapter.delete(rel.id);
       }
+      return relationships.length;
+    } catch (error) {
+      console.error('Failed to remove relationships from IndexedDB:', error);
+      throw error;
     }
-
-    // Fallback: remove from localStorage
-    const appData = getAppData();
-    const relationships = appData.relationships?.entityPeople || {};
-    
-    let removedCount = 0;
-    for (const [id, rel] of Object.entries(relationships)) {
-      if (rel.relatedId === personId) {
-        delete relationships[id];
-        removedCount++;
-      }
-    }
-    
-    return removedCount;
   }
 
   /**
@@ -249,22 +164,13 @@ class PeopleService {
    * @returns {Array} Array of related entities with relationship context
    */
   async getPersonTimeline(personId) {
+    // Get relationships from IndexedDB
     let relationships = [];
-
-    // Get relationships from IndexedDB first
-    if (featureFlags.isEnabled(FLAGS.INDEXEDDB_ENABLED)) {
-      try {
-        relationships = await relationshipAdapter.getByRelated(personId);
-      } catch (error) {
-        console.warn('Failed to get relationships from IndexedDB:', error);
-      }
-    }
-
-    // Fallback to localStorage if no IndexedDB relationships
-    if (relationships.length === 0) {
-      const appData = getAppData();
-      const allRelationships = appData.relationships?.entityPeople || {};
-      relationships = Object.values(allRelationships).filter(rel => rel.relatedId === personId);
+    try {
+      relationships = await relationshipAdapter.getByRelated(personId);
+    } catch (error) {
+      console.error('Failed to get relationships from IndexedDB:', error);
+      return [];
     }
 
     // Get all related entities

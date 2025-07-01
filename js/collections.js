@@ -6,6 +6,7 @@
 
 import { appData, saveData } from './core-data.js';
 import { findTagByName, getEntityTags } from './tagging-system.js';
+import { collectionsAdapter } from './indexeddb/adapters.js';
 
 /**
  * Create a new smart collection with specified filters
@@ -15,25 +16,24 @@ import { findTagByName, getEntityTags } from './tagging-system.js';
  * @param {boolean} isPublic - Whether collection is public (default: false)
  * @returns {string} New collection ID
  */
-export function createCollection(name, description, filters, isPublic = false) {
-    const collectionId = `collection_${appData.nextCollectionId++}`;
-    
-    appData.collections[collectionId] = {
-        id: collectionId,
-        name: name,
-        description: description,
-        filters: filters, // { tags: [], entityTypes: [], priorities: [], dateRange: null }
-        isPublic: isPublic,
-        itemCount: 0,
-        lastUpdated: new Date().toISOString(),
-        createdAt: new Date().toISOString()
-    };
-    
-    // Initialize collection with current matching entities
-    updateCollectionItems(collectionId);
-    
-    saveData();
-    return collectionId;
+export async function createCollection(name, description, filters, isPublic = false) {
+    try {
+        const collection = await collectionsAdapter.createCollection({
+            name,
+            description,
+            filters,
+            isPublic,
+            type: 'saved_search'
+        });
+        
+        // Initialize collection with current matching entities
+        await updateCollectionItems(collection.id);
+        
+        return collection.id;
+    } catch (error) {
+        console.error('Failed to create collection:', error);
+        throw error;
+    }
 }
 
 /**
@@ -41,94 +41,71 @@ export function createCollection(name, description, filters, isPublic = false) {
  * @param {string} collectionId - Collection ID to update
  * @returns {Array|boolean} Array of matching entities or false if collection doesn't exist
  */
-export function updateCollectionItems(collectionId) {
-    const collection = appData.collections[collectionId];
-    if (!collection) return false;
-    
-    const filters = collection.filters;
-    let entities = [];
-    
-    // Start with all entities
-    if (!filters.entityTypes || filters.entityTypes.length === 0) {
-        // Get all entity types - handle both old and new entity structure
-        if (appData.entities && appData.entities.tasks) {
-            entities.push(...Object.values(appData.entities.tasks).map(e => ({ type: 'task', entity: e })));
-        }
-        if (appData.entities && appData.entities.notes) {
-            entities.push(...Object.values(appData.entities.notes).map(e => ({ type: 'note', entity: e })));
-        }
-        if (appData.entities && appData.entities.checklists) {
-            entities.push(...Object.values(appData.entities.checklists).map(e => ({ type: 'checklist', entity: e })));
+export async function updateCollectionItems(collectionId) {
+    try {
+        const collection = await collectionsAdapter.getById(collectionId);
+        if (!collection) return false;
+        
+        const filters = collection.filters;
+        let entities = [];
+        
+        // Get entities from IndexedDB based on filter criteria
+        if (!filters.entityTypes || filters.entityTypes.length === 0) {
+            // Get all entities
+            const allEntities = await window.adapters.entity.getAll();
+            entities = allEntities.map(entity => ({ type: entity.type, entity: entity }));
+        } else {
+            // Get specific entity types
+            for (const type of filters.entityTypes) {
+                const typeEntities = await window.adapters.entity.getByType(type);
+                entities.push(...typeEntities.map(entity => ({ type: type, entity: entity })));
+            }
         }
         
-        // Handle new flat entity structure (v5.0)
-        if (appData.entities && !appData.entities.tasks) {
-            Object.values(appData.entities).forEach(entity => {
-                if (entity && entity.type) {
-                    entities.push({ type: entity.type, entity: entity });
+        // Filter by tags
+        if (filters.tags && filters.tags.length > 0) {
+            const filteredEntities = [];
+            for (const item of entities) {
+                const entityTags = await getEntityTags(item.type, item.entity.id);
+                if (filters.tags.some(tagId => entityTags.some(tag => tag.id === tagId))) {
+                    filteredEntities.push(item);
                 }
+            }
+            entities = filteredEntities;
+        }
+        
+        // Filter by priority
+        if (filters.priorities && filters.priorities.length > 0) {
+            entities = entities.filter(item => {
+                return filters.priorities.includes(item.entity.priority || 'medium');
             });
         }
-    } else {
-        // Get specific entity types
-        filters.entityTypes.forEach(type => {
-            if (type === 'task' && appData.entities && appData.entities.tasks) {
-                entities.push(...Object.values(appData.entities.tasks).map(e => ({ type: 'task', entity: e })));
-            } else if (type === 'note' && appData.entities && appData.entities.notes) {
-                entities.push(...Object.values(appData.entities.notes).map(e => ({ type: 'note', entity: e })));
-            } else if (type === 'checklist' && appData.entities && appData.entities.checklists) {
-                entities.push(...Object.values(appData.entities.checklists).map(e => ({ type: 'checklist', entity: e })));
-            } else if (appData.entities) {
-                // Handle flat entity structure
-                Object.values(appData.entities).forEach(entity => {
-                    if (entity && entity.type === type) {
-                        entities.push({ type: type, entity: entity });
-                    }
-                });
-            }
-        });
-    }
-    
-    // Filter by tags
-    if (filters.tags && filters.tags.length > 0) {
-        entities = entities.filter(item => {
-            const entityTags = window.getTagsForEntity ? window.getTagsForEntity(item.type, item.entity.id) : [];
-            return filters.tags.some(tagId => entityTags.some(tag => tag.id === tagId));
-        });
-    }
-    
-    // Filter by priority
-    if (filters.priorities && filters.priorities.length > 0) {
-        entities = entities.filter(item => {
-            return filters.priorities.includes(item.entity.priority || 'medium');
-        });
-    }
-    
-    // Filter by date range
-    if (filters.dateRange) {
-        const startDate = new Date(filters.dateRange.start);
-        const endDate = new Date(filters.dateRange.end);
         
-        entities = entities.filter(item => {
-            const entityDate = new Date(item.entity.createdAt);
-            return entityDate >= startDate && entityDate <= endDate;
+        // Filter by date range
+        if (filters.dateRange) {
+            const startDate = new Date(filters.dateRange.start);
+            const endDate = new Date(filters.dateRange.end);
+            
+            entities = entities.filter(item => {
+                const entityDate = new Date(item.entity.createdAt);
+                return entityDate >= startDate && entityDate <= endDate;
+            });
+        }
+        
+        // Update collection with new item count and timestamp
+        await collectionsAdapter.updateCollection(collectionId, {
+            itemCount: entities.length,
+            lastUpdated: new Date().toISOString()
         });
+        
+        // Store collection items in collection
+        await collectionsAdapter.updateItems(collectionId, entities.map(item => `${item.type}:${item.entity.id}`));
+        
+        return entities;
+    } catch (error) {
+        console.error('Failed to update collection items:', error);
+        return false;
     }
-    
-    // Update collection entity relationships
-    if (!appData.relationships) {
-        appData.relationships = {};
-    }
-    if (!appData.relationships.collectionEntities) {
-        appData.relationships.collectionEntities = {};
-    }
-    appData.relationships.collectionEntities[collectionId] = entities.map(item => `${item.type}:${item.entity.id}`);
-    
-    // Update collection metadata
-    collection.itemCount = entities.length;
-    collection.lastUpdated = new Date().toISOString();
-    
-    return entities;
 }
 
 /**
@@ -136,55 +113,59 @@ export function updateCollectionItems(collectionId) {
  * @param {string} collectionId - Collection ID
  * @returns {Array} Array of items with type, entity, and tags
  */
-export function getCollectionItems(collectionId) {
-    const collection = appData.collections[collectionId];
-    if (!collection) return [];
-    
-    const entityKeys = appData.relationships.collectionEntities[collectionId] || [];
-    
-    return entityKeys.map(entityKey => {
-        const [entityType, entityId] = entityKey.split(':');
-        let entity = null;
+export async function getCollectionItems(collectionId) {
+    try {
+        const collection = await collectionsAdapter.getById(collectionId);
+        if (!collection) return [];
         
-        switch (entityType) {
-            case 'task':
-                entity = appData.entities.tasks[entityId];
-                break;
-            case 'note':
-                entity = appData.entities.notes[entityId];
-                break;
-            case 'checklist':
-                entity = appData.entities.checklists[entityId];
-                break;
+        const entityKeys = collection.items || [];
+        const items = [];
+        
+        for (const entityKey of entityKeys) {
+            const [entityType, entityId] = entityKey.split(':');
+            const entity = await window.adapters.entity.getById(entityId);
+            
+            if (entity) {
+                const tags = await getEntityTags(entityType, entityId);
+                items.push({
+                    type: entityType,
+                    entity: entity,
+                    tags: tags
+                });
+            }
         }
         
-        return {
-            type: entityType,
-            entity: entity,
-            tags: window.getTagsForEntity ? window.getTagsForEntity(entityType, entityId) : []
-        };
-    }).filter(item => item.entity); // Filter out deleted entities
+        return items;
+    } catch (error) {
+        console.error('Failed to get collection items:', error);
+        return [];
+    }
 }
 
 /**
  * Update all collections to refresh their item lists
  * Called when entities change to maintain collection accuracy
  */
-export function updateAllCollections() {
-    Object.keys(appData.collections).forEach(collectionId => {
-        updateCollectionItems(collectionId);
-    });
-    // Note: Don't call saveData() here to avoid infinite loop - caller will save
+export async function updateAllCollections() {
+    try {
+        const collections = await collectionsAdapter.getAll();
+        for (const collection of collections) {
+            await updateCollectionItems(collection.id);
+        }
+    } catch (error) {
+        console.error('Failed to update all collections:', error);
+    }
 }
 
 /**
  * Initialize sample collections for demonstration purposes
  * Creates helpful default collections if none exist
  */
-export function initializeSampleCollections() {
-    if (Object.keys(appData.collections).length === 0) {
+export async function initializeSampleCollections() {
+    const existingCollections = await collectionsAdapter.getAll();
+    if (existingCollections.length === 0) {
         // High Priority Items Collection
-        createCollection(
+        await createCollection(
             "High Priority Items",
             "All high priority tasks, notes, and checklists across all projects",
             {
@@ -196,13 +177,15 @@ export function initializeSampleCollections() {
         );
         
         // Work Items Collection
-        createCollection(
+        // Get work tag if it exists
+        const workTag = await findTagByName('work');
+        await createCollection(
             "Work Items",
             "All work-related items tagged with 'work'",
             {
                 entityTypes: ['task', 'note', 'checklist'],
                 priorities: [],
-                tags: [findTagByName('work')].filter(Boolean).map(tag => tag.id),
+                tags: workTag ? [workTag.id] : [],
                 dateRange: null
             }
         );
@@ -213,7 +196,7 @@ export function initializeSampleCollections() {
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekStart.getDate() + 6);
         
-        createCollection(
+        await createCollection(
             "This Week's Items",
             "All items created this week",
             {

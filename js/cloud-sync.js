@@ -6,6 +6,7 @@
 
 import { showStatusMessage } from './utilities.js';
 import { saveData, appData } from './core-data.js';
+import { settingsAdapter } from './indexeddb/adapters.js';
 
 export class CloudSync {
     constructor() {
@@ -32,10 +33,24 @@ export class CloudSync {
         this.lastSyncTime = null;
         this.syncInterval = null;
         this.pendingChanges = false;
+        this.initialized = false;
         
-        // Initialize from localStorage
-        this.loadSyncSettings();
-        this.loadUsageStats();
+        // Don't initialize immediately - wait for explicit initialization
+    }
+
+    /**
+     * Initialize cloud sync settings (called when first needed)
+     */
+    async initialize() {
+        if (this.initialized) return;
+        
+        try {
+            await this.loadSyncSettings();
+            this.loadUsageStats();
+            this.initialized = true;
+        } catch (error) {
+            console.error('Failed to initialize cloud sync:', error);
+        }
     }
 
     /**
@@ -69,7 +84,7 @@ export class CloudSync {
     /**
      * Set and store API key securely
      */
-    setApiKey(apiKey, tier = 'free') {
+    async setApiKey(apiKey, tier = 'free') {
         if (!apiKey || typeof apiKey !== 'string') {
             throw new Error('Valid API key required');
         }
@@ -83,9 +98,9 @@ export class CloudSync {
             syncInterval: 5 * 60 * 1000 // 5 minutes
         };
         
-        localStorage.setItem(this.storageKey, JSON.stringify(syncSettings));
+        await settingsAdapter.setCloudSyncSettings(syncSettings);
         this.currentLimits = this.limits[tier];
-        this.loadSyncSettings();
+        await this.loadSyncSettings();
         
         showStatusMessage('Cloud sync configured successfully!', 'success');
         return true;
@@ -94,8 +109,8 @@ export class CloudSync {
     /**
      * Get decrypted API key
      */
-    getApiKey() {
-        const settings = this.getSyncSettings();
+    async getApiKey() {
+        const settings = await this.getSyncSettings();
         if (settings && settings.apiKey) {
             return this.decrypt(settings.apiKey);
         }
@@ -105,8 +120,8 @@ export class CloudSync {
     /**
      * Load sync settings from localStorage
      */
-    loadSyncSettings() {
-        const settings = this.getSyncSettings();
+    async loadSyncSettings() {
+        const settings = await this.getSyncSettings();
         if (settings) {
             this.isEnabled = settings.enabled || false;
             this.currentLimits = this.limits[settings.tier] || this.limits.free;
@@ -120,10 +135,9 @@ export class CloudSync {
     /**
      * Get sync settings object
      */
-    getSyncSettings() {
+    async getSyncSettings() {
         try {
-            const stored = localStorage.getItem(this.storageKey);
-            return stored ? JSON.parse(stored) : null;
+            return await settingsAdapter.getCloudSyncSettings();
         } catch (error) {
             console.error('Failed to load sync settings:', error);
             return null;
@@ -133,27 +147,26 @@ export class CloudSync {
     /**
      * Update sync settings
      */
-    updateSyncSettings(updates) {
-        const current = this.getSyncSettings() || {};
+    async updateSyncSettings(updates) {
+        const current = await this.getSyncSettings() || {};
         const updated = { ...current, ...updates };
-        localStorage.setItem(this.storageKey, JSON.stringify(updated));
-        this.loadSyncSettings();
+        await settingsAdapter.setCloudSyncSettings(updated);
+        await this.loadSyncSettings();
     }
 
     /**
      * Load and manage usage statistics
      */
-    loadUsageStats() {
+    async loadUsageStats() {
         const today = new Date().toDateString();
-        const stored = localStorage.getItem(this.usageKey);
+        const stored = await settingsAdapter.getCloudSyncUsageStats();
         
         if (stored) {
-            const usage = JSON.parse(stored);
             // Reset daily counters if it's a new day
-            if (usage.date !== today) {
+            if (stored.date !== today) {
                 this.resetDailyUsage();
             } else {
-                this.usageStats = usage;
+                this.usageStats = stored;
             }
         } else {
             this.resetDailyUsage();
@@ -177,8 +190,8 @@ export class CloudSync {
     /**
      * Save usage statistics
      */
-    saveUsageStats() {
-        localStorage.setItem(this.usageKey, JSON.stringify(this.usageStats));
+    async saveUsageStats() {
+        await settingsAdapter.setCloudSyncUsageStats(this.usageStats);
     }
 
     /**
@@ -543,6 +556,16 @@ export class CloudSync {
      * Get sync status for UI
      */
     getStatus() {
+        // Ensure we have basic usage stats initialized
+        if (!this.usageStats) {
+            this.usageStats = {
+                requestsUsed: 0,
+                lastSyncTime: null,
+                totalSyncs: 0,
+                errors: 0
+            };
+        }
+        
         return {
             enabled: this.isEnabled,
             configured: !!this.getApiKey(),
@@ -562,9 +585,8 @@ export class CloudSync {
     /**
      * Clear all sync data (for testing or reset)
      */
-    clearSyncData() {
-        localStorage.removeItem(this.storageKey);
-        localStorage.removeItem(this.usageKey);
+    async clearSyncData() {
+        await settingsAdapter.clearCategory('cloud_sync');
         this.stopAutoSync();
         this.isEnabled = false;
         this.resetDailyUsage();

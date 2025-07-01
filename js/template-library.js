@@ -6,7 +6,8 @@
 
 import { saveData, appData } from './core-data.js';
 import { showStatusMessage } from './utilities.js';
-import { createChecklistTemplate } from './template-system.js';
+// Legacy import - now handled by templateLibraryAdapter
+import { templateLibraryAdapter } from './indexeddb/adapters.js';
 
 /**
  * Create a reusable task set template for common task patterns
@@ -17,30 +18,27 @@ import { createChecklistTemplate } from './template-system.js';
  * @param {Array} tags - Array of tags for organization
  * @returns {string} - Template ID
  */
-export function createTaskSet(name, description, tasks, category = 'general', tags = []) {
-    
-    const templateId = `taskset_${appData.nextTemplateLibraryId++}`;
-    
-    appData.templateLibrary.taskSets[templateId] = {
-        id: templateId,
-        name: name,
-        description: description,
-        category: category,
-        tasks: tasks.map(task => ({
-            text: task.text || task,
-            priority: task.priority || 'medium',
-            estimatedTime: task.estimatedTime || null,
-            dependencies: task.dependencies || []
-        })),
-        tags: tags,
-        isPublic: false,
-        usageCount: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-    };
-    
-    saveData();
-    return templateId;
+export async function createTaskSet(name, description, tasks, category = 'general', tags = []) {
+    try {
+        const taskSet = await templateLibraryAdapter.createTaskSet({
+            name,
+            description,
+            category,
+            tasks: tasks.map(task => ({
+                text: task.text || task,
+                priority: task.priority || 'medium',
+                estimatedTime: task.estimatedTime || null,
+                dependencies: task.dependencies || []
+            })),
+            tags,
+            isPublic: false
+        });
+        
+        return taskSet.id;
+    } catch (error) {
+        console.error('Failed to create task set:', error);
+        throw error;
+    }
 }
 
 /**
@@ -50,9 +48,9 @@ export function createTaskSet(name, description, tasks, category = 'general', ta
  * @param {string} boardId - Board ID containing the card
  * @returns {Array|null} - Array of new task IDs or null if failed
  */
-export function applyTaskSetToCard(templateId, cardId, boardId) {
+export async function applyTaskSetToCard(templateId, cardId, boardId) {
     
-    const template = appData.templateLibrary.taskSets[templateId];
+    const template = await templateLibraryAdapter.getTaskSet(templateId);
     if (!template) return null;
     
     const board = appData.boards[boardId];
@@ -114,8 +112,11 @@ export function applyTaskSetToCard(templateId, cardId, boardId) {
     });
     
     // Update usage count
-    template.usageCount++;
-    template.updatedAt = new Date().toISOString();
+    try {
+        await templateLibraryAdapter.incrementUsage('taskSets', templateId);
+    } catch (error) {
+        console.error('Failed to update usage count:', error);
+    }
     
     saveData();
     return newTaskIds;
@@ -125,15 +126,16 @@ export function applyTaskSetToCard(templateId, cardId, boardId) {
  * Initialize sample templates and collections for demonstration
  * Creates default checklist templates and task sets if none exist
  */
-export function initializeSampleTemplates() {
+export async function initializeSampleTemplates() {
     
     // Sample Checklist Templates
-    if (Object.keys(appData.templateLibrary.checklists).length === 0) {
+    const existingChecklists = await templateLibraryAdapter.getAllChecklists();
+    if (existingChecklists.length === 0) {
         // Project Planning Template
-        createChecklistTemplate(
-            "Project Planning Checklist",
-            "Essential steps for starting any new project",
-            [
+        await templateLibraryAdapter.createChecklist({
+            name: "Project Planning Checklist",
+            description: "Essential steps for starting any new project",
+            items: [
                 { text: "Define project scope and objectives", priority: "high" },
                 { text: "Identify key stakeholders", priority: "high" },
                 { text: "Create project timeline", priority: "medium" },
@@ -141,15 +143,15 @@ export function initializeSampleTemplates() {
                 { text: "Establish communication channels", priority: "medium" },
                 { text: "Create risk management plan", priority: "low" }
             ],
-            "project",
-            ["planning", "project"]
-        );
+            category: "project",
+            tags: ["planning", "project"]
+        });
         
         // Code Review Template
-        createChecklistTemplate(
-            "Code Review Checklist",
-            "Quality assurance checklist for code reviews",
-            [
+        await templateLibraryAdapter.createChecklist({
+            name: "Code Review Checklist",
+            description: "Quality assurance checklist for code reviews",
+            items: [
                 { text: "Code follows style guidelines", priority: "medium" },
                 { text: "Functions are properly documented", priority: "medium" },
                 { text: "Edge cases are handled", priority: "high" },
@@ -157,30 +159,31 @@ export function initializeSampleTemplates() {
                 { text: "Performance considerations addressed", priority: "medium" },
                 { text: "Security vulnerabilities checked", priority: "high" }
             ],
-            "development",
-            ["code", "review", "quality"]
-        );
+            category: "development",
+            tags: ["code", "review", "quality"]
+        });
         
         // Meeting Preparation Template
-        createChecklistTemplate(
-            "Meeting Preparation",
-            "Ensure meetings are productive and well-organized",
-            [
+        await templateLibraryAdapter.createChecklist({
+            name: "Meeting Preparation",
+            description: "Ensure meetings are productive and well-organized",
+            items: [
                 { text: "Create agenda and share with attendees", priority: "high" },
                 { text: "Book meeting room or set up video call", priority: "medium" },
                 { text: "Prepare presentation materials", priority: "medium" },
                 { text: "Review previous meeting notes", priority: "low" },
                 { text: "Send reminder to participants", priority: "medium" }
             ],
-            "meetings",
-            ["meeting", "preparation"]
-        );
+            category: "meetings",
+            tags: ["meeting", "preparation"]
+        });
     }
     
     // Sample Task Sets
-    if (Object.keys(appData.templateLibrary.taskSets).length === 0) {
+    const existingTaskSets = await templateLibraryAdapter.getAllTaskSets();
+    if (existingTaskSets.length === 0) {
         // Website Launch Task Set
-        createTaskSet(
+        await createTaskSet(
             "Website Launch Tasks",
             "Essential tasks for launching a new website",
             [
@@ -198,7 +201,7 @@ export function initializeSampleTemplates() {
         );
         
         // Employee Onboarding Task Set
-        createTaskSet(
+        await createTaskSet(
             "Employee Onboarding",
             "Standard onboarding tasks for new team members",
             [

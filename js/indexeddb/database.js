@@ -9,9 +9,10 @@ import { showStatusMessage } from '../utilities.js';
 class GridFlowIndexedDB {
   constructor() {
     this.db = null;
-    this.version = 1;
+    this.version = 2; // Incremented for entityPositions store
     this.dbName = 'GridFlowDB';
     this.isInitialized = false;
+    this.initPromise = null; // Track ongoing initialization
   }
 
   /**
@@ -19,11 +20,36 @@ class GridFlowIndexedDB {
    * @returns {Promise<IDBDatabase>} Database instance
    */
   async init() {
+    // If already initialized, return the database
     if (this.isInitialized && this.db) {
       return this.db;
     }
 
+    // If initialization is already in progress, wait for it
+    if (this.initPromise) {
+      return this.initPromise;
+    }
+
     console.log('Initializing GridFlow IndexedDB...');
+    
+    // Start initialization and cache the promise
+    this.initPromise = this.performInit();
+    
+    try {
+      const result = await this.initPromise;
+      this.initPromise = null; // Clear the promise after success
+      return result;
+    } catch (error) {
+      this.initPromise = null; // Clear the promise after failure
+      throw error;
+    }
+  }
+
+  /**
+   * Perform the actual initialization
+   * @returns {Promise<IDBDatabase>} Database instance
+   */
+  async performInit() {
     
     return new Promise((resolve, reject) => {
       // Check if IndexedDB is available
@@ -42,12 +68,65 @@ class GridFlowIndexedDB {
 
       request.onsuccess = (event) => {
         this.db = event.target.result;
+        
+        // Validate that all required stores exist
+        const requiredStores = getAllStoreNames();
+        const existingStores = Array.from(this.db.objectStoreNames);
+        const missingStores = requiredStores.filter(name => !existingStores.includes(name));
+        
+        console.log('GridFlow IndexedDB opened successfully');
+        console.log('Required stores:', requiredStores);
+        console.log('Existing stores:', existingStores);
+        
+        if (missingStores.length > 0) {
+          console.error('Missing stores detected:', missingStores);
+          console.log('Database exists but stores are missing. This requires a version upgrade.');
+          
+          // Close the current connection
+          this.db.close();
+          
+          // Force a version upgrade by incrementing version
+          this.version += 1;
+          console.log(`Forcing version upgrade to ${this.version} to create missing stores`);
+          
+          // Retry with higher version to trigger onupgradeneeded
+          const retryRequest = indexedDB.open(this.dbName, this.version);
+          
+          retryRequest.onupgradeneeded = (retryEvent) => {
+            console.log('Forced upgrade: creating missing object stores...');
+            this.db = retryEvent.target.result;
+            this.createObjectStores();
+          };
+          
+          retryRequest.onsuccess = (retryEvent) => {
+            this.db = retryEvent.target.result;
+            this.isInitialized = true;
+            console.log('GridFlow IndexedDB initialized successfully with forced upgrade');
+            
+            // Setup error handler
+            this.db.onerror = (errorEvent) => {
+              console.error('IndexedDB error:', errorEvent.target.error);
+            };
+
+            resolve(this.db);
+          };
+          
+          retryRequest.onerror = (retryEvent) => {
+            const error = retryEvent.target.error;
+            console.error('Failed to initialize IndexedDB on retry:', error);
+            reject(error);
+          };
+          
+          return; // Exit early, wait for retry
+        }
+        
+        // All stores exist, continue normally
         this.isInitialized = true;
-        console.log('GridFlow IndexedDB initialized successfully');
+        console.log('All required stores present, IndexedDB ready');
         
         // Setup error handler
-        this.db.onerror = (event) => {
-          console.error('IndexedDB error:', event.target.error);
+        this.db.onerror = (errorEvent) => {
+          console.error('IndexedDB error:', errorEvent.target.error);
         };
 
         resolve(this.db);

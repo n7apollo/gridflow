@@ -3,194 +3,10 @@
  * Provides high-level data access methods for different entity types
  */
 
-import database from './database.js';
+import { BaseAdapter } from './base-adapter.js';
 
-/**
- * Base adapter class with common CRUD operations
- */
-class BaseAdapter {
-  constructor(storeName) {
-    this.storeName = storeName;
-    this.db = database;
-  }
-
-  /**
-   * Ensure database is initialized
-   */
-  async ensureReady() {
-    if (!this.db.isReady()) {
-      await this.db.init();
-    }
-  }
-
-  /**
-   * Get item by ID
-   * @param {string} id - Item ID
-   * @returns {Promise<Object|null>} Item or null if not found
-   */
-  async getById(id) {
-    await this.ensureReady();
-    
-    return new Promise((resolve, reject) => {
-      const transaction = this.db.getTransaction(this.storeName, 'readonly');
-      const store = transaction.objectStore(this.storeName);
-      const request = store.get(id);
-      
-      request.onsuccess = () => {
-        resolve(request.result || null);
-      };
-      
-      request.onerror = () => {
-        reject(request.error);
-      };
-    });
-  }
-
-  /**
-   * Save (add or update) an item
-   * @param {Object} item - Item to save
-   * @returns {Promise<Object>} Saved item
-   */
-  async save(item) {
-    await this.ensureReady();
-    
-    // Add timestamp if not present
-    if (!item.updatedAt) {
-      item.updatedAt = new Date().toISOString();
-    }
-    if (!item.createdAt) {
-      item.createdAt = new Date().toISOString();
-    }
-    
-    return new Promise((resolve, reject) => {
-      const transaction = this.db.getTransaction(this.storeName, 'readwrite');
-      const store = transaction.objectStore(this.storeName);
-      const request = store.put(item);
-      
-      request.onsuccess = () => {
-        resolve(item);
-      };
-      
-      request.onerror = () => {
-        reject(request.error);
-      };
-    });
-  }
-
-  /**
-   * Delete item by ID
-   * @param {string} id - Item ID
-   * @returns {Promise<boolean>} Success status
-   */
-  async delete(id) {
-    await this.ensureReady();
-    
-    return new Promise((resolve, reject) => {
-      const transaction = this.db.getTransaction(this.storeName, 'readwrite');
-      const store = transaction.objectStore(this.storeName);
-      const request = store.delete(id);
-      
-      request.onsuccess = () => {
-        resolve(true);
-      };
-      
-      request.onerror = () => {
-        reject(request.error);
-      };
-    });
-  }
-
-  /**
-   * Get all items in the store
-   * @returns {Promise<Array>} All items
-   */
-  async getAll() {
-    await this.ensureReady();
-    
-    return new Promise((resolve, reject) => {
-      const transaction = this.db.getTransaction(this.storeName, 'readonly');
-      const store = transaction.objectStore(this.storeName);
-      const request = store.getAll();
-      
-      request.onsuccess = () => {
-        resolve(request.result || []);
-      };
-      
-      request.onerror = () => {
-        reject(request.error);
-      };
-    });
-  }
-
-  /**
-   * Get items by index
-   * @param {string} indexName - Index name
-   * @param {*} value - Value to search for
-   * @returns {Promise<Array>} Matching items
-   */
-  async getByIndex(indexName, value) {
-    await this.ensureReady();
-    
-    return new Promise((resolve, reject) => {
-      const transaction = this.db.getTransaction(this.storeName, 'readonly');
-      const store = transaction.objectStore(this.storeName);
-      const index = store.index(indexName);
-      const request = index.getAll(value);
-      
-      request.onsuccess = () => {
-        resolve(request.result || []);
-      };
-      
-      request.onerror = () => {
-        reject(request.error);
-      };
-    });
-  }
-
-  /**
-   * Count items in store
-   * @returns {Promise<number>} Item count
-   */
-  async count() {
-    await this.ensureReady();
-    
-    return new Promise((resolve, reject) => {
-      const transaction = this.db.getTransaction(this.storeName, 'readonly');
-      const store = transaction.objectStore(this.storeName);
-      const request = store.count();
-      
-      request.onsuccess = () => {
-        resolve(request.result);
-      };
-      
-      request.onerror = () => {
-        reject(request.error);
-      };
-    });
-  }
-
-  /**
-   * Clear all items from store
-   * @returns {Promise<boolean>} Success status
-   */
-  async clear() {
-    await this.ensureReady();
-    
-    return new Promise((resolve, reject) => {
-      const transaction = this.db.getTransaction(this.storeName, 'readwrite');
-      const store = transaction.objectStore(this.storeName);
-      const request = store.clear();
-      
-      request.onsuccess = () => {
-        resolve(true);
-      };
-      
-      request.onerror = () => {
-        reject(request.error);
-      };
-    });
-  }
-}
+// Re-export BaseAdapter for compatibility
+export { BaseAdapter };
 
 /**
  * Entity adapter with type-specific methods
@@ -452,6 +268,17 @@ export class RelationshipAdapter extends BaseAdapter {
 }
 
 /**
+ * Import specialized adapters
+ */
+import appMetadataAdapter, { AppMetadataAdapter } from './adapters/app-metadata-adapter.js';
+import templateAdapter, { TemplateAdapter } from './adapters/template-adapter.js';
+import templateLibraryAdapter, { TemplateLibraryAdapter } from './adapters/template-library-adapter.js';
+import settingsAdapter, { SettingsAdapter } from './adapters/settings-adapter.js';
+import collectionsAdapter, { CollectionsAdapter } from './adapters/collections-adapter.js';
+import tagsAdapter, { TagsAdapter } from './adapters/tags-adapter.js';
+import entityPositionsAdapter, { EntityPositionsAdapter } from './adapters/entity-positions-adapter.js';
+
+/**
  * Create adapter instances
  */
 export const entityAdapter = new EntityAdapter();
@@ -460,6 +287,7 @@ export const weeklyPlanAdapter = new WeeklyPlanAdapter();
 export const weeklyItemAdapter = new WeeklyItemAdapter();
 export const peopleAdapter = new PeopleAdapter();
 export const relationshipAdapter = new RelationshipAdapter();
+export { appMetadataAdapter, AppMetadataAdapter, templateAdapter, TemplateAdapter, templateLibraryAdapter, TemplateLibraryAdapter, settingsAdapter, SettingsAdapter, collectionsAdapter, CollectionsAdapter, tagsAdapter, TagsAdapter, entityPositionsAdapter, EntityPositionsAdapter };
 
 // Make adapters available globally for debugging
 if (typeof window !== 'undefined') {
@@ -469,6 +297,13 @@ if (typeof window !== 'undefined') {
     weeklyPlan: weeklyPlanAdapter,
     weeklyItem: weeklyItemAdapter,
     people: peopleAdapter,
-    relationship: relationshipAdapter
+    relationship: relationshipAdapter,
+    appMetadata: appMetadataAdapter,
+    template: templateAdapter,
+    templateLibrary: templateLibraryAdapter,
+    settings: settingsAdapter,
+    collections: collectionsAdapter,
+    tags: tagsAdapter,
+    entityPositions: entityPositionsAdapter
   };
 }

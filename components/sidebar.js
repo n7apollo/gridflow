@@ -94,6 +94,18 @@ class GridFlowSidebar extends HTMLElement {
                                     People
                                 </a>
                             </li>
+                            <li>
+                                <a href="#" id="sidebarCollectionsView" data-view="collections">
+                                    <span class="mr-2">📂</span>
+                                    Collections
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#" id="sidebarTagsView" data-view="tags">
+                                    <span class="mr-2">🏷️</span>
+                                    Tags
+                                </a>
+                            </li>
                         </ul>
                     </div>
                     <div>

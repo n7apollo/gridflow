@@ -441,11 +441,24 @@ export function filterBoards() {
  */
 export function updateCurrentBoardDisplay() {
     const appData = getAppData();
+    
+    // Safety checks for app data structure
+    if (!appData || !appData.boards || !appData.currentBoardId) {
+        console.warn('updateCurrentBoardDisplay: Invalid app data structure:', {
+            hasAppData: !!appData,
+            hasBoards: !!(appData && appData.boards),
+            currentBoardId: appData && appData.currentBoardId
+        });
+        return;
+    }
+    
     const currentBoard = appData.boards[appData.currentBoardId];
     
     const currentBoardName = document.getElementById('currentBoardName');
     if (currentBoardName && currentBoard) {
         currentBoardName.textContent = currentBoard.name;
+    } else if (currentBoardName) {
+        currentBoardName.textContent = 'Loading...';
     }
 }
 
