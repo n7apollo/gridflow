@@ -17,20 +17,20 @@ let currentFilters = {
 /**
  * Initialize people view when switching to it
  */
-export function switchToPeopleView() {
+export async function switchToPeopleView() {
     console.log('Switching to People view');
-    renderPeopleGrid();
+    await renderPeopleGrid();
     setupPeopleEventListeners();
 }
 
 /**
  * Render the people grid
  */
-function renderPeopleGrid() {
+async function renderPeopleGrid() {
     const peopleGrid = document.getElementById('peopleGrid');
     if (!peopleGrid) return;
 
-    const allPeople = peopleService.getAllPeople();
+    const allPeople = await peopleService.getAllPeople();
     let filteredPeople = applyFilters(allPeople);
 
     if (filteredPeople.length === 0) {
@@ -438,7 +438,7 @@ window.createPerson = async function() {
         closeCreatePersonModal();
         
         // Refresh people grid
-        renderPeopleGrid();
+        await renderPeopleGrid();
         
         // Show success message
         if (window.showStatusMessage) {
@@ -495,7 +495,7 @@ window.deletePerson = async function() {
             closePeopleDetail();
             
             // Refresh people grid
-            renderPeopleGrid();
+            await renderPeopleGrid();
             
             if (window.showStatusMessage) {
                 window.showStatusMessage(`Deleted ${person.name}`, 'success');

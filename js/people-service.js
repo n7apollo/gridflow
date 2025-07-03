@@ -3,7 +3,6 @@
  * Provides high-level operations for managing people and their relationships
  */
 
-import { createEntity, updateEntity, deleteEntity, getEntity, ENTITY_TYPES } from './entity-core.js';
 import { metaService } from './meta-service.js';
 import { entityService } from './entity-service.js';
 
@@ -14,14 +13,8 @@ class PeopleService {
    * @returns {Object} Created person entity
    */
   async createPerson(personData) {
-    // Ensure name is set as title for entity compatibility
-    const enrichedData = {
-      ...personData,
-      title: personData.name || personData.title,
-      name: personData.name || personData.title
-    };
-
-    const person = await createEntity(ENTITY_TYPES.PERSON, enrichedData);
+    // Use metaService directly for people storage
+    const person = await metaService.createPerson(personData);
     
     console.log('Created person:', person);
     return person;
@@ -34,19 +27,8 @@ class PeopleService {
    * @returns {Object} Updated person entity
    */
   async updatePerson(personId, updates) {
-    // Update last interaction time if not provided
-    if (!updates.lastInteraction) {
-      updates.lastInteraction = new Date().toISOString();
-    }
-
-    // Ensure name and title stay in sync
-    if (updates.name && !updates.title) {
-      updates.title = updates.name;
-    } else if (updates.title && !updates.name) {
-      updates.name = updates.title;
-    }
-
-    const updatedPerson = await updateEntity(personId, updates);
+    // Use metaService directly for people updates
+    const updatedPerson = await metaService.updatePerson(personId, updates);
     
     return updatedPerson;
   }
@@ -57,11 +39,8 @@ class PeopleService {
    * @returns {boolean} Success status
    */
   async deletePerson(personId) {
-    // Delete all relationships involving this person
-    await this.removeAllRelationships(personId);
-    
-    // Delete the person entity
-    const success = await deleteEntity(personId);
+    // Use metaService directly for people deletion (handles relationships)
+    const success = await metaService.deletePerson(personId);
     
     return success;
   }
@@ -72,7 +51,7 @@ class PeopleService {
    * @returns {Promise<Object|null>} Person entity or null
    */
   async getPerson(personId) {
-    return await getEntity(personId);
+    return await metaService.getPerson(personId);
   }
 
   /**

@@ -82,7 +82,15 @@ export function switchToView(view) {
         if (peopleContainer) peopleContainer.classList.remove('hidden');
         const sidebarPeopleView = document.getElementById('sidebarPeopleView');
         if (sidebarPeopleView) sidebarPeopleView.classList.add('active');
-        if (window.switchToPeopleView) window.switchToPeopleView();
+        if (window.switchToPeopleView) {
+            // Call async function without blocking
+            window.switchToPeopleView().catch(error => {
+                console.error('Error switching to people view:', error);
+                if (window.showStatusMessage) {
+                    window.showStatusMessage('Error loading people view', 'error');
+                }
+            });
+        }
     } else if (view === 'collections') {
         if (collectionsContainer) collectionsContainer.classList.remove('hidden');
         const sidebarCollectionsView = document.getElementById('sidebarCollectionsView');
