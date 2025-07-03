@@ -133,6 +133,10 @@ async function initializeGridFlow() {
         weeklyPlanning.initializeWeeklyPlanning();
         weeklyPlanning.initializeWeeklyEventListeners();
         
+        // Initialize task management
+        console.log('📝 Initializing task management...');
+        taskManagement.initializeTaskManagement();
+        
         // Initialize templates (populate defaults if needed)
         console.log('📄 Initializing template system...');
         templateSystem.populateDefaultTemplates();

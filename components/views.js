@@ -203,15 +203,18 @@ class GridFlowViews extends HTMLElement {
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
                         <!-- Search -->
                         <div class="lg:col-span-2">
-                            <div class="form-control">
-                                <div class="input-group">
-                                    <span class="bg-base-200">
-                                        <i data-lucide="search" class="w-4 h-4"></i>
-                                    </span>
-                                    <input type="text" id="taskSearchInput" placeholder="Search tasks..." 
-                                           class="input input-bordered w-full task-search-input" data-action="filterTasks">
-                                </div>
-                            </div>
+                            <label class="input input-bordered flex items-center gap-2">
+                                <svg class="h-4 w-4 opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                    <g stroke-linejoin="round" stroke-linecap="round" stroke-width="2" fill="none" stroke="currentColor">
+                                        <circle cx="11" cy="11" r="8"></circle>
+                                        <path d="m21 21-4.3-4.3"></path>
+                                    </g>
+                                </svg>
+                                <input type="search" id="taskSearchInput" placeholder="Search tasks..." 
+                                       class="grow task-search-input" data-action="filterTasks">
+                                <kbd class="kbd kbd-sm opacity-50">⌘</kbd>
+                                <kbd class="kbd kbd-sm opacity-50">K</kbd>
+                            </label>
                         </div>
 
                         <!-- Board Filter -->
@@ -294,25 +297,52 @@ class GridFlowViews extends HTMLElement {
                 <!-- Task List -->
                 <div class="task-list-container">
                     <!-- Quick Filters -->
-                    <div class="flex flex-wrap gap-2 mb-4">
-                        <div class="badge badge-ghost badge-lg quick-filter-badge" data-filter="all" id="filterAll">
-                            All Tasks
+                    <div class="mb-6">
+                        <div class="flex items-center gap-3 mb-3">
+                            <h4 class="text-sm font-medium text-base-content/70">Quick Filters:</h4>
+                            <button class="btn btn-ghost btn-xs" onclick="window.taskManagement.clearTaskFilters()" title="Clear all filters">
+                                <i data-lucide="x" class="w-3 h-3"></i>
+                                Clear
+                            </button>
                         </div>
-                        <div class="badge badge-primary badge-lg quick-filter-badge" data-filter="today" id="filterToday">
-                            Due Today
-                        </div>
-                        <div class="badge badge-warning badge-lg quick-filter-badge" data-filter="overdue" id="filterOverdue">
-                            Overdue
-                        </div>
-                        <div class="badge badge-success badge-lg quick-filter-badge" data-filter="completed" id="filterCompleted">
-                            Completed
-                        </div>
+                        <ul class="menu menu-horizontal bg-base-200 rounded-box p-2 gap-1 shadow-sm">
+                            <li>
+                                <a class="quick-filter-menu active" data-filter="all" id="filterAll">
+                                    <i data-lucide="list" class="w-4 h-4"></i>
+                                    All Tasks
+                                </a>
+                            </li>
+                            <li>
+                                <a class="quick-filter-menu" data-filter="today" id="filterToday">
+                                    <i data-lucide="calendar-days" class="w-4 h-4"></i>
+                                    Due Today
+                                </a>
+                            </li>
+                            <li>
+                                <a class="quick-filter-menu" data-filter="overdue" id="filterOverdue">
+                                    <i data-lucide="clock" class="w-4 h-4"></i>
+                                    Overdue
+                                </a>
+                            </li>
+                            <li>
+                                <a class="quick-filter-menu" data-filter="completed" id="filterCompleted">
+                                    <i data-lucide="check-circle" class="w-4 h-4"></i>
+                                    Completed
+                                </a>
+                            </li>
+                            <li>
+                                <a class="quick-filter-menu" data-filter="high-priority" id="filterHighPriority">
+                                    <i data-lucide="alert-circle" class="w-4 h-4"></i>
+                                    High Priority
+                                </a>
+                            </li>
+                        </ul>
                     </div>
 
-                    <!-- Task List Grid -->
-                    <div class="task-list grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4" id="taskList">
+                    <!-- Task List -->
+                    <ul class="list bg-base-100 rounded-box shadow-md" id="taskList">
                         <!-- Tasks will be populated here -->
-                    </div>
+                    </ul>
 
                     <!-- Empty State -->
                     <div class="task-empty-state text-center py-12 hidden" id="taskEmptyState">

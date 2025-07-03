@@ -9,91 +9,101 @@
 
 /* Enhanced Search Input */
 .task-search-input {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    border-radius: 12px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .task-search-input:focus {
-    transform: scale(1.02);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    outline: none;
+    box-shadow: none;
 }
 
-/* Quick Filter Badges */
-.quick-filter-badge {
+/* Search input container styling */
+.input:has(.task-search-input:focus) {
+    border-color: oklch(var(--p));
+    box-shadow: 0 0 0 2px oklch(var(--p) / 0.2);
+}
+
+/* Quick Filter Menu */
+.quick-filter-menu {
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    cursor: pointer;
-    border-radius: 20px;
+    border-radius: 8px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
     position: relative;
     overflow: hidden;
 }
 
-.quick-filter-badge::before {
+.quick-filter-menu::before {
     content: '';
     position: absolute;
     top: 0;
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.5s ease;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+    transition: left 0.4s ease;
 }
 
-.quick-filter-badge:hover::before {
+.quick-filter-menu:hover::before {
     left: 100%;
 }
 
-.quick-filter-badge:hover {
+.quick-filter-menu:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    background: oklch(var(--b3));
 }
 
-/* Task Card Enhanced Animations */
-.task-card {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    transform-origin: center;
-    border-radius: 16px;
-    position: relative;
-    overflow: hidden;
+.quick-filter-menu.active {
+    background: oklch(var(--p));
+    color: oklch(var(--pc));
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-.task-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    z-index: 1;
-    pointer-events: none;
+.quick-filter-menu.active:hover {
+    background: oklch(var(--p));
+    color: oklch(var(--pc));
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-.task-card:hover::before {
+/* Filter Menu Icons */
+.quick-filter-menu i {
+    opacity: 0.8;
+    transition: opacity 0.2s ease;
+}
+
+.quick-filter-menu.active i {
     opacity: 1;
 }
 
-.task-card:hover {
-    transform: translateY(-4px) scale(1.02);
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15);
+.quick-filter-menu:hover i {
+    opacity: 1;
 }
 
-.task-card .card-body {
+/* Task List Row Enhanced Animations */
+.list-row {
+    transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 8px;
     position: relative;
-    z-index: 2;
+}
+
+.list-row:hover {
+    background-color: oklch(var(--b2) / 0.7);
 }
 
 /* Task Actions Button Animations */
 .task-actions {
     opacity: 0;
-    transform: translateX(10px);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.task-card:hover .task-actions {
+.list-row:hover .task-actions {
     opacity: 1;
-    transform: translateX(0);
 }
 
 .task-action-btn {
@@ -177,34 +187,41 @@
 
 /* Mobile Responsive Enhancements */
 @media (max-width: 768px) {
-    .task-card {
-        margin-bottom: 12px;
-    }
-    
-    .task-card:hover {
-        transform: translateY(-2px) scale(1.01);
+    .list-row:hover {
+        background-color: oklch(var(--b2) / 0.5);
     }
     
     .task-actions {
         opacity: 1;
-        transform: translateX(0);
     }
     
-    .quick-filter-badge {
-        font-size: 0.75rem;
-        padding: 0.25rem 0.5rem;
+    /* Make filter menu stack on mobile */
+    .menu-horizontal {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .quick-filter-menu {
+        justify-content: flex-start;
+        padding: 0.4rem 0.6rem;
+        font-size: 0.875rem;
+    }
+    
+    /* Hide some metadata on mobile for cleaner look */
+    @media (max-width: 480px) {
+        .badge:not(.badge-error):not(.badge-warning):not(.badge-success) {
+            display: none;
+        }
+        
+        .badge.badge-error,
+        .badge.badge-warning, 
+        .badge.badge-success {
+            display: inline-flex;
+        }
     }
 }
 
-/* Priority Badge Pulse Animation */
-.priority-high .badge {
-    animation: pulse-error 2s infinite;
-}
-
-@keyframes pulse-error {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-    50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
-}
+/* Priority Badge Pulse Animation removed for cleaner appearance */
 
 /* Checkbox Animation Enhancement */
 .task-checkbox {

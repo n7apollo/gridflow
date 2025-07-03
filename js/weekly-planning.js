@@ -70,7 +70,8 @@ export function formatWeekTitle(weekKey) {
  * @returns {string} Formatted day date
  */
 export function formatDayDate(date, day) {
-    const dayIndex = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'].indexOf(day);
+    // Use consistent day array starting with Monday (to match getWeekStart which returns Monday)
+    const dayIndex = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].indexOf(day);
     const weekStart = getWeekStart(currentWeekKey);
     const targetDate = new Date(weekStart);
     targetDate.setDate(weekStart.getDate() + dayIndex);
@@ -90,9 +91,9 @@ function updateDateBadges() {
         if (!dateElement) return;
         
         // Calculate the date for this day (Monday = index 0, Sunday = index 6)
-        const dayIndex = index + 1; // Convert to 1-based index where Monday = 1
+        // weekStart is already Monday, so we just add the index directly
         const targetDate = new Date(weekStart);
-        targetDate.setDate(weekStart.getDate() + dayIndex);
+        targetDate.setDate(weekStart.getDate() + index);
         
         // Update the badge with the day number
         dateElement.textContent = targetDate.getDate();

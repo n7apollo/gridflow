@@ -5,7 +5,7 @@
 
 import { getAppData, getBoardData, setAppData, setBoardData, saveData } from './core-data.js';
 import { showStatusMessage } from './utilities.js';
-import { getEntity } from './entity-core.js';
+import { db } from './db.js';
 
 // Current editing state
 let currentEditingTask = null;
@@ -77,42 +77,124 @@ export function populateTaskFilters() {
  * @returns {Promise<Array>} Array of task objects with metadata
  */
 export async function getAllTasks() {
-    const appData = getAppData();
-    const tasks = [];
-    
-    for (const boardId of Object.keys(appData.boards)) {
-        const board = appData.boards[boardId];
-        if (board.rows) {
-            for (const row of board.rows) {
-                if (row.cards) {
-                    for (const columnKey of Object.keys(row.cards)) {
-                        const column = board.columns.find(c => c.key === columnKey);
-                        const group = board.groups.find(g => g.id === row.groupId);
+    try {
+        console.log('getAllTasks: Starting task retrieval...');
+        const appData = getAppData();
+        const tasks = [];
+        
+        // Get all task entities from appData
+        if (appData.entities) {
+            console.log(`getAllTasks: Found ${Object.keys(appData.entities).length} entities in appData`);
+            
+            // Get all entity positions from the database
+            const entityPositions = await db.entityPositions
+                .where('context').equals('board')
+                .toArray();
+            
+            console.log(`getAllTasks: Found ${entityPositions.length} entity positions`);
+            
+            // Create a map of entity positions for quick lookup
+            const positionMap = {};
+            entityPositions.forEach(pos => {
+                positionMap[pos.entityId] = pos;
+            });
+            
+            for (const [entityId, entity] of Object.entries(appData.entities)) {
+                if (entity && entity.type === 'task') {
+                    console.log(`getAllTasks: Processing task entity ${entityId}: "${entity.title}"`);
+                    
+                    // Look up the position for this entity
+                    const position = positionMap[entityId];
+                    
+                    let boardContext = null;
+                    let rowContext = null;
+                    let columnContext = null;
+                    let groupContext = null;
+                    
+                    if (position) {
+                        // Get board, row, column info from the position
+                        const board = appData.boards[position.boardId];
+                        if (board) {
+                            boardContext = { id: position.boardId, name: board.name };
+                            
+                            // Find the row
+                            const row = board.rows?.find(r => r.id.toString() === position.rowId.toString());
+                            if (row) {
+                                rowContext = { id: row.id, name: row.name, groupId: row.groupId };
+                                
+                                // Find the group
+                                if (row.groupId) {
+                                    const group = board.groups?.find(g => g.id === row.groupId);
+                                    if (group) {
+                                        groupContext = { id: group.id, name: group.name, color: group.color };
+                                    }
+                                }
+                            }
+                            
+                            // Find the column
+                            const column = board.columns?.find(c => c.key === position.columnKey);
+                            if (column) {
+                                columnContext = { key: column.key, name: column.name };
+                            }
+                        }
                         
-                        for (const entityId of row.cards[columnKey]) {
-                            const entity = await getEntity(entityId);
-                            if (entity) {
-                                tasks.push({
-                                    ...entity,
-                                    boardId,
-                                    boardName: board.name,
-                                    rowId: row.id,
-                                    rowName: row.name,
-                                    columnKey,
-                                    columnName: column ? column.name : columnKey,
-                                    groupId: row.groupId,
-                                    groupName: group ? group.name : 'No Group',
-                                    groupColor: group ? group.color : '#666'
-                                });
+                        console.log(`getAllTasks: Found position for ${entityId}:`, {
+                            boardId: position.boardId,
+                            rowId: position.rowId,
+                            columnKey: position.columnKey
+                        });
+                    } else {
+                        console.log(`getAllTasks: No position found for ${entityId}, task may be orphaned`);
+                        
+                        // For orphaned tasks, use the first available board as default
+                        if (Object.keys(appData.boards).length > 0) {
+                            const firstBoardId = Object.keys(appData.boards)[0];
+                            const firstBoard = appData.boards[firstBoardId];
+                            boardContext = { id: firstBoardId, name: firstBoard.name };
+                            
+                            if (firstBoard.rows && firstBoard.rows.length > 0) {
+                                const firstRow = firstBoard.rows[0];
+                                rowContext = { id: firstRow.id, name: firstRow.name, groupId: firstRow.groupId };
+                                
+                                if (firstRow.groupId) {
+                                    const group = firstBoard.groups?.find(g => g.id === firstRow.groupId);
+                                    if (group) {
+                                        groupContext = { id: group.id, name: group.name, color: group.color };
+                                    }
+                                }
+                            }
+                            
+                            if (firstBoard.columns && firstBoard.columns.length > 0) {
+                                const firstColumn = firstBoard.columns[0];
+                                columnContext = { key: firstColumn.key, name: firstColumn.name };
                             }
                         }
                     }
+                    
+                    tasks.push({
+                        ...entity,
+                        boardId: boardContext?.id || 'unknown',
+                        boardName: boardContext?.name || 'Unknown Board',
+                        rowId: rowContext?.id || 'unknown',
+                        rowName: rowContext?.name || 'Unknown Row',
+                        columnKey: columnContext?.key || 'todo',
+                        columnName: columnContext?.name || 'To Do',
+                        groupId: groupContext?.id || null,
+                        groupName: groupContext?.name || 'No Group',
+                        groupColor: groupContext?.color || '#666'
+                    });
                 }
             }
         }
+        
+        console.log(`getAllTasks: Found ${tasks.length} tasks with positions`);
+        console.log('getAllTasks: Sample task:', tasks[0]);
+        return tasks;
+        
+    } catch (error) {
+        console.error('getAllTasks: Error retrieving tasks:', error);
+        return [];
     }
-    
-    return tasks;
 }
 
 /**
@@ -132,7 +214,7 @@ export async function renderTaskList() {
         const sortedTasks = sortTaskList(filteredTasks);
         
         // Update task statistics with animation
-        updateTaskStats(allTasks, filteredTasks);
+        updateTaskStats(allTasks, sortedTasks);
         
         // Hide loading state
         hideTaskLoadingState(container);
@@ -261,9 +343,12 @@ export function filterTaskList(tasks) {
     const searchTerm = document.getElementById('taskSearchInput')?.value.toLowerCase() || '';
     
     // Get active quick filter
-    const activeQuickFilter = document.querySelector('.badge[data-filter].badge-primary')?.dataset.filter;
+    const activeQuickFilter = document.querySelector('.quick-filter-menu.active')?.dataset.filter;
     
-    return tasks.filter(task => {
+    // Debug filter settings if needed
+    // console.log('filterTaskList: Filter settings:', { boardFilter, statusFilter, priorityFilter, searchTerm, activeQuickFilter, taskCount: tasks.length });
+    
+    const filteredTasks = tasks.filter(task => {
         // Board filter
         if (boardFilter !== 'all' && task.boardId !== boardFilter) return false;
         
@@ -276,10 +361,10 @@ export function filterTaskList(tasks) {
         // Priority filter
         if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
         
-        // Search filter
+        // Search filter (use content field if description is not available)
         if (searchTerm && 
             !task.title.toLowerCase().includes(searchTerm) && 
-            !task.description?.toLowerCase().includes(searchTerm) &&
+            !(task.description || task.content || '').toLowerCase().includes(searchTerm) &&
             !task.boardName?.toLowerCase().includes(searchTerm) &&
             !task.groupName?.toLowerCase().includes(searchTerm) &&
             !task.rowName?.toLowerCase().includes(searchTerm)) return false;
@@ -305,11 +390,19 @@ export function filterTaskList(tasks) {
                 case 'completed':
                     if (!task.completed) return false;
                     break;
+                case 'high-priority':
+                    if (task.priority !== 'high') return false;
+                    break;
             }
         }
         
         return true;
     });
+    
+    // Debug filtered results if needed
+    // console.log('filterTaskList: Filtered results:', { originalCount: tasks.length, filteredCount: filteredTasks.length, firstTask: filteredTasks[0]?.title });
+    
+    return filteredTasks;
 }
 
 /**
@@ -417,7 +510,7 @@ function hideTaskLoadingState(container) {
  * @returns {HTMLElement} Task element
  */
 export function createTaskElement(task) {
-    const taskElement = document.createElement('div');
+    const taskElement = document.createElement('li');
     
     // Priority colors and icons
     const priorityConfig = {
@@ -448,94 +541,120 @@ export function createTaskElement(task) {
         return date.toLocaleDateString();
     };
     
-    taskElement.className = `card bg-base-100 shadow-sm hover:shadow-md transition-all duration-200 border-l-4 ${priority.color} ${isCompleted ? 'opacity-60' : ''} ${priorityClass} group cursor-pointer task-card`;
+    taskElement.className = `list-row group ${isCompleted ? 'opacity-60' : ''} ${priorityClass} cursor-pointer`;
+    
+    // Check if this task has subtasks
+    const hasSubtasks = task.taskIds && task.taskIds.length > 0;
+    const subtaskCount = hasSubtasks ? task.taskIds.length : 0;
     
     taskElement.innerHTML = `
-        <div class="card-body p-4">
-            <!-- Task Header -->
-            <div class="flex items-start justify-between mb-3">
-                <div class="flex items-start gap-3 flex-1">
-                    <div class="form-control">
-                        <label class="cursor-pointer">
-                            <input type="checkbox" class="checkbox checkbox-sm task-checkbox ${isCompleted ? 'checkbox-success' : ''}" 
-                                   ${isCompleted ? 'checked' : ''} 
-                                   onchange="window.taskManagement.toggleTaskCompletion('${task.id}', '${task.boardId}', '${task.rowId}', '${task.columnKey}')">
-                        </label>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <h3 class="font-semibold text-base-content ${isCompleted ? 'line-through text-base-content/50' : ''} truncate">${task.title}</h3>
-                        ${task.description ? `<p class="text-sm text-base-content/70 mt-1 line-clamp-2">${task.description}</p>` : ''}
-                    </div>
-                </div>
-                
-                <!-- Priority Badge -->
-                <div class="badge ${priority.badge} badge-sm">
-                    ${priority.icon} ${task.priority || 'normal'}
-                </div>
-            </div>
+        <!-- Checkbox -->
+        <div class="form-control">
+            <label class="cursor-pointer">
+                <input type="checkbox" class="checkbox checkbox-sm task-checkbox ${isCompleted ? 'checkbox-success' : ''}" 
+                       ${isCompleted ? 'checked' : ''} 
+                       onchange="window.taskManagement.toggleTaskCompletion('${task.id}', '${task.boardId}', '${task.rowId}', '${task.columnKey}')">
+            </label>
+        </div>
+        
+        <!-- Task Content (grows to fill space) -->
+        <div class="list-col-grow flex items-center gap-2 min-w-0">
+            <!-- Priority Indicator -->
+            <div class="w-1 h-6 rounded-full ${priority.color.replace('border-l-', 'bg-')} flex-shrink-0"></div>
             
-            <!-- Task Metadata -->
-            <div class="flex flex-wrap gap-2 mb-3 text-xs">
-                <div class="badge badge-outline badge-sm">
-                    <i data-lucide="layers" class="w-3 h-3 mr-1"></i>
-                    ${task.boardName}
-                </div>
-                ${task.groupName ? `
-                    <div class="badge badge-outline badge-sm" style="border-color: ${task.groupColor}; color: ${task.groupColor}">
-                        <i data-lucide="folder" class="w-3 h-3 mr-1"></i>
-                        ${task.groupName}
-                    </div>
-                ` : ''}
-                <div class="badge badge-outline badge-sm">
-                    <i data-lucide="list" class="w-3 h-3 mr-1"></i>
-                    ${task.rowName}
-                </div>
-                <div class="badge badge-outline badge-sm">
-                    <i data-lucide="columns" class="w-3 h-3 mr-1"></i>
-                    ${task.columnName}
-                </div>
-            </div>
-            
-            <!-- Due Date and Status -->
-            ${task.dueDate || isCompleted ? `
-                <div class="flex items-center gap-2 mb-3">
-                    ${task.dueDate ? `
-                        <div class="flex items-center gap-1 text-xs ${isOverdue ? 'text-error' : 'text-base-content/70'}">
-                            <i data-lucide="calendar" class="w-3 h-3"></i>
-                            <span>${formatDueDate(task.dueDate)}</span>
-                            ${isOverdue ? '<i data-lucide="alert-triangle" class="w-3 h-3 text-error"></i>' : ''}
-                        </div>
-                    ` : ''}
-                    ${isCompleted ? `
-                        <div class="badge badge-success badge-sm">
-                            <i data-lucide="check" class="w-3 h-3 mr-1"></i>
-                            Completed
-                        </div>
-                    ` : ''}
-                </div>
+            <!-- Expandable Icon for Subtasks -->
+            ${hasSubtasks ? `
+                <button class="btn btn-ghost btn-xs p-1 subtask-toggle" onclick="window.taskManagement.toggleSubtasks('${task.id}')" title="${subtaskCount} subtasks">
+                    <i data-lucide="chevron-right" class="w-3 h-3 transition-transform"></i>
+                </button>
             ` : ''}
             
-            <!-- Task Actions -->
-            <div class="card-actions justify-end">
-                <div class="task-actions flex gap-1">
-                    <button class="btn btn-ghost btn-xs task-action-btn" 
-                            onclick="event.stopPropagation(); window.taskManagement.editTaskFromList('${task.id}', '${task.boardId}', '${task.rowId}', '${task.columnKey}')"
-                            title="Edit task">
-                        <i data-lucide="edit-2" class="w-3 h-3"></i>
-                    </button>
-                    <button class="btn btn-ghost btn-xs task-action-btn" 
-                            onclick="event.stopPropagation(); window.taskManagement.duplicateTask('${task.id}', '${task.boardId}', '${task.rowId}', '${task.columnKey}')"
-                            title="Duplicate task">
-                        <i data-lucide="copy" class="w-3 h-3"></i>
-                    </button>
-                    <button class="btn btn-ghost btn-xs task-action-btn hover:btn-error" 
-                            onclick="event.stopPropagation(); window.taskManagement.deleteTaskFromList('${task.id}', '${task.boardId}', '${task.rowId}', '${task.columnKey}')"
-                            title="Delete task">
-                        <i data-lucide="trash-2" class="w-3 h-3"></i>
-                    </button>
+            <!-- Task Title and Metadata -->
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                    <h3 class="font-medium text-base-content ${isCompleted ? 'line-through text-base-content/50' : ''} truncate">
+                        ${task.title}
+                    </h3>
+                    
+                    <!-- Priority Badge -->
+                    <div class="badge ${priority.badge} badge-xs">
+                        ${priority.icon}
+                    </div>
+                    
+                    <!-- Subtask Count -->
+                    ${hasSubtasks ? `
+                        <div class="badge badge-outline badge-xs">
+                            ${subtaskCount} subtask${subtaskCount !== 1 ? 's' : ''}
+                        </div>
+                    ` : ''}
+                </div>
+                
+                <!-- Metadata Row -->
+                <div class="flex items-center gap-1 mt-1">
+                    <!-- Due Date -->
+                    ${task.dueDate ? `
+                        <div class="badge badge-outline badge-xs ${isOverdue ? 'badge-error' : ''}">
+                            <i data-lucide="calendar" class="w-2 h-2 mr-1"></i>
+                            ${formatDueDate(task.dueDate)}
+                        </div>
+                    ` : ''}
+                    
+                    <!-- Board/Context -->
+                    <div class="badge badge-ghost badge-xs" title="${task.boardName} → ${task.rowName} → ${task.columnName}">
+                        <i data-lucide="layers" class="w-2 h-2 mr-1"></i>
+                        ${task.boardName}
+                    </div>
+                    
+                    <!-- Group -->
+                    ${task.groupName && task.groupName !== 'No Group' ? `
+                        <div class="badge badge-outline badge-xs" style="border-color: ${task.groupColor}; color: ${task.groupColor}">
+                            ${task.groupName}
+                        </div>
+                    ` : ''}
+                    
+                    <!-- Column -->
+                    <div class="badge badge-ghost badge-xs">
+                        ${task.columnName}
+                    </div>
                 </div>
             </div>
         </div>
+        
+        <!-- Actions -->
+        <div class="task-actions flex gap-1">
+            <button class="btn btn-ghost btn-xs task-action-btn" 
+                    onclick="event.stopPropagation(); window.taskManagement.editTaskFromList('${task.id}', '${task.boardId}', '${task.rowId}', '${task.columnKey}')"
+                    title="Edit task">
+                <i data-lucide="edit-2" class="w-3 h-3"></i>
+            </button>
+            <button class="btn btn-ghost btn-xs task-action-btn" 
+                    onclick="event.stopPropagation(); window.taskManagement.duplicateTask('${task.id}', '${task.boardId}', '${task.rowId}', '${task.columnKey}')"
+                    title="Duplicate task">
+                <i data-lucide="copy" class="w-3 h-3"></i>
+            </button>
+            <button class="btn btn-ghost btn-xs task-action-btn hover:btn-error" 
+                    onclick="event.stopPropagation(); window.taskManagement.deleteTaskFromList('${task.id}', '${task.boardId}', '${task.rowId}', '${task.columnKey}')"
+                    title="Delete task">
+                <i data-lucide="trash-2" class="w-3 h-3"></i>
+            </button>
+        </div>
+        
+        <!-- Expandable Subtasks Section -->
+        ${hasSubtasks ? `
+            <div class="list-col-wrap hidden" id="subtasks-${task.id}">
+                <div class="ml-6 mt-2 p-3 bg-base-200/50 rounded-box">
+                    <div class="text-xs text-base-content/60 mb-2 font-medium">Subtasks (${subtaskCount}):</div>
+                    <div class="space-y-1" id="subtask-list-${task.id}">
+                        ${task.taskIds.map(subtaskId => `
+                            <div class="flex items-center gap-2 text-sm p-1 rounded hover:bg-base-300/50">
+                                <div class="w-2 h-2 rounded-full bg-base-content/30"></div>
+                                <span class="text-base-content/70">Subtask ${subtaskId}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        ` : ''}
     `;
     
     // Add click handler to open task details (optional feature)
@@ -992,15 +1111,13 @@ export function clearTaskFilters() {
     }
     
     // Reset quick filters
-    document.querySelectorAll('.quick-filter-badge').forEach(badge => {
-        badge.classList.remove('badge-primary');
-        badge.classList.add('badge-ghost');
+    document.querySelectorAll('.quick-filter-menu').forEach(menuItem => {
+        menuItem.classList.remove('active');
     });
     
     const allFilter = document.getElementById('filterAll');
     if (allFilter) {
-        allFilter.classList.remove('badge-ghost');
-        allFilter.classList.add('badge-primary');
+        allFilter.classList.add('active');
     }
     
     // Re-render the task list
@@ -1011,25 +1128,39 @@ export function clearTaskFilters() {
  * Setup enhanced task management event listeners
  */
 export function setupTaskManagementEvents() {
-    // Quick filter badge click handlers
-    document.addEventListener('click', (event) => {
-        const badge = event.target.closest('.quick-filter-badge');
-        if (badge) {
+    // Remove any existing listeners to prevent duplicates
+    const existingHandler = document.querySelector('[data-task-handler="true"]');
+    if (existingHandler) {
+        existingHandler.removeAttribute('data-task-handler');
+    }
+    
+    // Quick filter menu click handlers
+    const handleFilterClick = (event) => {
+        const menuItem = event.target.closest('.quick-filter-menu');
+        if (menuItem) {
             event.preventDefault();
+            event.stopPropagation();
             
-            // Remove active state from all badges
-            document.querySelectorAll('.quick-filter-badge').forEach(b => {
-                b.classList.remove('badge-primary');
-                b.classList.add('badge-ghost');
+            // Remove active state from all menu items
+            document.querySelectorAll('.quick-filter-menu').forEach(item => {
+                item.classList.remove('active');
             });
             
-            // Add active state to clicked badge
-            badge.classList.remove('badge-ghost');
-            badge.classList.add('badge-primary');
+            // Add active state to clicked menu item
+            menuItem.classList.add('active');
             
             // Trigger filter update
             renderTaskList();
         }
+    };
+    
+    // Add event listener to document with delegation
+    document.addEventListener('click', handleFilterClick);
+    document.body.setAttribute('data-task-handler', 'true');
+    
+    // Also add direct listeners to each menu item as backup
+    document.querySelectorAll('.quick-filter-menu').forEach(menuItem => {
+        menuItem.addEventListener('click', handleFilterClick);
     });
     
     // Enhanced search input with debouncing
@@ -1044,13 +1175,46 @@ export function setupTaskManagementEvents() {
         });
         
         // Add focus animation
-        searchInput.addEventListener('focus', (event) => {
-            event.target.classList.add('input-primary');
+        searchInput.addEventListener('focus', () => {
+            searchInput.classList.add('input-primary');
         });
         
-        searchInput.addEventListener('blur', (event) => {
-            event.target.classList.remove('input-primary');
+        searchInput.addEventListener('blur', () => {
+            searchInput.classList.remove('input-primary');
         });
+    }
+    
+    // Add keyboard shortcut for search (Cmd+K / Ctrl+K)
+    document.addEventListener('keydown', (event) => {
+        if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
+            event.preventDefault();
+            const searchInput = document.getElementById('taskSearchInput');
+            if (searchInput) {
+                searchInput.focus();
+                searchInput.select();
+            }
+        }
+    });
+}
+
+/**
+ * Toggle subtasks visibility for a task
+ * @param {string} taskId - Task ID
+ */
+export function toggleSubtasks(taskId) {
+    const subtasksContainer = document.getElementById(`subtasks-${taskId}`);
+    const toggleButton = document.querySelector(`[onclick*="toggleSubtasks('${taskId}')"] i`);
+    
+    if (subtasksContainer && toggleButton) {
+        const isHidden = subtasksContainer.classList.contains('hidden');
+        
+        if (isHidden) {
+            subtasksContainer.classList.remove('hidden');
+            toggleButton.style.transform = 'rotate(90deg)';
+        } else {
+            subtasksContainer.classList.add('hidden');
+            toggleButton.style.transform = 'rotate(0deg)';
+        }
     }
 }
 
@@ -1064,8 +1228,7 @@ export function initializeTaskManagement() {
     // Set initial quick filter state
     const allFilter = document.getElementById('filterAll');
     if (allFilter) {
-        allFilter.classList.remove('badge-ghost');
-        allFilter.classList.add('badge-primary');
+        allFilter.classList.add('active');
     }
 }
 
@@ -1091,6 +1254,7 @@ window.duplicateTask = duplicateTask;
 window.clearTaskFilters = clearTaskFilters;
 window.setupTaskManagementEvents = setupTaskManagementEvents;
 window.initializeTaskManagement = initializeTaskManagement;
+window.toggleSubtasks = toggleSubtasks;
 
 // Export module for access by other modules
 window.taskManagement = {
@@ -1114,5 +1278,6 @@ window.taskManagement = {
     duplicateTask,
     clearTaskFilters,
     setupTaskManagementEvents,
-    initializeTaskManagement
+    initializeTaskManagement,
+    toggleSubtasks
 };
