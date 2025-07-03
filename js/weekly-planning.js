@@ -282,17 +282,8 @@ export async function createWeeklyItemElement(item) {
         // Legacy weekly item system (should be rare after migration)
         console.warn('Using legacy weekly item format:', item);
         
-        // Handle migrated data: resolve entity references to get title/content
-        if (item.entityId && !item.title && !item.content) {
-            const appData = getAppData();
-            const entity = appData.entities?.notes?.[item.entityId];
-            if (entity) {
-                // Temporarily add title/content to item for display
-                item.title = entity.title;
-                item.content = entity.content;
-                console.log('Resolved entity data for item:', item.id, entity);
-            }
-        }
+        // For legacy items, we can render them directly since they have title/content
+        // These items should be migrated to the entity system
         
         const itemElement = document.createElement('div');
         itemElement.className = `weekly-item ${item.type} ${item.completed ? 'completed' : ''}`;
@@ -536,17 +527,31 @@ export function saveWeeklyGoal() {
 export function addWeeklyNote(day = 'monday', type = 'note') {
     // Open the weeklyItemModal and prefill the form
     const modal = document.getElementById('weeklyItemModal');
-    if (!modal) return;
-    document.getElementById('weeklyItemModalTitle').textContent = 'Add Note';
+    if (!modal) {
+        console.error('weeklyItemModal not found');
+        return;
+    }
+    
+    const titleElement = document.getElementById('weeklyItemModalTitle');
+    if (titleElement) {
+        titleElement.textContent = 'Add Note';
+    }
+    
     const form = document.getElementById('weeklyItemForm');
     if (form) {
         form.reset();
-        document.getElementById('weeklyItemType').value = type;
-        document.getElementById('weeklyItemTitle').value = '';
-        document.getElementById('weeklyItemContent').value = '';
+        const typeSelect = document.getElementById('weeklyItemType');
+        const titleInput = document.getElementById('weeklyItemTitle');
+        const contentInput = document.getElementById('weeklyItemContent');
+        
+        if (typeSelect) typeSelect.value = type;
+        if (titleInput) titleInput.value = '';
+        if (contentInput) contentInput.value = '';
         form.dataset.day = day;
     }
-    modal.style.display = 'modal-open';
+    
+    // Use DaisyUI modal class instead of inline style
+    modal.classList.add('modal-open');
 }
 
 /**
@@ -612,7 +617,7 @@ export function editWeeklyItem(itemId) {
     if (form) form.dataset.day = item.day;
     
     // Show modal
-    modal.style.display = 'modal-open';
+    modal.classList.add('modal-open');
 }
 
 /**
@@ -680,7 +685,7 @@ export function showWeeklyReflectionModal() {
     if (reflectionNextWeek) reflectionNextWeek.value = reflection.nextWeekFocus || '';
     
     const modal = document.getElementById('weeklyReflectionModal');
-    if (modal) modal.style.display = 'modal-open';
+    if (modal) modal.classList.add('modal-open');
 }
 
 /**
@@ -688,7 +693,7 @@ export function showWeeklyReflectionModal() {
  */
 export function closeWeeklyReflectionModal() {
     const modal = document.getElementById('weeklyReflectionModal');
-    if (modal) modal.style.display = 'none';
+    if (modal) modal.classList.remove('modal-open');
 }
 
 /**
@@ -814,7 +819,7 @@ export function removeCardFromWeeklyPlan(itemId) {
 /**
  * Save weekly item from modal
  */
-export function saveWeeklyItem() {
+export async function saveWeeklyItem() {
     const typeInput = document.getElementById('weeklyItemType');
     const titleInput = document.getElementById('weeklyItemTitle');
     const contentInput = document.getElementById('weeklyItemContent');
@@ -875,19 +880,42 @@ export function saveWeeklyItem() {
         
         showStatusMessage('Weekly item updated', 'success');
     } else {
-        // Create new item
-        const newItem = {
-            id: `weekly_${appData.nextWeeklyItemId++}`,
-            type: type,
-            day: day,
-            title: title,
-            content: content,
-            completed: false,
-            createdAt: new Date().toISOString()
-        };
-        
-        appData.weeklyPlans[currentWeekKey].items.push(newItem);
-        showStatusMessage('Weekly item saved', 'success');
+        // Create new item using entity system
+        try {
+            // Create entity first
+            const entityData = {
+                title: title,
+                content: content,
+                completed: false
+            };
+            
+            // Import the entity creation function
+            const { createEntity, ENTITY_TYPES } = await import('./entity-core.js');
+            
+            // Determine entity type
+            const entityType = type === 'checklist' ? ENTITY_TYPES.CHECKLIST : 
+                             type === 'project' ? ENTITY_TYPES.PROJECT :
+                             ENTITY_TYPES.NOTE; // Default to note for 'note' and 'task'
+            
+            // Create the entity
+            const entity = await createEntity(entityType, entityData);
+            
+            // Create weekly item that references the entity
+            const newItem = {
+                id: `weekly_${appData.nextWeeklyItemId++}`,
+                entityId: entity.id,
+                day: day,
+                addedAt: new Date().toISOString()
+            };
+            
+            appData.weeklyPlans[currentWeekKey].items.push(newItem);
+            showStatusMessage('Weekly item saved', 'success');
+            
+        } catch (error) {
+            console.error('Failed to create weekly item:', error);
+            showStatusMessage('Failed to create weekly item', 'error');
+            return;
+        }
     }
     
     setAppData(appData);
@@ -904,7 +932,7 @@ export function saveWeeklyItem() {
 export function closeWeeklyItemModal() {
     const modal = document.getElementById('weeklyItemModal');
     if (modal) {
-        modal.style.display = 'none';
+        modal.classList.remove('modal-open');
     }
     
     // Clear the editing reference

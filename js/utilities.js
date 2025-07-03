@@ -168,11 +168,23 @@ export function setupEventListeners() {
         weeklyReflectionForm.addEventListener('submit', window.saveWeeklyReflection);
     }
     
+    // Weekly item form
+    const weeklyItemForm = document.getElementById('weeklyItemForm');
+    if (weeklyItemForm) {
+        weeklyItemForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            if (window.saveWeeklyItem) {
+                await window.saveWeeklyItem();
+            }
+        });
+    }
+    
     // Modal close on outside click
     window.addEventListener('click', function(event) {
         const cardModal = document.getElementById('cardModal');
         const taskModal = document.getElementById('taskModal');
         const weeklyReflectionModal = document.getElementById('weeklyReflectionModal');
+        const weeklyItemModal = document.getElementById('weeklyItemModal');
         const rowModal = document.getElementById('rowModal');
         const columnModal = document.getElementById('columnModal');
         const groupModal = document.getElementById('groupModal');
@@ -187,6 +199,7 @@ export function setupEventListeners() {
         if (event.target === cardModal && cardModal.classList.contains('modal-open')) window.closeModal();
         if (event.target === taskModal && taskModal.classList.contains('modal-open')) window.closeTaskModal();
         if (event.target === weeklyReflectionModal && weeklyReflectionModal.classList.contains('modal-open')) window.closeWeeklyReflectionModal();
+        if (event.target === weeklyItemModal && weeklyItemModal.classList.contains('modal-open')) window.closeWeeklyItemModal();
         if (event.target === rowModal && rowModal.classList.contains('modal-open')) window.closeRowModal();
         if (event.target === columnModal && columnModal.classList.contains('modal-open')) window.closeColumnModal();
         if (event.target === groupModal && groupModal.classList.contains('modal-open')) window.closeGroupModal();
@@ -204,6 +217,7 @@ export function setupEventListeners() {
             window.closeModal();
             window.closeTaskModal();
             window.closeWeeklyReflectionModal();
+            window.closeWeeklyItemModal();
             window.closeRowModal();
             window.closeColumnModal();
             window.closeGroupModal();
@@ -219,6 +233,22 @@ export function setupEventListeners() {
                 window.hideSettings();
             }
         }
+    });
+    
+    // Global data-action click handler
+    document.addEventListener('click', function(event) {
+        const target = event.target.closest('[data-action]');
+        if (!target) return;
+        
+        const action = target.getAttribute('data-action');
+        
+        // Handle modal close actions
+        if (action === 'closeWeeklyItemModal' && window.closeWeeklyItemModal) {
+            window.closeWeeklyItemModal();
+        } else if (action === 'closeWeeklyReflectionModal' && window.closeWeeklyReflectionModal) {
+            window.closeWeeklyReflectionModal();
+        }
+        // Add more data-action handlers as needed
     });
 }
 
