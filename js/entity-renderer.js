@@ -17,10 +17,10 @@ let currentEditingEntity = null;
  * @param {string} entityId - Entity ID
  * @param {string} contextType - Context type (board, weekly, task_list)
  * @param {Object} contextData - Context-specific data
- * @returns {HTMLElement|null} Rendered element
+ * @returns {Promise<HTMLElement|null>} Rendered element
  */
-export function renderEntity(entityId, contextType, contextData = {}) {
-    const entity = getEntity(entityId);
+export async function renderEntity(entityId, contextType, contextData = {}) {
+    const entity = await getEntity(entityId);
     if (!entity) {
         console.warn('Entity not found for rendering:', entityId);
         return null;
@@ -54,7 +54,7 @@ function renderEntityAsCard(entity, contextData = {}) {
     const cardElement = document.createElement('div');
     cardElement.className = `card bg-base-100 shadow-md border border-base-300 hover:shadow-lg transition-shadow cursor-pointer ${entity.completed ? 'opacity-75' : ''}`;
     cardElement.dataset.entityId = entity.id;
-    cardElement.draggable = true;
+    // SortableJS will handle draggable property
     
     // Build card content based on entity type
     let cardContent = '';
@@ -510,25 +510,17 @@ function formatDate(dateString) {
  * Setup event listeners for card elements
  */
 function setupCardEventListeners(cardElement, entity) {
-    // Add drag and drop handlers
-    cardElement.addEventListener('dragstart', (e) => {
-        e.dataTransfer.setData('text/plain', entity.id);
-        e.dataTransfer.setData('application/x-entity-id', entity.id);
-        cardElement.classList.add('dragging');
-    });
-    
-    cardElement.addEventListener('dragend', () => {
-        cardElement.classList.remove('dragging');
-    });
+    // SortableJS handles drag and drop, so we don't need HTML5 drag events
+    // Removed conflicting dragstart/dragend listeners
     
     // Add click handler for card detail view
-    cardElement.addEventListener('click', (e) => {
+    cardElement.addEventListener('click', async (e) => {
         if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') {
             return; // Don't handle card click if button/input was clicked
         }
         
         // Open entity detail modal
-        showEntityDetail(entity.id);
+        await showEntityDetail(entity.id);
     });
 }
 
@@ -539,8 +531,8 @@ function setupCardEventListeners(cardElement, entity) {
  * Show comprehensive entity detail modal
  * @param {string} entityId - Entity ID to display
  */
-export function showEntityDetail(entityId) {
-    const entity = getEntity(entityId);
+export async function showEntityDetail(entityId) {
+    const entity = await getEntity(entityId);
     if (!entity) {
         console.warn('Entity not found:', entityId);
         return;
@@ -568,8 +560,8 @@ export function showEntityDetail(entityId) {
 /**
  * Legacy editEntity function for backward compatibility
  */
-export function editEntity(entityId) {
-    showEntityDetail(entityId);
+export async function editEntity(entityId) {
+    await showEntityDetail(entityId);
 }
 
 /**
@@ -713,19 +705,19 @@ export function removeFromWeekly(entityId, weekKey) {
 /**
  * Refresh all displays of an entity
  */
-function refreshEntityDisplays(entityId) {
+async function refreshEntityDisplays(entityId) {
     // Find all elements displaying this entity and re-render them
     const elements = document.querySelectorAll(`[data-entity-id="${entityId}"]`);
     
-    elements.forEach(element => {
+    for (const element of elements) {
         const contextType = getContextFromElement(element);
         const contextData = getContextDataFromElement(element);
         
-        const newElement = renderEntity(entityId, contextType, contextData);
+        const newElement = await renderEntity(entityId, contextType, contextData);
         if (newElement) {
             element.parentNode.replaceChild(newElement, element);
         }
-    });
+    }
 }
 
 /**
@@ -909,7 +901,7 @@ function setupEntityDetailListeners() {
  * Handle clicks in entity detail modal
  * @param {Event} event - Click event
  */
-function handleEntityDetailClick(event) {
+async function handleEntityDetailClick(event) {
     const action = event.target.dataset.action;
     if (!action || !currentEditingEntity) return;
     
@@ -923,7 +915,7 @@ function handleEntityDetailClick(event) {
             saveEntityChanges();
             break;
         case 'addToWeeklyPlan':
-            addEntityToWeeklyPlan(currentEditingEntity.id);
+            await addEntityToWeeklyPlan(currentEditingEntity.id);
             break;
         case 'duplicateEntity':
             duplicateCurrentEntity();
@@ -1018,10 +1010,10 @@ function saveEntityChanges() {
  * Add entity to weekly plan
  * @param {string} entityId - Entity ID
  */
-function addEntityToWeeklyPlan(entityId) {
+async function addEntityToWeeklyPlan(entityId) {
     if (window.weeklyPlanning && window.weeklyPlanning.addEntityToCurrentWeek) {
         window.weeklyPlanning.addEntityToCurrentWeek(entityId);
-        updateWeeklyPlanningStatus(getEntity(entityId));
+        updateWeeklyPlanningStatus(await getEntity(entityId));
         showStatusMessage('Added to weekly plan', 'success');
     } else {
         showStatusMessage('Weekly planning not available', 'warning');

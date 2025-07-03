@@ -42,19 +42,21 @@ import * as peopleView from './people-view.js';
 import * as collectionsView from './collections-view.js';
 import * as tagsView from './tags-view.js';
 
-// IndexedDB infrastructure (IndexedDB-only)
-import database from './indexeddb/database.js';
-import { entityAdapter, boardAdapter, appMetadataAdapter } from './indexeddb/adapters.js';
+// Dexie infrastructure (Dexie-only)
+import { db } from './db.js';
+import { entityService } from './entity-service.js';
+import { boardService } from './board-service.js';
+import { metaService } from './meta-service.js';
 
 // Initialize the application
 async function initializeGridFlow() {
     try {
-        console.log('🚀 Initializing GridFlow (IndexedDB-Only Architecture)...');
+        console.log('🚀 Initializing GridFlow (Dexie Architecture)...');
         
-        // Initialize IndexedDB first (required for all operations)
-        console.log('🗄️ Initializing IndexedDB database...');
-        await database.init();
-        console.log('✅ IndexedDB initialized successfully');
+        // Initialize Dexie database (much simpler!)
+        console.log('🗄️ Initializing Dexie database...');
+        await db.initialize();
+        console.log('✅ Dexie database initialized successfully');
         
         // Make modules available globally for backward compatibility
         window.utilities = utilities;
@@ -90,14 +92,17 @@ async function initializeGridFlow() {
         window.peopleView = peopleView;
         window.switchToPeopleView = peopleView.switchToPeopleView;
         
-        // Make IndexedDB adapters available globally for debugging
-        window.gridFlowDB = database;
-        window.entityAdapter = entityAdapter;
-        window.boardAdapter = boardAdapter;
-        window.appMetadataAdapter = appMetadataAdapter;
+        // Make Dexie services available globally for debugging
+        window.gridFlowDB = db;
+        window.entityService = entityService;
+        window.entityAdapter = entityService; // Backward compatibility
+        window.boardService = boardService;
+        window.boardAdapter = boardService; // Backward compatibility
+        window.metaService = metaService;
+        window.appMetadataAdapter = metaService; // Backward compatibility
         
-        // Load application data from IndexedDB
-        console.log('📊 Loading application data from IndexedDB...');
+        // Load application data from Dexie
+        console.log('📊 Loading application data from Dexie...');
         await coreData.loadData();
         console.log('✅ Application data loaded successfully');
         
@@ -113,6 +118,10 @@ async function initializeGridFlow() {
         // Initialize utilities (will handle missing DOM elements gracefully)
         console.log('⚙️ Setting up event listeners...');
         utilities.setupEventListeners();
+        
+        // Initialize navigation system (must be before data loaded event dispatch)
+        console.log('🧭 Initializing navigation system...');
+        navigation.initializeNavigation();
         
         // Initialize board management
         console.log('📋 Initializing board management...');
@@ -147,7 +156,7 @@ async function initializeGridFlow() {
         // Signal that app initialization is complete
         window.appInitialized = true;
         window.dispatchEvent(new CustomEvent('gridflow-app-initialized'));
-        console.log('🎉 GridFlow app initialization complete (IndexedDB-Only)');
+        console.log('🎉 GridFlow app initialization complete (Dexie Architecture)');
         
     } catch (error) {
         console.error('❌ Failed to initialize GridFlow:', error);
@@ -157,18 +166,18 @@ async function initializeGridFlow() {
 }
 
 /**
- * Verify data integrity in IndexedDB
+ * Verify data integrity in Dexie
  */
 async function verifyDataIntegrity() {
     try {
         console.log('🔍 Verifying data integrity...');
         
         // Get data counts
-        const entities = await entityAdapter.getAll();
-        const boards = await boardAdapter.getAll();
-        const appConfig = await appMetadataAdapter.getAppConfig();
+        const entities = await entityService.getAll();
+        const boards = await boardService.getAll();
+        const currentBoardId = await metaService.getCurrentBoardId();
         
-        console.log(`📊 Data verification: ${entities.length} entities, ${boards.length} boards, version ${appConfig.version}`);
+        console.log(`📊 Data verification: ${entities.length} entities, ${boards.length} boards, current board: ${currentBoardId}`);
         
         // Verify at least one board exists
         if (boards.length === 0) {
@@ -176,43 +185,24 @@ async function verifyDataIntegrity() {
         }
         
         // Verify app config is valid
-        if (!appConfig.currentBoardId) {
-            console.warn('⚠️ No current board ID set in app config');
+        if (!currentBoardId) {
+            console.warn('⚠️ No current board ID set in metadata');
         }
         
-        // Check for orphaned entities (entities not referenced in any board)
-        let orphanedEntities = 0;
-        const referencedEntityIds = new Set();
-        
-        boards.forEach(board => {
-            board.rows?.forEach(row => {
-                if (row.cards) {
-                    Object.values(row.cards).forEach(cardList => {
-                        cardList.forEach(entityId => {
-                            if (typeof entityId === 'string' && entityId.includes('_')) {
-                                referencedEntityIds.add(entityId);
-                            }
-                        });
-                    });
-                }
-            });
-        });
-        
-        entities.forEach(entity => {
-            if (!referencedEntityIds.has(entity.id)) {
-                orphanedEntities++;
-            }
-        });
-        
-        if (orphanedEntities > 0) {
-            console.log(`ℹ️ Found ${orphanedEntities} orphaned entities (not referenced in any board)`);
+        // Check for orphaned entities using new entity service
+        if (currentBoardId) {
+            const orphanedEntities = await entityService.getOrphanedEntities(currentBoardId);
             
-            // Automatically recover orphaned entities
-            const recoveryResult = await coreData.recoverOrphanedEntities();
-            if (recoveryResult.success) {
-                console.log(`🔧 ${recoveryResult.message}`);
-            } else {
-                console.warn(`⚠️ Entity recovery failed: ${recoveryResult.error}`);
+            if (orphanedEntities.length > 0) {
+                console.log(`ℹ️ Found ${orphanedEntities.length} orphaned entities (not positioned on current board)`);
+                
+                // Automatically recover orphaned entities
+                const recoveryResult = await entityService.recoverOrphanedEntities(currentBoardId);
+                if (recoveryResult.success) {
+                    console.log(`🔧 Recovered ${recoveryResult.recoveredCount} entities to ${recoveryResult.placementLocation.rowName} → ${recoveryResult.placementLocation.columnName}`);
+                } else {
+                    console.warn(`⚠️ Entity recovery failed`);
+                }
             }
         }
         
@@ -230,23 +220,21 @@ async function verifyDataIntegrity() {
  */
 async function getAppHealthStatus() {
     try {
-        const entities = await entityAdapter.getAll();
-        const boards = await boardAdapter.getAll();
-        const appConfig = await appMetadataAdapter.getAppConfig();
-        const dbInfo = database.getInfo();
+        const entities = await entityService.getAll();
+        const boards = await boardService.getAll();
+        const currentBoardId = await metaService.getCurrentBoardId();
         
         return {
             healthy: true,
-            version: appConfig.version,
             database: {
-                name: dbInfo.name,
-                version: dbInfo.version,
-                stores: dbInfo.objectStoreNames
+                name: 'GridFlowDB',
+                type: 'Dexie',
+                version: 1
             },
             data: {
                 entities: entities.length,
                 boards: boards.length,
-                currentBoardId: appConfig.currentBoardId
+                currentBoardId: currentBoardId
             },
             features: {
                 peopleSystem: !!window.peopleService,
@@ -272,9 +260,9 @@ async function emergencyDataRecovery() {
     try {
         console.log('🚨 Starting emergency data recovery...');
         
-        // Try to load from IndexedDB
-        const entities = await entityAdapter.getAll();
-        const boards = await boardAdapter.getAll();
+        // Try to load from Dexie
+        const entities = await entityService.getAll();
+        const boards = await boardService.getAll();
         
         if (boards.length === 0) {
             console.log('📋 No boards found, creating default board...');
@@ -282,10 +270,10 @@ async function emergencyDataRecovery() {
         }
         
         // Verify app config
-        const appConfig = await appMetadataAdapter.getAppConfig();
-        if (!appConfig.currentBoardId) {
+        const currentBoardId = await metaService.getCurrentBoardId();
+        if (!currentBoardId) {
             const firstBoard = boards[0] || { id: 'default' };
-            await appMetadataAdapter.setCurrentBoardId(firstBoard.id);
+            await metaService.setCurrentBoardId(firstBoard.id);
             console.log(`📌 Set current board to ${firstBoard.id}`);
         }
         
@@ -317,8 +305,9 @@ window.getAppHealthStatus = getAppHealthStatus;
 window.emergencyDataRecovery = emergencyDataRecovery;
 
 // Manual entity recovery function for debugging
-window.recoverOrphanedEntities = async () => {
-    const result = await coreData.recoverOrphanedEntities();
+window.recoverOrphanedEntities = async (boardId = null) => {
+    const targetBoardId = boardId || await metaService.getCurrentBoardId() || 'default';
+    const result = await entityService.recoverOrphanedEntities(targetBoardId);
     console.log('Recovery result:', result);
     if (result.success && window.renderBoard) {
         window.renderBoard(); // Re-render the board to show recovered entities

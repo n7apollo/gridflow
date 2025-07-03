@@ -4,6 +4,7 @@
  */
 
 import { saveData, appData, boardData } from './core-data.js';
+import { entityService } from './entity-service.js';
 import { showStatusMessage } from './utilities.js';
 
 /**
@@ -48,7 +49,11 @@ export function setupColumnSorting(cardsContainer, rowId, columnKey) {
         chosenClass: 'card-chosen',
         dragClass: 'card-drag',
         onEnd: function(evt) {
-            const cardId = parseInt(evt.item.dataset.cardId);
+            console.log('Drag event item:', evt.item);
+            console.log('Item dataset:', evt.item.dataset);
+            console.log('Item classList:', evt.item.classList.toString());
+            
+            const cardId = evt.item.dataset.cardId; // Keep as string (entity ID)
             const fromRowId = parseInt(evt.from.dataset.rowId);
             const fromColumnKey = evt.from.dataset.columnKey;
             const toRowId = parseInt(evt.to.dataset.rowId);
@@ -102,11 +107,20 @@ export function moveCard(cardId, rowId, fromColumn, toColumn) {
     const row = boardData.rows.find(r => r.id === rowId);
     if (!row) return;
     
-    const cardIndex = row.cards[fromColumn].findIndex(c => c.id === cardId);
+    const cardIndex = row.cards[fromColumn].findIndex(entityId => entityId === cardId);
     if (cardIndex === -1) return;
     
-    const card = row.cards[fromColumn].splice(cardIndex, 1)[0];
-    row.cards[toColumn].push(card);
+    const entityId = row.cards[fromColumn].splice(cardIndex, 1)[0];
+    row.cards[toColumn].push(entityId);
+    
+    // Update entity position in database
+    const newOrder = row.cards[toColumn].length - 1; // Last position
+    const boardId = appData.currentBoardId || 'default';
+    entityService.setPosition(entityId, boardId, 'board', rowId, toColumn, newOrder)
+        .catch(error => console.error('Failed to update entity position:', error));
+    
+    // Save changes to database
+    saveData();
     
     // Re-render the board to reflect changes
     if (window.renderBoard) {
@@ -131,14 +145,14 @@ export function moveCardBetweenRows(cardId, fromRowId, fromColumn, toRowId, toCo
         return;
     }
     
-    // Find and remove card from source
-    const cardIndex = fromRow.cards[fromColumn].findIndex(c => c.id === cardId);
+    // Find and remove card from source (cards are now entity IDs)
+    const cardIndex = fromRow.cards[fromColumn].findIndex(entityId => entityId === cardId);
     if (cardIndex === -1) {
         console.error('Card not found in source:', cardId, fromColumn);
         return;
     }
     
-    const card = fromRow.cards[fromColumn].splice(cardIndex, 1)[0];
+    const entityId = fromRow.cards[fromColumn].splice(cardIndex, 1)[0];
     
     // Ensure target column exists
     if (!toRow.cards[toColumn]) {
@@ -146,9 +160,18 @@ export function moveCardBetweenRows(cardId, fromRowId, fromColumn, toRowId, toCo
     }
     
     // Add card to destination
-    toRow.cards[toColumn].push(card);
+    toRow.cards[toColumn].push(entityId);
     
     console.log('Moved card', cardId, 'from row', fromRowId, 'to row', toRowId);
+    
+    // Update entity position in database
+    const newOrder = toRow.cards[toColumn].length - 1; // Last position
+    const boardId = appData.currentBoardId || 'default';
+    entityService.setPosition(entityId, boardId, 'board', toRowId, toColumn, newOrder)
+        .catch(error => console.error('Failed to update entity position:', error));
+    
+    // Save changes to database
+    saveData();
     
     // Re-render the board to reflect changes
     if (window.renderBoard) {
@@ -168,8 +191,13 @@ export function reorderCardsInColumn(rowId, columnKey, newIndex, oldIndex) {
     if (!row || !row.cards[columnKey]) return;
     
     const cards = row.cards[columnKey];
-    const movedCard = cards.splice(oldIndex, 1)[0];
-    cards.splice(newIndex, 0, movedCard);
+    const movedEntityId = cards.splice(oldIndex, 1)[0];
+    cards.splice(newIndex, 0, movedEntityId);
+    
+    // Update entity position in database with new order
+    const boardId = appData.currentBoardId || 'default';
+    entityService.setPosition(movedEntityId, boardId, 'board', rowId, columnKey, newIndex)
+        .catch(error => console.error('Failed to update entity position:', error));
     
     saveData();
 }

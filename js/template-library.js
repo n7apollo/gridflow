@@ -6,8 +6,7 @@
 
 import { saveData, appData } from './core-data.js';
 import { showStatusMessage } from './utilities.js';
-// Legacy import - now handled by templateLibraryAdapter
-import { templateLibraryAdapter } from './indexeddb/adapters.js';
+import { metaService } from './meta-service.js';
 
 /**
  * Create a reusable task set template for common task patterns
@@ -20,10 +19,7 @@ import { templateLibraryAdapter } from './indexeddb/adapters.js';
  */
 export async function createTaskSet(name, description, tasks, category = 'general', tags = []) {
     try {
-        const taskSet = await templateLibraryAdapter.createTaskSet({
-            name,
-            description,
-            category,
+        const taskSet = await metaService.createTemplate(name, description, 'task_set', {
             tasks: tasks.map(task => ({
                 text: task.text || task,
                 priority: task.priority || 'medium',
@@ -50,7 +46,7 @@ export async function createTaskSet(name, description, tasks, category = 'genera
  */
 export async function applyTaskSetToCard(templateId, cardId, boardId) {
     
-    const template = await templateLibraryAdapter.getTaskSet(templateId);
+    const template = await metaService.getTemplate(templateId);
     if (!template) return null;
     
     const board = appData.boards[boardId];
@@ -73,7 +69,7 @@ export async function applyTaskSetToCard(templateId, cardId, boardId) {
     const newTaskIds = [];
     
     // Create task entities from template
-    template.tasks.forEach(taskTemplate => {
+    template.structure.tasks.forEach(taskTemplate => {
         const taskId = `task_${appData.nextTaskId++}`;
         
         appData.entities.tasks[taskId] = {
@@ -84,7 +80,7 @@ export async function applyTaskSetToCard(templateId, cardId, boardId) {
             priority: taskTemplate.priority,
             parentType: 'card',
             parentId: cardId.toString(),
-            tags: [...template.tags],
+            tags: [...(template.structure.tags || [])],
             estimatedTime: taskTemplate.estimatedTime,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
@@ -113,7 +109,7 @@ export async function applyTaskSetToCard(templateId, cardId, boardId) {
     
     // Update usage count
     try {
-        await templateLibraryAdapter.incrementUsage('taskSets', templateId);
+        await metaService.incrementTemplateUsage(templateId);
     } catch (error) {
         console.error('Failed to update usage count:', error);
     }
@@ -129,58 +125,67 @@ export async function applyTaskSetToCard(templateId, cardId, boardId) {
 export async function initializeSampleTemplates() {
     
     // Sample Checklist Templates
-    const existingChecklists = await templateLibraryAdapter.getAllChecklists();
+    const existingChecklists = await metaService.getTemplatesByCategory('checklist');
     if (existingChecklists.length === 0) {
         // Project Planning Template
-        await templateLibraryAdapter.createChecklist({
-            name: "Project Planning Checklist",
-            description: "Essential steps for starting any new project",
-            items: [
-                { text: "Define project scope and objectives", priority: "high" },
-                { text: "Identify key stakeholders", priority: "high" },
-                { text: "Create project timeline", priority: "medium" },
-                { text: "Set budget and resource requirements", priority: "medium" },
-                { text: "Establish communication channels", priority: "medium" },
-                { text: "Create risk management plan", priority: "low" }
-            ],
-            category: "project",
-            tags: ["planning", "project"]
-        });
+        await metaService.createTemplate(
+            "Project Planning Checklist",
+            "Essential steps for starting any new project",
+            "checklist",
+            {
+                items: [
+                    { text: "Define project scope and objectives", priority: "high" },
+                    { text: "Identify key stakeholders", priority: "high" },
+                    { text: "Create project timeline", priority: "medium" },
+                    { text: "Set budget and resource requirements", priority: "medium" },
+                    { text: "Establish communication channels", priority: "medium" },
+                    { text: "Create risk management plan", priority: "low" }
+                ],
+                category: "project",
+                tags: ["planning", "project"]
+            }
+        );
         
         // Code Review Template
-        await templateLibraryAdapter.createChecklist({
-            name: "Code Review Checklist",
-            description: "Quality assurance checklist for code reviews",
-            items: [
-                { text: "Code follows style guidelines", priority: "medium" },
-                { text: "Functions are properly documented", priority: "medium" },
-                { text: "Edge cases are handled", priority: "high" },
-                { text: "Tests are written and passing", priority: "high" },
-                { text: "Performance considerations addressed", priority: "medium" },
-                { text: "Security vulnerabilities checked", priority: "high" }
-            ],
-            category: "development",
-            tags: ["code", "review", "quality"]
-        });
+        await metaService.createTemplate(
+            "Code Review Checklist",
+            "Quality assurance checklist for code reviews",
+            "checklist",
+            {
+                items: [
+                    { text: "Code follows style guidelines", priority: "medium" },
+                    { text: "Functions are properly documented", priority: "medium" },
+                    { text: "Edge cases are handled", priority: "high" },
+                    { text: "Tests are written and passing", priority: "high" },
+                    { text: "Performance considerations addressed", priority: "medium" },
+                    { text: "Security vulnerabilities checked", priority: "high" }
+                ],
+                category: "development",
+                tags: ["code", "review", "quality"]
+            }
+        );
         
         // Meeting Preparation Template
-        await templateLibraryAdapter.createChecklist({
-            name: "Meeting Preparation",
-            description: "Ensure meetings are productive and well-organized",
-            items: [
-                { text: "Create agenda and share with attendees", priority: "high" },
-                { text: "Book meeting room or set up video call", priority: "medium" },
-                { text: "Prepare presentation materials", priority: "medium" },
-                { text: "Review previous meeting notes", priority: "low" },
-                { text: "Send reminder to participants", priority: "medium" }
-            ],
-            category: "meetings",
-            tags: ["meeting", "preparation"]
-        });
+        await metaService.createTemplate(
+            "Meeting Preparation",
+            "Ensure meetings are productive and well-organized",
+            "checklist",
+            {
+                items: [
+                    { text: "Create agenda and share with attendees", priority: "high" },
+                    { text: "Book meeting room or set up video call", priority: "medium" },
+                    { text: "Prepare presentation materials", priority: "medium" },
+                    { text: "Review previous meeting notes", priority: "low" },
+                    { text: "Send reminder to participants", priority: "medium" }
+                ],
+                category: "meetings",
+                tags: ["meeting", "preparation"]
+            }
+        );
     }
     
     // Sample Task Sets
-    const existingTaskSets = await templateLibraryAdapter.getAllTaskSets();
+    const existingTaskSets = await metaService.getTemplatesByCategory('task_set');
     if (existingTaskSets.length === 0) {
         // Website Launch Task Set
         await createTaskSet(

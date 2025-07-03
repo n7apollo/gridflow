@@ -3,7 +3,8 @@
  * Handles the tags UI interactions and data binding
  */
 
-import { tagsAdapter, relationshipAdapter } from './indexeddb/adapters.js';
+import { metaService } from './meta-service.js';
+import { entityService } from './entity-service.js';
 import { getTagsByCategory, getEntitiesWithTag, deleteTag, updateTag } from './tagging-system.js';
 
 /**
@@ -23,7 +24,7 @@ export async function initializeTagsView() {
  */
 export async function renderTagsGrid() {
     try {
-        const tags = await tagsAdapter.getAll();
+        const tags = await metaService.getAllTags();
         const tagsGrid = document.getElementById('tagsGrid');
         
         if (!tagsGrid) return;
@@ -89,7 +90,7 @@ export async function renderTagsGrid() {
  */
 export async function showTagDetail(tagId) {
     try {
-        const tag = await tagsAdapter.getById(tagId);
+        const tag = await metaService.getTag(tagId);
         if (!tag) return;
         
         const detailPanel = document.getElementById('tagDetailPanel');
@@ -119,7 +120,7 @@ export async function showTagDetail(tagId) {
         const entities = [];
         
         for (const ref of entityRefs) {
-            const entity = await window.adapters.entity.getById(ref.id);
+            const entity = await entityService.getById(ref.id);
             if (entity) {
                 entities.push({ type: entity.type, entity: entity });
             }
@@ -191,7 +192,7 @@ function setupTagsEventListeners() {
  */
 async function handleTagsSearch() {
     const searchTerm = document.getElementById('tagsSearch').value.toLowerCase();
-    const tags = await tagsAdapter.getAll();
+    const tags = await metaService.getAllTags();
     
     const filtered = tags.filter(tag => 
         tag.name.toLowerCase().includes(searchTerm) ||
@@ -208,7 +209,7 @@ async function handleTagsFilter() {
     const categoryFilter = document.getElementById('tagCategoryFilter').value;
     const searchTerm = document.getElementById('tagsSearch').value.toLowerCase();
     
-    let tags = await tagsAdapter.getAll();
+    let tags = await metaService.getAllTags();
     
     // Apply filters
     if (categoryFilter) {
@@ -233,7 +234,7 @@ async function handleTagsSort() {
     const categoryFilter = document.getElementById('tagCategoryFilter').value;
     const searchTerm = document.getElementById('tagsSearch').value.toLowerCase();
     
-    let tags = await tagsAdapter.getAll();
+    let tags = await metaService.getAllTags();
     
     // Apply filters first
     if (categoryFilter) {

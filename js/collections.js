@@ -1,12 +1,11 @@
 /**
- * GridFlow - Smart Collections System Module
+ * GridFlow - Smart Collections System Module (Dexie)
  * Handles dynamic views and saved searches of entities based on tags, filters, and other criteria
  * Part of the Phase 2 architecture for enhanced organization and productivity
  */
 
-import { appData, saveData } from './core-data.js';
 import { findTagByName, getEntityTags } from './tagging-system.js';
-import { collectionsAdapter } from './indexeddb/adapters.js';
+import { metaService } from './meta-service.js';
 
 /**
  * Create a new smart collection with specified filters
@@ -16,15 +15,15 @@ import { collectionsAdapter } from './indexeddb/adapters.js';
  * @param {boolean} isPublic - Whether collection is public (default: false)
  * @returns {string} New collection ID
  */
-export async function createCollection(name, description, filters, isPublic = false) {
+export async function createCollection(name, description, filters) {
     try {
-        const collection = await collectionsAdapter.createCollection({
+        const collection = await metaService.createCollection(
             name,
-            description,
+            'saved_search',
+            'general',
             filters,
-            isPublic,
-            type: 'saved_search'
-        });
+            true
+        );
         
         // Initialize collection with current matching entities
         await updateCollectionItems(collection.id);
@@ -43,65 +42,16 @@ export async function createCollection(name, description, filters, isPublic = fa
  */
 export async function updateCollectionItems(collectionId) {
     try {
-        const collection = await collectionsAdapter.getById(collectionId);
+        const collection = await metaService.getCollection(collectionId);
         if (!collection) return false;
         
-        const filters = collection.filters;
-        let entities = [];
+        // Use metaService to execute collection filters
+        const entities = await metaService.executeCollection(collectionId);
         
-        // Get entities from IndexedDB based on filter criteria
-        if (!filters.entityTypes || filters.entityTypes.length === 0) {
-            // Get all entities
-            const allEntities = await window.adapters.entity.getAll();
-            entities = allEntities.map(entity => ({ type: entity.type, entity: entity }));
-        } else {
-            // Get specific entity types
-            for (const type of filters.entityTypes) {
-                const typeEntities = await window.adapters.entity.getByType(type);
-                entities.push(...typeEntities.map(entity => ({ type: type, entity: entity })));
-            }
-        }
-        
-        // Filter by tags
-        if (filters.tags && filters.tags.length > 0) {
-            const filteredEntities = [];
-            for (const item of entities) {
-                const entityTags = await getEntityTags(item.type, item.entity.id);
-                if (filters.tags.some(tagId => entityTags.some(tag => tag.id === tagId))) {
-                    filteredEntities.push(item);
-                }
-            }
-            entities = filteredEntities;
-        }
-        
-        // Filter by priority
-        if (filters.priorities && filters.priorities.length > 0) {
-            entities = entities.filter(item => {
-                return filters.priorities.includes(item.entity.priority || 'medium');
-            });
-        }
-        
-        // Filter by date range
-        if (filters.dateRange) {
-            const startDate = new Date(filters.dateRange.start);
-            const endDate = new Date(filters.dateRange.end);
-            
-            entities = entities.filter(item => {
-                const entityDate = new Date(item.entity.createdAt);
-                return entityDate >= startDate && entityDate <= endDate;
-            });
-        }
-        
-        // Update collection with new item count and timestamp
-        await collectionsAdapter.updateCollection(collectionId, {
-            itemCount: entities.length,
-            lastUpdated: new Date().toISOString()
-        });
-        
-        // Store collection items in collection
-        await collectionsAdapter.updateItems(collectionId, entities.map(item => `${item.type}:${item.entity.id}`));
-        
-        return entities;
+        return entities.map(entity => ({
+            type: entity.type,
+            entity: entity
+        }));
     } catch (error) {
         console.error('Failed to update collection items:', error);
         return false;
@@ -115,24 +65,16 @@ export async function updateCollectionItems(collectionId) {
  */
 export async function getCollectionItems(collectionId) {
     try {
-        const collection = await collectionsAdapter.getById(collectionId);
-        if (!collection) return [];
-        
-        const entityKeys = collection.items || [];
+        const entities = await metaService.executeCollection(collectionId);
         const items = [];
         
-        for (const entityKey of entityKeys) {
-            const [entityType, entityId] = entityKey.split(':');
-            const entity = await window.adapters.entity.getById(entityId);
-            
-            if (entity) {
-                const tags = await getEntityTags(entityType, entityId);
-                items.push({
-                    type: entityType,
-                    entity: entity,
-                    tags: tags
-                });
-            }
+        for (const entity of entities) {
+            const tags = await getEntityTags(entity.type, entity.id);
+            items.push({
+                type: entity.type,
+                entity: entity,
+                tags: tags
+            });
         }
         
         return items;
@@ -148,7 +90,7 @@ export async function getCollectionItems(collectionId) {
  */
 export async function updateAllCollections() {
     try {
-        const collections = await collectionsAdapter.getAll();
+        const collections = await metaService.getAllCollections();
         for (const collection of collections) {
             await updateCollectionItems(collection.id);
         }
@@ -162,7 +104,7 @@ export async function updateAllCollections() {
  * Creates helpful default collections if none exist
  */
 export async function initializeSampleCollections() {
-    const existingCollections = await collectionsAdapter.getAll();
+    const existingCollections = await metaService.getAllCollections();
     if (existingCollections.length === 0) {
         // High Priority Items Collection
         await createCollection(

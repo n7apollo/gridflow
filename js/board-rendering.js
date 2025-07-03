@@ -14,7 +14,7 @@ import { getEntity, CONTEXT_TYPES } from './entity-core.js';
  * Render the entire board
  * Main orchestrator function that coordinates all board rendering
  */
-export function renderBoard() {
+export async function renderBoard() {
     // Check if boardData is available before rendering
     if (!boardData || !boardData.columns) {
         console.warn('renderBoard: boardData not available, delaying render');
@@ -30,7 +30,7 @@ export function renderBoard() {
     }
     
     renderColumnHeaders();
-    renderGroupsAndRows();
+    await renderGroupsAndRows();
     updateCSSGridColumns();
     
     // Initialize SortableJS for all columns after rendering
@@ -92,32 +92,65 @@ export function renderColumnHeaders() {
  * Render groups and rows with hierarchical structure
  * Handles the main board layout with grouped and ungrouped rows
  */
-export function renderGroupsAndRows() {
+export async function renderGroupsAndRows() {
     const container = document.getElementById('rowsContainer');
     container.innerHTML = '';
     // Set grid layout for rows to match column headers
     const columnCount = boardData.columns.length;
     container.className = `flex flex-col w-full`;
+    
+    // Check if board is empty
+    if (!boardData.rows || boardData.rows.length === 0) {
+        container.innerHTML = `
+            <div class="empty-board-state text-center py-16">
+                <div class="max-w-md mx-auto">
+                    <div class="text-base-content/60 mb-6">
+                        <i data-lucide="layout-grid" class="w-16 h-16 mx-auto mb-4"></i>
+                        <h3 class="text-xl font-semibold mb-2">Your board is empty</h3>
+                        <p class="text-sm">Start organizing your work by adding rows for your projects</p>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                        <button class="btn btn-primary" onclick="addRow()">
+                            <i data-lucide="plus"></i> Add Your First Row
+                        </button>
+                        <button class="btn btn-secondary" onclick="addGroup()">
+                            <i data-lucide="folder-plus"></i> Add Group
+                        </button>
+                    </div>
+                    <div class="mt-6 text-xs text-base-content/40">
+                        <p>💡 Tip: Use groups to organize related projects, and rows for specific initiatives</p>
+                    </div>
+                </div>
+            </div>
+        `;
+        // Re-render Lucide icons
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
+        return;
+    }
+    
     // First render ungrouped rows
     const ungroupedRows = boardData.rows.filter(row => !row.groupId);
-    ungroupedRows.forEach(row => {
-        const rowElement = createRowElement(row, columnCount);
+    for (const row of ungroupedRows) {
+        const rowElement = await createRowElement(row, columnCount);
         container.appendChild(rowElement);
-    });
+    }
+    
     // Then render groups in their defined order
-    boardData.groups.forEach(group => {
+    for (const group of boardData.groups) {
         const groupRows = boardData.rows.filter(row => row.groupId === group.id);
         if (groupRows.length > 0) {
             // Add group header
             const groupElement = createGroupElement(group);
             container.appendChild(groupElement);
             // Add all rows for this group
-            groupRows.forEach(row => {
-                const rowElement = createRowElement(row, columnCount);
+            for (const row of groupRows) {
+                const rowElement = await createRowElement(row, columnCount);
                 container.appendChild(rowElement);
-            });
+            }
         }
-    });
+    }
     // Setup row sorting for the entire container
     setupRowSorting(container);
 }
@@ -152,9 +185,9 @@ export function createGroupElement(group) {
  * Create a row element
  * Creates a complete row with label, columns, and mobile layout
  * @param {Object} row - The row object to render
- * @returns {HTMLElement} The row element
+ * @returns {Promise<HTMLElement>} The row element
  */
-export function createRowElement(row, columnCount) {
+export async function createRowElement(row, columnCount) {
     const rowDiv = document.createElement('div');
     rowDiv.className = 'kanban-row-scroll w-full overflow-x-auto';
     // Create a grid container inside for the actual row
@@ -183,9 +216,10 @@ export function createRowElement(row, columnCount) {
         </div>
     `;
     grid.appendChild(rowLabel);
-    // Columns
-    boardData.columns.forEach(column => {
-        const columnElement = createColumnElement(row, column);
+    // Columns - create all asynchronously
+    const columnPromises = boardData.columns.map(column => createColumnElement(row, column));
+    const columnElements = await Promise.all(columnPromises);
+    columnElements.forEach(columnElement => {
         grid.appendChild(columnElement);
     });
     // Mobile columns (unchanged, but add DaisyUI classes)
@@ -209,8 +243,10 @@ export function createRowElement(row, columnCount) {
         mobileColumnContent.dataset.rowId = row.id;
         mobileColumnContent.dataset.columnKey = column.key;
         const cards = row.cards[column.key] || [];
-        cards.forEach(card => {
-            const cardElement = createCardElement(card, row.id, column.key);
+        // Note: Mobile columns will be handled synchronously for now to avoid complexity
+        // This is acceptable since mobile rendering is simpler
+        cards.forEach(async (card) => {
+            const cardElement = await createCardElement(card, row.id, column.key);
             mobileColumnContent.appendChild(cardElement);
         });
         // Add mobile add button
@@ -235,9 +271,9 @@ export function createRowElement(row, columnCount) {
  * Creates a column with cards container, footer, and add button
  * @param {Object} row - The row this column belongs to
  * @param {Object} column - The column object to render
- * @returns {HTMLElement} The column element
+ * @returns {Promise<HTMLElement>} The column element
  */
-export function createColumnElement(row, column) {
+export async function createColumnElement(row, column) {
     const columnDiv = document.createElement('div');
     columnDiv.className = 'column flex flex-col gap-2 p-2 w-[240px] min-w-[240px] max-w-[240px]';
     columnDiv.dataset.rowId = row.id;
@@ -258,10 +294,26 @@ export function createColumnElement(row, column) {
         row.cards[column.key] = [];
     }
     const cards = row.cards[column.key] || [];
-    cards.forEach(card => {
-        const cardElement = createCardElement(card, row.id, column.key);
-        cardsContainer.appendChild(cardElement);
-    });
+    
+    if (cards.length === 0) {
+        // Add empty state for this column
+        const emptyState = document.createElement('div');
+        emptyState.className = 'empty-column-state text-center py-8 text-base-content/40';
+        emptyState.innerHTML = `
+            <i data-lucide="plus-circle" class="w-8 h-8 mx-auto mb-2"></i>
+            <p class="text-sm">No cards yet</p>
+            <p class="text-xs">Click "+ Add a card" below</p>
+        `;
+        cardsContainer.appendChild(emptyState);
+    } else {
+        // Create all card elements asynchronously
+        const cardPromises = cards.map(card => createCardElement(card, row.id, column.key));
+        const cardElements = await Promise.all(cardPromises);
+        cardElements.forEach(cardElement => {
+            cardsContainer.appendChild(cardElement);
+        });
+    }
+    
     columnDiv.appendChild(cardsContainer);
     // Add card button in footer
     const addButton = document.createElement('button');
@@ -282,9 +334,9 @@ export function createColumnElement(row, column) {
  * @param {Object} card - The card object to render
  * @param {number} rowId - The ID of the row this card belongs to
  * @param {string} columnKey - The key of the column this card belongs to
- * @returns {HTMLElement} The card element
+ * @returns {Promise<HTMLElement>} The card element
  */
-export function createCardElement(card, rowId, columnKey) {
+export async function createCardElement(card, rowId, columnKey) {
     // Handle both old format (card objects) and new format (entity IDs)
     let entityId;
     let entity;
@@ -292,7 +344,7 @@ export function createCardElement(card, rowId, columnKey) {
     if (typeof card === 'string') {
         // New format: card is an entity ID
         entityId = card;
-        entity = getEntity(entityId);
+        entity = await getEntity(entityId);
         
         if (!entity) {
             console.warn('Entity not found for card:', entityId);
@@ -318,7 +370,7 @@ export function createCardElement(card, rowId, columnKey) {
         showSubtaskProgress: boardData.settings.showSubtaskProgress
     };
     
-    const cardElement = renderEntity(entityId, CONTEXT_TYPES.BOARD, contextData);
+    const cardElement = await renderEntity(entityId, CONTEXT_TYPES.BOARD, contextData);
     
     if (!cardElement) {
         // Fallback if entity renderer fails

@@ -1,10 +1,12 @@
 /**
  * GridFlow - Card Operations Module
  * Handles all card CRUD operations, modal management, and card-related functionality
+ * Updated for unified entity system
  */
 
 import { appData, boardData, saveData } from './core-data.js';
 import { showStatusMessage } from './utilities.js';
+import { createEntity, getEntity, updateEntity, deleteEntity, ENTITY_TYPES } from './entity-core.js';
 
 // Current editing state
 let currentEditingCard = null;
@@ -12,56 +14,66 @@ let currentDetailCard = null;
 
 /**
  * Toggle card completion status
- * @param {number} cardId - ID of the card to toggle
+ * @param {string} entityId - ID of the entity to toggle
  * @param {number} rowId - ID of the row containing the card
  * @param {string} columnKey - Key of the column containing the card
  */
-export function toggleCardCompletion(cardId, rowId, columnKey) {
-    const row = boardData.rows.find(r => r.id === rowId);
-    if (!row || !row.cards[columnKey]) return;
-    
-    const card = row.cards[columnKey].find(c => c.id === cardId);
-    if (card) {
-        card.completed = !card.completed;
-        if (window.renderBoard) window.renderBoard();
+export async function toggleCardCompletion(entityId, rowId, columnKey) {
+    const entity = await getEntity(entityId);
+    if (!entity) {
+        console.warn('Entity not found for toggle:', entityId);
+        return;
     }
+    
+    // Update entity completion status
+    updateEntity(entityId, { completed: !entity.completed });
+    
+    // Re-render board to reflect changes
+    if (window.renderBoard) window.renderBoard();
 }
 
 /**
  * Open card modal for creating or editing a card
  * @param {number} rowId - ID of the row
  * @param {string} columnKey - Key of the column
- * @param {number|null} cardId - ID of the card to edit (null for new card)
+ * @param {string|null} entityId - ID of the entity to edit (null for new card)
  */
-export function openCardModal(rowId, columnKey, cardId = null) {
+export async function openCardModal(rowId, columnKey, entityId = null) {
     const row = boardData.rows.find(r => r.id === rowId);
     if (!row) return;
     
-    if (cardId) {
-        const card = row.cards[columnKey].find(c => c.id === cardId);
-        if (!card) return;
+    if (entityId) {
+        // Editing existing card/entity
+        const entity = await getEntity(entityId);
+        if (!entity) {
+            console.warn('Entity not found for editing:', entityId);
+            return;
+        }
         
-        currentEditingCard = { ...card, rowId, columnKey };
+        currentEditingCard = { ...entity, rowId, columnKey, entityId };
         const modalTitle = document.getElementById('modalTitle');
         const cardTitle = document.getElementById('cardTitle');
         const cardDescription = document.getElementById('cardDescription');
         const cardCompleted = document.getElementById('cardCompleted');
         const cardDueDate = document.getElementById('cardDueDate');
         const cardPriority = document.getElementById('cardPriority');
+        
         if (modalTitle) modalTitle.textContent = 'Edit Card';
-        if (cardTitle) cardTitle.value = card.title;
-        if (cardDescription) cardDescription.value = card.description;
-        if (cardCompleted) cardCompleted.checked = card.completed || false;
-        if (cardDueDate) cardDueDate.value = card.dueDate || '';
-        if (cardPriority) cardPriority.value = card.priority || 'medium';
+        if (cardTitle) cardTitle.value = entity.title || '';
+        if (cardDescription) cardDescription.value = entity.content || '';
+        if (cardCompleted) cardCompleted.checked = entity.completed || false;
+        if (cardDueDate) cardDueDate.value = entity.dueDate || '';
+        if (cardPriority) cardPriority.value = entity.priority || 'medium';
     } else {
-        currentEditingCard = { rowId, columnKey };
+        // Creating new card
+        currentEditingCard = { rowId, columnKey, entityId: null };
         const modalTitle = document.getElementById('modalTitle');
         const cardTitle = document.getElementById('cardTitle');
         const cardDescription = document.getElementById('cardDescription');
         const cardCompleted = document.getElementById('cardCompleted');
         const cardDueDate = document.getElementById('cardDueDate');
         const cardPriority = document.getElementById('cardPriority');
+        
         if (modalTitle) modalTitle.textContent = 'Add Card';
         if (cardTitle) cardTitle.value = '';
         if (cardDescription) cardDescription.value = '';
@@ -76,80 +88,42 @@ export function openCardModal(rowId, columnKey, cardId = null) {
 
 /**
  * Edit an existing card
- * @param {number} cardId - ID of the card to edit
+ * @param {string} entityId - ID of the entity to edit
  * @param {number} rowId - ID of the row containing the card
  * @param {string} columnKey - Key of the column containing the card
  */
-export function editCard(cardId, rowId, columnKey) {
-    openCardModal(rowId, columnKey, cardId);
+export function editCard(entityId, rowId, columnKey) {
+    openCardModal(rowId, columnKey, entityId);
 }
 
 /**
  * Delete a card with all associated data
- * @param {number} cardId - ID of the card to delete
+ * @param {string} entityId - ID of the entity to delete
  * @param {number} rowId - ID of the row containing the card
  * @param {string} columnKey - Key of the column containing the card
  */
-export function deleteCard(cardId, rowId, columnKey) {
+export function deleteCard(entityId, rowId, columnKey) {
     if (confirm('Are you sure you want to delete this card?')) {
         const row = boardData.rows.find(r => r.id === rowId);
-        if (row) {
-            const card = row.cards[columnKey].find(c => c.id === cardId);
-            
-            // Clean up task entities associated with this card
-            if (card && card.taskIds) {
-                card.taskIds.forEach(taskId => {
-                    delete appData.entities.tasks[taskId];
-                });
-                
-                // Clean up task relationships
-                const cardKey = cardId.toString();
-                delete appData.relationships.entityTasks[cardKey];
-            }
-            
-            // Clean up notes attached to this card
-            if (window.getNotesForEntity && window.deleteNote) {
-                const cardNotes = window.getNotesForEntity('card', cardId);
-                cardNotes.forEach(note => {
-                    window.deleteNote(note.id);
-                });
-            }
-            
-            // Clean up weekly plan relationships
-            const cardKey = `${appData.currentBoardId}:${cardId}`;
-            if (appData.relationships && appData.relationships.cardToWeeklyPlans && appData.relationships.cardToWeeklyPlans[cardKey]) {
-                const weeklyPlans = [...appData.relationships.cardToWeeklyPlans[cardKey]];
-                
-                // Remove card from all weekly plans
-                weeklyPlans.forEach(weekKey => {
-                    if (appData.weeklyPlans[weekKey] && appData.weeklyPlans[weekKey].items) {
-                        appData.weeklyPlans[weekKey].items = appData.weeklyPlans[weekKey].items.filter(
-                            item => !(item.type === 'card' && item.cardId == cardId && 
-                                    item.boardId === appData.currentBoardId)
-                        );
-                    }
-                    
-                    // Clean up reverse relationship
-                    if (appData.relationships.weeklyPlanToCards && appData.relationships.weeklyPlanToCards[weekKey]) {
-                        appData.relationships.weeklyPlanToCards[weekKey] = 
-                            appData.relationships.weeklyPlanToCards[weekKey].filter(key => key !== cardKey);
-                        
-                        if (appData.relationships.weeklyPlanToCards[weekKey].length === 0) {
-                            delete appData.relationships.weeklyPlanToCards[weekKey];
-                        }
-                    }
-                });
-                
-                delete appData.relationships.cardToWeeklyPlans[cardKey];
-            }
-            
-            // Remove card from board
-            row.cards[columnKey] = row.cards[columnKey].filter(c => c.id !== cardId);
-            
+        if (!row || !row.cards[columnKey]) {
+            console.warn('Row or column not found for deletion');
+            return;
+        }
+        
+        // Remove entity ID from board structure
+        row.cards[columnKey] = row.cards[columnKey].filter(id => id !== entityId);
+        
+        // Delete the entity itself (this handles all cleanup)
+        const success = deleteEntity(entityId);
+        
+        if (success) {
             saveData();
             if (window.renderBoard) window.renderBoard();
-            
-            showStatusMessage('Card and all associated data deleted', 'success');
+            showStatusMessage('Card deleted successfully', 'success');
+        } else {
+            // Re-add the entity ID if deletion failed
+            row.cards[columnKey].push(entityId);
+            showStatusMessage('Failed to delete card', 'error');
         }
     }
 }
@@ -166,35 +140,58 @@ export function saveCard(event) {
     const dueDate = document.getElementById('cardDueDate').value || null;
     const priority = document.getElementById('cardPriority').value;
     
-    if (!title) return;
+    if (!title) {
+        showStatusMessage('Please enter a title', 'error');
+        return;
+    }
     
     const row = boardData.rows.find(r => r.id === currentEditingCard.rowId);
-    if (!row) return;
+    if (!row) {
+        showStatusMessage('Row not found', 'error');
+        return;
+    }
     
-    if (currentEditingCard.id) {
-        // Edit existing card
-        const card = row.cards[currentEditingCard.columnKey].find(c => c.id === currentEditingCard.id);
-        if (card) {
-            card.title = title;
-            card.description = description;
-            card.completed = completed;
-            card.dueDate = dueDate;
-            card.priority = priority;
+    if (currentEditingCard.entityId) {
+        // Edit existing entity
+        const success = updateEntity(currentEditingCard.entityId, {
+            title: title,
+            content: description,
+            completed: completed,
+            dueDate: dueDate,
+            priority: priority
+        });
+        
+        if (success) {
+            showStatusMessage('Card updated successfully', 'success');
+        } else {
+            showStatusMessage('Failed to update card', 'error');
+            return;
         }
     } else {
-        // Add new card
-        const newCard = {
-            id: boardData.nextCardId++,
+        // Create new entity
+        const entityData = {
             title: title,
-            description: description,
+            content: description,
             completed: completed,
-            taskIds: [],
             dueDate: dueDate,
             priority: priority
         };
-        row.cards[currentEditingCard.columnKey].push(newCard);
+        
+        const entityId = createEntity(ENTITY_TYPES.TASK, entityData);
+        if (entityId) {
+            // Add entity ID to board structure
+            if (!row.cards[currentEditingCard.columnKey]) {
+                row.cards[currentEditingCard.columnKey] = [];
+            }
+            row.cards[currentEditingCard.columnKey].push(entityId);
+            showStatusMessage('Card created successfully', 'success');
+        } else {
+            showStatusMessage('Failed to create card', 'error');
+            return;
+        }
     }
     
+    saveData();
     if (window.closeModal) window.closeModal();
     if (window.renderBoard) window.renderBoard();
 }

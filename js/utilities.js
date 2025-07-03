@@ -228,7 +228,7 @@ export function setupEventListeners() {
  * Show column outline modal
  * @param {string} columnKey - Column key to generate outline for
  */
-export function showColumnOutline(columnKey) {
+export async function showColumnOutline(columnKey) {
     const boardData = getBoardData();
     const column = boardData.columns.find(c => c.key === columnKey);
     if (!column) return;
@@ -240,7 +240,7 @@ export function showColumnOutline(columnKey) {
     }
     
     // Generate outline data
-    const outlineData = generateColumnOutline(columnKey);
+    const outlineData = await generateColumnOutline(columnKey);
     setCurrentOutlineData(outlineData);
     
     // Display HTML outline
@@ -259,9 +259,9 @@ export function showColumnOutline(columnKey) {
 /**
  * Generate outline data for a specific column
  * @param {string} columnKey - Column key
- * @returns {Object} Outline data with html, plain, and markdown formats
+ * @returns {Promise<Object>} Outline data with html, plain, and markdown formats
  */
-function generateColumnOutline(columnKey) {
+async function generateColumnOutline(columnKey) {
     const boardData = getBoardData();
     let html = '<ul class="list-disc pl-4 space-y-2">';
     let plain = '';
@@ -269,7 +269,7 @@ function generateColumnOutline(columnKey) {
     
     // First, add ungrouped rows
     const ungroupedRows = boardData.rows.filter(row => !row.groupId);
-    ungroupedRows.forEach(row => {
+    for (const row of ungroupedRows) {
         const entityIds = row.cards[columnKey] || [];
         if (entityIds.length > 0) {
             html += `<li class="mb-2"><strong class="text-base-content">${escapeHtml(row.name)}</strong>`;
@@ -278,23 +278,23 @@ function generateColumnOutline(columnKey) {
             
             if (entityIds.length > 0) {
                 html += '<ul class="list-circle pl-4 mt-1 space-y-1">';
-                entityIds.forEach(entityId => {
-                    const entity = getEntity(entityId);
+                for (const entityId of entityIds) {
+                    const entity = await getEntity(entityId);
                     if (entity) {
                         const entityText = entity.completed ? `✓ ${entity.title}` : entity.title;
                         html += `<li class="text-sm text-base-content/80">${escapeHtml(entityText)}</li>`;
                         plain += `  ○ ${entityText}\n`;
                         markdown += `  - ${entityText}\n`;
                     }
-                });
+                }
                 html += '</ul>';
             }
             html += '</li>';
         }
-    });
+    }
     
     // Then, add grouped rows
-    boardData.groups.forEach(group => {
+    for (const group of boardData.groups) {
         const groupRows = boardData.rows.filter(row => row.groupId === group.id);
         const groupHasEntities = groupRows.some(row => {
             const entityIds = row.cards[columnKey] || [];
@@ -307,7 +307,7 @@ function generateColumnOutline(columnKey) {
             markdown += `- **${group.name}**\n`;
             
             html += '<ul class="list-disc pl-4 mt-1 space-y-2">';
-            groupRows.forEach(row => {
+            for (const row of groupRows) {
                 const entityIds = row.cards[columnKey] || [];
                 if (entityIds.length > 0) {
                     html += `<li><strong class="text-base-content">${escapeHtml(row.name)}</strong>`;
@@ -316,23 +316,23 @@ function generateColumnOutline(columnKey) {
                     
                     if (entityIds.length > 0) {
                         html += '<ul class="list-circle pl-4 mt-1 space-y-1">';
-                        entityIds.forEach(entityId => {
-                            const entity = getEntity(entityId);
+                        for (const entityId of entityIds) {
+                            const entity = await getEntity(entityId);
                             if (entity) {
                                 const entityText = entity.completed ? `✓ ${entity.title}` : entity.title;
                                 html += `<li class="text-sm text-base-content/80">${escapeHtml(entityText)}</li>`;
                                 plain += `    - ${entityText}\n`;
                                 markdown += `    - ${entityText}\n`;
                             }
-                        });
+                        }
                         html += '</ul>';
                     }
                     html += '</li>';
                 }
-            });
+            }
             html += '</ul></li>';
         }
-    });
+    }
     
     html += '</ul>';
     

@@ -6,7 +6,7 @@
 
 import { showStatusMessage } from './utilities.js';
 import { saveData, appData } from './core-data.js';
-import { settingsAdapter } from './indexeddb/adapters.js';
+import { metaService } from './meta-service.js';
 
 export class CloudSync {
     constructor() {
@@ -98,7 +98,7 @@ export class CloudSync {
             syncInterval: 5 * 60 * 1000 // 5 minutes
         };
         
-        await settingsAdapter.setCloudSyncSettings(syncSettings);
+        await metaService.setSetting('cloud_sync_settings', syncSettings, 'cloud_sync');
         this.currentLimits = this.limits[tier];
         await this.loadSyncSettings();
         
@@ -137,7 +137,7 @@ export class CloudSync {
      */
     async getSyncSettings() {
         try {
-            return await settingsAdapter.getCloudSyncSettings();
+            return await metaService.getSetting('cloud_sync_settings');
         } catch (error) {
             console.error('Failed to load sync settings:', error);
             return null;
@@ -150,7 +150,7 @@ export class CloudSync {
     async updateSyncSettings(updates) {
         const current = await this.getSyncSettings() || {};
         const updated = { ...current, ...updates };
-        await settingsAdapter.setCloudSyncSettings(updated);
+        await metaService.setSetting('cloud_sync_settings', updated, 'cloud_sync');
         await this.loadSyncSettings();
     }
 
@@ -159,7 +159,7 @@ export class CloudSync {
      */
     async loadUsageStats() {
         const today = new Date().toDateString();
-        const stored = await settingsAdapter.getCloudSyncUsageStats();
+        const stored = await metaService.getSetting('cloud_sync_usage_stats');
         
         if (stored) {
             // Reset daily counters if it's a new day
@@ -191,7 +191,7 @@ export class CloudSync {
      * Save usage statistics
      */
     async saveUsageStats() {
-        await settingsAdapter.setCloudSyncUsageStats(this.usageStats);
+        await metaService.setSetting('cloud_sync_usage_stats', this.usageStats, 'cloud_sync');
     }
 
     /**
@@ -586,7 +586,12 @@ export class CloudSync {
      * Clear all sync data (for testing or reset)
      */
     async clearSyncData() {
-        await settingsAdapter.clearCategory('cloud_sync');
+        // Clear all cloud sync settings
+        const allSettings = await metaService.getAllSettings();
+        const cloudSyncSettings = allSettings.filter(setting => setting.category === 'cloud_sync');
+        for (const setting of cloudSyncSettings) {
+            await metaService.deleteSetting(setting.key);
+        }
         this.stopAutoSync();
         this.isEnabled = false;
         this.resetDailyUsage();

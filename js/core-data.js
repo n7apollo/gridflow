@@ -1,17 +1,13 @@
 /**
- * GridFlow - Core Data Management Module (IndexedDB-Only)
- * Handles data persistence, migration, and state management using IndexedDB exclusively
+ * GridFlow - Core Data Management Module (Dexie)
+ * Handles data persistence, migration, and state management using Dexie
  */
 
 import { showStatusMessage } from './utilities.js';
-import { 
-    entityAdapter, 
-    boardAdapter, 
-    weeklyPlanAdapter, 
-    weeklyItemAdapter,
-    appMetadataAdapter,
-    entityPositionsAdapter
-} from './indexeddb/adapters.js';
+import { db } from './db.js';
+import { entityService } from './entity-service.js';
+import { boardService } from './board-service.js';
+import { metaService } from './meta-service.js';
 
 // Central application state
 export let appData = {};
@@ -48,21 +44,19 @@ export function getCurrentEditingWeeklyItem() { return currentEditingWeeklyItem;
 export function getCurrentOutlineData() { return currentOutlineData; }
 
 /**
- * Save application data to IndexedDB
+ * Save application data to Dexie
  */
 export async function saveData() {
     try {
-        // Update app metadata
-        await appMetadataAdapter.updateAppConfig({
-            currentBoardId: appData.currentBoardId,
-            version: appData.version || '6.0',
-            lastUpdated: new Date().toISOString()
-        });
+        // Save current board metadata
+        await metaService.setCurrentBoardId(appData.currentBoardId);
+        await metaService.setMetadata('version', appData.version || '6.0');
+        await metaService.setMetadata('lastUpdated', new Date().toISOString());
 
         // Save all boards
         if (appData.boards) {
             for (const [boardId, board] of Object.entries(appData.boards)) {
-                await boardAdapter.save({
+                await boardService.save({
                     id: boardId,
                     ...board,
                     updatedAt: new Date().toISOString()
@@ -70,25 +64,40 @@ export async function saveData() {
             }
         }
 
-        // Save all entities
-        if (appData.entities) {
-            for (const [entityId, entity] of Object.entries(appData.entities)) {
-                await entityAdapter.save({
-                    id: entityId,
-                    ...entity,
-                    updatedAt: new Date().toISOString()
-                });
-            }
+        // Save all entities (batch operation for better performance)
+        if (appData.entities && Object.keys(appData.entities).length > 0) {
+            const entities = Object.values(appData.entities).map(entity => ({
+                ...entity,
+                updatedAt: new Date().toISOString()
+            }));
+            await entityService.bulkSave(entities);
         }
 
-        // Save weekly plans
+        // Save weekly plans and their items
         if (appData.weeklyPlans) {
             for (const [weekKey, weeklyPlan] of Object.entries(appData.weeklyPlans)) {
-                await weeklyPlanAdapter.save({
+                // Save the weekly plan metadata
+                await db.weeklyPlans.put({
                     weekKey,
-                    ...weeklyPlan,
+                    weekStart: weeklyPlan.weekStart,
+                    goal: weeklyPlan.goal,
+                    reflection: weeklyPlan.reflection,
                     updatedAt: new Date().toISOString()
                 });
+                
+                // Save weekly items separately
+                if (weeklyPlan.items && Array.isArray(weeklyPlan.items)) {
+                    for (const item of weeklyPlan.items) {
+                        await db.weeklyItems.put({
+                            id: item.id,
+                            weekKey: weekKey,
+                            entityId: item.entityId,
+                            day: item.day,
+                            addedAt: item.addedAt || new Date().toISOString(),
+                            order: item.order || 0
+                        });
+                    }
+                }
             }
         }
 
@@ -106,76 +115,89 @@ export async function saveData() {
 }
 
 /**
- * Load application data from IndexedDB
+ * Load application data from Dexie
  */
-export async function loadData() {
+export async function loadData(retryCount = 0) {
+    const maxRetries = 2;
+    
     try {
-        console.log('loadData: Loading from IndexedDB...');
+        console.log(`loadData: Loading from Dexie database... (attempt ${retryCount + 1})`);
         
-        // Load app configuration
-        const appConfig = await appMetadataAdapter.getAppConfig();
-        console.log('loadData: App config loaded:', appConfig);
+        // Ensure database is initialized
+        console.log('loadData: Initializing database...');
+        await db.initialize();
+        console.log('loadData: Database initialization complete');
         
-        // Load all boards
-        const boards = await boardAdapter.getAll();
-        console.log('loadData: Boards loaded:', boards.length);
+        // Load app configuration from metadata
+        const currentBoardId = await metaService.getCurrentBoardId() || 'default';
+        const version = await metaService.getMetadata('version') || '6.0';
+        console.log('loadData: App config loaded:', { currentBoardId, version });
+        
+        // Load all boards with entity positions populated
+        const boardsRaw = await boardService.getAll();
+        console.log('loadData: Boards loaded:', boardsRaw.length);
         
         // Load all entities
-        const entities = await entityAdapter.getAll();
+        const entities = await entityService.getAll();
         console.log('loadData: Entities loaded:', entities.length);
         
         // Load weekly plans
-        const weeklyPlans = await weeklyPlanAdapter.getAll();
+        const weeklyPlans = await db.weeklyPlans.toArray();
         console.log('loadData: Weekly plans loaded:', weeklyPlans.length);
         
-        // Construct appData object
+        // Populate boards with entity positions
         const boardsObj = {};
-        boards.forEach(board => {
-            // Ensure board rows have proper cards structure
-            if (board.rows) {
-                board.rows.forEach(row => {
-                    if (!row.cards) {
-                        console.warn(`Fixing missing cards for row ${row.id}:`, row);
-                        row.cards = {};
-                        // Initialize empty cards for each column
-                        if (board.columns) {
-                            board.columns.forEach(col => {
-                                row.cards[col.key] = [];
-                            });
-                        }
-                    }
-                });
-            }
-            boardsObj[board.id] = board;
-        });
+        for (const board of boardsRaw) {
+            // Validate and repair board structure if needed
+            boardService.validateBoard(board.id).catch(console.warn);
+            
+            // Get board with entities populated from positions
+            const populatedBoard = await boardService.getBoardWithEntities(board.id);
+            boardsObj[board.id] = populatedBoard;
+            console.log(`loadData: Board ${board.id} populated with entity positions`);
+        }
         
         const entitiesObj = {};
         entities.forEach(entity => {
             entitiesObj[entity.id] = entity;
         });
         
+        // Load weekly items for each plan
         const weeklyPlansObj = {};
-        weeklyPlans.forEach(plan => {
-            weeklyPlansObj[plan.weekKey] = plan;
-        });
+        for (const plan of weeklyPlans) {
+            // Load items for this week
+            const items = await db.weeklyItems
+                .where('weekKey').equals(plan.weekKey)
+                .toArray();
+            
+            weeklyPlansObj[plan.weekKey] = {
+                ...plan,
+                items: items
+            };
+        }
+        
+        // Load templates, collections, and tags from Dexie
+        const templates = await metaService.getAllTemplates();
+        const collections = await metaService.getAllCollections();
+        const tags = await metaService.getAllTags();
         
         // Build complete appData structure
         const loadedAppData = {
-            currentBoardId: appConfig.currentBoardId || 'default',
-            version: appConfig.version || '6.0',
+            currentBoardId: currentBoardId,
+            version: version,
             boards: boardsObj,
             entities: entitiesObj,
             weeklyPlans: weeklyPlansObj,
-            templates: [], // Will be loaded separately when template system is migrated
-            templateLibrary: appConfig.templateLibrary || {
+            templates: templates,
+            templateLibrary: {
                 categories: ['Project Management', 'Personal', 'Business', 'Education'],
                 featured: [],
                 taskSets: {},
                 checklists: {},
                 noteTemplates: {}
             },
-            collections: {}, // Will be loaded separately when collections system is migrated
-            tags: {}, // Will be loaded separately when tags system is migrated
+            collections: collections.reduce((obj, col) => { obj[col.id] = col; return obj; }, {}),
+            tags: tags.reduce((obj, tag) => { obj[tag.id] = tag; return obj; }, {}),
             relationships: {
                 entityTasks: {},
                 cardToWeeklyPlans: {},
@@ -184,24 +206,29 @@ export async function loadData() {
                 collectionEntities: {},
                 templateUsage: {}
             },
-            // ID counters from app config
-            nextTemplateId: appConfig.nextTemplateId || 1,
-            nextTemplateLibraryId: appConfig.nextTemplateLibraryId || 1,
-            nextWeeklyItemId: appConfig.nextWeeklyItemId || 1,
-            nextTaskId: appConfig.nextTaskId || 1,
-            nextNoteId: appConfig.nextNoteId || 1,
-            nextChecklistId: appConfig.nextChecklistId || 1,
-            nextProjectId: appConfig.nextProjectId || 1,
-            nextPersonId: appConfig.nextPersonId || 1,
-            nextCollectionId: appConfig.nextCollectionId || 1,
-            nextTagId: appConfig.nextTagId || 1
+            // ID counters (dynamically calculated from data)
+            nextTemplateId: Math.max(...templates.map(t => parseInt(t.id.split('_')[1]) || 0), 0) + 1,
+            nextTemplateLibraryId: 1,
+            nextWeeklyItemId: 1,
+            nextTaskId: Math.max(...entities.filter(e => e.type === 'task').map(e => parseInt(e.id.split('_')[1]) || 0), 0) + 1,
+            nextNoteId: Math.max(...entities.filter(e => e.type === 'note').map(e => parseInt(e.id.split('_')[1]) || 0), 0) + 1,
+            nextChecklistId: Math.max(...entities.filter(e => e.type === 'checklist').map(e => parseInt(e.id.split('_')[1]) || 0), 0) + 1,
+            nextProjectId: Math.max(...entities.filter(e => e.type === 'project').map(e => parseInt(e.id.split('_')[1]) || 0), 0) + 1,
+            nextPersonId: 1,
+            nextCollectionId: Math.max(...collections.map(c => parseInt(c.id.split('_')[1]) || 0), 0) + 1,
+            nextTagId: Math.max(...tags.map(t => parseInt(t.id.split('_')[1]) || 0), 0) + 1
         };
         
-        // If no data found, initialize sample data
-        if (boards.length === 0) {
-            console.log('loadData: No data found, initializing sample data');
-            await initializeSampleData();
-            return { appData, boardData };
+        // If no data found, database will have already created initial data
+        if (boardsRaw.length === 0) {
+            console.log('loadData: No boards found after database initialization');
+            if (retryCount < maxRetries) {
+                console.log(`loadData: Retrying data load (${retryCount + 1}/${maxRetries})`);
+                return await loadData(retryCount + 1);
+            } else {
+                console.error('loadData: Max retries reached, no boards found');
+                throw new Error('No boards found after maximum retry attempts');
+            }
         }
         
         setAppData(loadedAppData);
@@ -215,17 +242,24 @@ export async function loadData() {
         if (Object.keys(appData.boards).length === 0) {
             console.log('No boards found, creating default board');
             const defaultBoard = createDefaultBoard();
-            await boardAdapter.save({
+            await boardService.save({
                 id: 'default',
                 ...defaultBoard
             });
             appData.boards.default = defaultBoard;
             appData.currentBoardId = 'default';
-            await appMetadataAdapter.setCurrentBoardId('default');
+            await metaService.setCurrentBoardId('default');
         }
         
         setBoardData(appData.boards[appData.currentBoardId]);
         console.log('loadData: Final boardData set:', !!boardData, 'columns:', boardData?.columns?.length);
+        console.log('loadData: BoardData structure check:', {
+            hasBoardData: !!boardData,
+            boardDataKeys: boardData ? Object.keys(boardData) : 'none',
+            rowsCount: boardData?.rows?.length || 0,
+            columnsCount: boardData?.columns?.length || 0,
+            firstRowCards: boardData?.rows?.[0]?.cards ? Object.keys(boardData.rows[0].cards) : 'none'
+        });
         
         console.log('loadData: Final appData check:', {
             version: appData.version,
@@ -235,8 +269,11 @@ export async function loadData() {
             firstBoardName: appData.boards ? Object.values(appData.boards)[0]?.name : 'none'
         });
         
-        // Notify that data is ready for rendering
+        // Ensure global data access
         if (typeof window !== 'undefined') {
+            window.appData = appData;
+            window.boardData = boardData;
+            
             // Dispatch custom event that data is loaded
             window.dispatchEvent(new CustomEvent('gridflow-data-loaded', {
                 detail: { appData, boardData }
@@ -246,135 +283,32 @@ export async function loadData() {
         return { appData, boardData };
     } catch (error) {
         console.error('Failed to load data:', error);
-        showStatusMessage('Failed to load data, initializing new board', 'error');
-        await initializeSampleData();
-        return { appData, boardData };
+        
+        if (retryCount < maxRetries) {
+            console.log(`loadData: Error occurred, retrying (${retryCount + 1}/${maxRetries})`);
+            showStatusMessage(`Loading data (attempt ${retryCount + 2})...`, 'info');
+            // Database should have created initial data, try to reload
+            await db.initialize();
+            return await loadData(retryCount + 1);
+        } else {
+            console.error('loadData: Max retries reached after error');
+            showStatusMessage('Failed to load data after multiple attempts', 'error');
+            throw error;
+        }
     }
 }
 
 /**
- * Initialize sample data for new installations
+ * Initialize sample data for new installations (deprecated - handled by database initialization)
  */
 export async function initializeSampleData() {
-    console.log('Initializing sample data...');
+    console.log('initializeSampleData: Delegating to database initialization...');
     
-    // Create default app configuration
-    const defaultConfig = {
-        currentBoardId: 'default',
-        version: '6.0',
-        nextTaskId: 1,
-        nextNoteId: 1,
-        nextChecklistId: 1,
-        nextProjectId: 1,
-        nextPersonId: 1,
-        nextBoardId: 2,
-        nextGroupId: 4,
-        nextRowId: 3,
-        nextColumnId: 4,
-        nextTemplateId: 1,
-        nextCollectionId: 1,
-        nextTagId: 1,
-        nextWeeklyItemId: 1,
-        templateLibrary: {
-            categories: ['Project Management', 'Personal', 'Business', 'Education'],
-            featured: [],
-            taskSets: {},
-            checklists: {},
-            noteTemplates: {}
-        }
-    };
+    // The database now handles initial data creation automatically
+    await db.initialize();
     
-    // Save app configuration
-    await appMetadataAdapter.updateAppConfig(defaultConfig);
-    
-    // Create and save default board
-    const defaultBoard = createDefaultBoard();
-    await boardAdapter.save({
-        id: 'default',
-        ...defaultBoard
-    });
-    
-    // Create sample entities from default board cards
-    let entityIdCounter = 1;
-    const sampleEntities = [];
-    
-    defaultBoard.rows.forEach(row => {
-        Object.keys(row.cards).forEach(columnKey => {
-            row.cards[columnKey].forEach(card => {
-                const entityId = `task_${entityIdCounter++}`;
-                const entity = {
-                    id: entityId,
-                    type: 'task',
-                    title: card.title,
-                    content: card.description || '',
-                    completed: card.completed || false,
-                    priority: card.priority || 'medium',
-                    dueDate: card.dueDate || null,
-                    tags: card.tags || [],
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString()
-                };
-                sampleEntities.push(entity);
-                
-                // Replace card object with entity ID in board
-                const cardIndex = row.cards[columnKey].indexOf(card);
-                row.cards[columnKey][cardIndex] = entityId;
-            });
-        });
-    });
-    
-    // Save entities
-    for (const entity of sampleEntities) {
-        await entityAdapter.save(entity);
-    }
-    
-    // Update board with entity references
-    await boardAdapter.save({
-        id: 'default',
-        ...defaultBoard
-    });
-    
-    // Update next entity ID counter
-    await appMetadataAdapter.updateAppConfig({
-        nextTaskId: entityIdCounter
-    });
-    
-    // Build appData structure
-    appData = {
-        currentBoardId: 'default',
-        boards: {
-            'default': defaultBoard
-        },
-        entities: {},
-        templates: [],
-        weeklyPlans: {},
-        templateLibrary: defaultConfig.templateLibrary,
-        collections: {},
-        tags: {},
-        relationships: {
-            entityTasks: {},
-            cardToWeeklyPlans: {},
-            weeklyPlanToCards: {},
-            entityTags: {},
-            collectionEntities: {},
-            templateUsage: {}
-        },
-        ...defaultConfig,
-        version: '6.0'
-    };
-    
-    // Add entities to appData
-    sampleEntities.forEach(entity => {
-        appData.entities[entity.id] = entity;
-    });
-    
-    boardData = appData.boards.default;
-    
-    // Update global references for backward compatibility
-    window.appData = appData;
-    window.boardData = boardData;
-    
-    console.log('Sample data initialized in IndexedDB');
+    // Reload data from database
+    return await loadData();
 }
 
 /**
@@ -487,8 +421,8 @@ export async function switchBoard(boardId) {
         appData.currentBoardId = boardId;
         setBoardData(appData.boards[boardId]);
         
-        // Update app config
-        await appMetadataAdapter.setCurrentBoardId(boardId);
+        // Update metadata
+        await metaService.setCurrentBoardId(boardId);
         
         console.log(`Switched to board: ${boardId}`);
     } catch (error) {
@@ -504,7 +438,8 @@ export async function switchBoard(boardId) {
  * @returns {Promise<number>} Next ID
  */
 export async function getNextId(type) {
-    return await appMetadataAdapter.getNextId(type);
+    const key = `next${type.charAt(0).toUpperCase()}${type.slice(1)}Id`;
+    return appData[key] || 1;
 }
 
 /**
@@ -513,40 +448,48 @@ export async function getNextId(type) {
  * @returns {Promise<number>} The ID to use
  */
 export async function incrementNextId(type) {
-    const nextId = await appMetadataAdapter.incrementNextId(type);
+    const key = `next${type.charAt(0).toUpperCase()}${type.slice(1)}Id`;
+    const currentId = appData[key] || 1;
+    const nextId = currentId + 1;
     
     // Update local appData cache
-    const key = `next${type.charAt(0).toUpperCase()}${type.slice(1)}Id`;
-    if (appData[key] !== undefined) {
-        appData[key] = nextId + 1;
-    }
+    appData[key] = nextId;
     
-    return nextId;
+    // Save to metadata
+    await metaService.setMetadata(key, nextId);
+    
+    return currentId;
 }
 
 /**
- * Debug function to check IndexedDB content
+ * Debug function to check Dexie database content
  */
 export async function debugIndexedDB() {
     try {
-        const appConfig = await appMetadataAdapter.getAppConfig();
-        const boards = await boardAdapter.getAll();
-        const entities = await entityAdapter.getAll();
-        const weeklyPlans = await weeklyPlanAdapter.getAll();
+        const currentBoardId = await metaService.getCurrentBoardId();
+        const boards = await boardService.getAll();
+        const entities = await entityService.getAll();
+        const weeklyPlans = await db.weeklyPlans.toArray();
+        const people = await metaService.getAllPeople();
+        const tags = await metaService.getAllTags();
+        const collections = await metaService.getAllCollections();
         
         const debugInfo = {
-            appConfig,
+            currentBoardId,
             boardCount: boards.length,
             boardNames: boards.map(b => b.name),
             entityCount: entities.length,
             weeklyPlanCount: weeklyPlans.length,
-            currentBoardId: appConfig.currentBoardId
+            peopleCount: people.length,
+            tagsCount: tags.length,
+            collectionsCount: collections.length,
+            entityStats: await entityService.getEntityStats()
         };
         
-        console.log('Debug IndexedDB:', debugInfo);
+        console.log('Debug Dexie Database:', debugInfo);
         return debugInfo;
     } catch (error) {
-        console.error('Failed to debug IndexedDB:', error);
+        console.error('Failed to debug Dexie database:', error);
         return null;
     }
 }
@@ -562,104 +505,22 @@ export async function recoverOrphanedEntities(boardId = null) {
         
         // Use current board if none specified
         const targetBoardId = boardId || appData.currentBoardId || 'default';
-        const board = appData.boards[targetBoardId];
         
-        if (!board) {
-            throw new Error(`Board ${targetBoardId} not found`);
+        // Use entity service's built-in recovery system
+        const result = await entityService.recoverOrphanedEntities(targetBoardId);
+        
+        if (result.success && result.recoveredCount > 0) {
+            // Update the in-memory board data
+            const board = await boardService.getById(targetBoardId);
+            appData.boards[targetBoardId] = board;
+            if (targetBoardId === appData.currentBoardId) {
+                setBoardData(board);
+            }
+            
+            console.log(`✅ Successfully recovered ${result.recoveredCount} orphaned entities`);
         }
         
-        // Get all entities
-        const allEntities = await entityAdapter.getAll();
-        const allEntityIds = allEntities.map(e => e.id);
-        
-        console.log(`📊 Total entities found: ${allEntityIds.length}`);
-        
-        // Find orphaned entities (entities not positioned on this board)
-        const orphanedEntityIds = await entityPositionsAdapter.getOrphanedEntities(
-            allEntityIds, 
-            targetBoardId, 
-            'board'
-        );
-        
-        console.log(`🏠 Orphaned entities found: ${orphanedEntityIds.length}`);
-        
-        if (orphanedEntityIds.length === 0) {
-            return {
-                success: true,
-                orphanedCount: 0,
-                recoveredCount: 0,
-                message: 'No orphaned entities found'
-            };
-        }
-        
-        // Find the first row and first column for placement
-        const firstRow = board.rows && board.rows.length > 0 ? board.rows[0] : null;
-        const firstColumn = board.columns && board.columns.length > 0 ? board.columns[0] : null;
-        
-        if (!firstRow || !firstColumn) {
-            throw new Error('Board has no rows or columns for entity placement');
-        }
-        
-        console.log(`📍 Placing orphaned entities in row "${firstRow.name}" (${firstRow.id}), column "${firstColumn.name}" (${firstColumn.key})`);
-        
-        // Create positions for orphaned entities
-        const positions = orphanedEntityIds.map((entityId, index) => ({
-            entityId,
-            boardId: targetBoardId,
-            context: 'board',
-            rowId: firstRow.id.toString(),
-            columnKey: firstColumn.key,
-            order: index
-        }));
-        
-        // Batch create positions
-        await entityPositionsAdapter.batchSetPositions(positions);
-        
-        // Update the board's cards structure to include these entities
-        if (!firstRow.cards) {
-            firstRow.cards = {};
-        }
-        if (!firstRow.cards[firstColumn.key]) {
-            firstRow.cards[firstColumn.key] = [];
-        }
-        
-        // Add entity references to the row's cards
-        const entityReferences = orphanedEntityIds.map(entityId => {
-            const entity = allEntities.find(e => e.id === entityId);
-            return {
-                id: entityId,
-                title: entity?.title || 'Untitled',
-                description: entity?.content || '',
-                completed: entity?.completed || false,
-                priority: entity?.priority || 'medium',
-                entityId: entityId // Reference to the actual entity
-            };
-        });
-        
-        // Add to the beginning of the column to make them visible
-        firstRow.cards[firstColumn.key].unshift(...entityReferences);
-        
-        // Save the updated board
-        await boardAdapter.save(board);
-        
-        // Update the in-memory board data
-        appData.boards[targetBoardId] = board;
-        if (targetBoardId === appData.currentBoardId) {
-            setBoardData(board);
-        }
-        
-        console.log(`✅ Successfully recovered ${orphanedEntityIds.length} orphaned entities`);
-        
-        return {
-            success: true,
-            orphanedCount: orphanedEntityIds.length,
-            recoveredCount: orphanedEntityIds.length,
-            placementLocation: {
-                rowName: firstRow.name,
-                columnName: firstColumn.name
-            },
-            message: `Recovered ${orphanedEntityIds.length} orphaned entities to "${firstRow.name}" → "${firstColumn.name}"`
-        };
+        return result;
         
     } catch (error) {
         console.error('❌ Failed to recover orphaned entities:', error);

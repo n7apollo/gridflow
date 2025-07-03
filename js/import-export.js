@@ -5,18 +5,12 @@
 
 import { showStatusMessage } from './utilities.js';
 import { saveData, appData, boardData, setAppData } from './core-data.js';
-import { 
-    settingsAdapter, 
-    entityAdapter, 
-    boardAdapter, 
-    appMetadataAdapter,
-    entityPositionsAdapter,
-    weeklyPlanAdapter,
-    peopleAdapter,
-    templateAdapter,
-    tagsAdapter,
-    collectionsAdapter
-} from './indexeddb/adapters.js';
+import { db } from './db.js';
+import { entityService } from './entity-service.js';
+import { boardService } from './board-service.js';
+import { metaService } from './meta-service.js';
+import { dataMigrator } from './migration-strategy.js';
+import { dataValidator } from './data-validator.js';
 
 /**
  * Detect data version for imported data
@@ -49,15 +43,11 @@ function detectVersion(data) {
  * @param {Object} data - Data to migrate
  * @returns {Object} Migrated data
  */
-function migrateData(data) {
-    console.log('🔄 Migrating imported data to IndexedDB-only format...');
+async function migrateData(data) {
+    console.log('🔄 Migrating imported data to Dexie architecture...');
     
-    // For IndexedDB-only architecture, we accept data as-is
-    // The individual adapters will handle any necessary transformations
-    const migratedData = {
-        ...data,
-        version: '6.0' // Mark as IndexedDB-only version
-    };
+    // Use comprehensive migration strategy
+    const migratedData = await dataMigrator.migrateData(data);
     
     return migratedData;
 }
@@ -74,7 +64,7 @@ async function createEntityPositionsFromBoardData() {
         let positionCount = 0;
         
         // Clear existing positions to avoid duplicates
-        await entityPositionsAdapter.clear();
+        await db.entityPositions.clear();
         
         // Process each board
         for (const [boardId, board] of Object.entries(appData.boards)) {
@@ -92,6 +82,7 @@ async function createEntityPositionsFromBoardData() {
                     cardList.forEach((entityId, index) => {
                         if (typeof entityId === 'string' && entityId.includes('_')) {
                             positions.push({
+                                id: `${boardId}_${row.id}_${columnKey}_${entityId}`, // Generate unique ID
                                 entityId: entityId,
                                 boardId: boardId,
                                 context: 'board',
@@ -108,7 +99,22 @@ async function createEntityPositionsFromBoardData() {
         
         // Batch create all positions
         if (positions.length > 0) {
-            await entityPositionsAdapter.batchSetPositions(positions);
+            // Update order for all entities in batch
+            for (const [boardId, board] of Object.entries(appData.boards)) {
+                if (!board.rows) continue;
+                for (const boardRow of board.rows) {
+                    for (const [columnKey, entities] of Object.entries(boardRow.cards || {})) {
+                        if (Array.isArray(entities)) {
+                            for (let i = 0; i < entities.length; i++) {
+                                const entityId = entities[i];
+                                if (typeof entityId === 'string' && entityId.includes('_')) {
+                                    await entityService.setPosition(entityId, boardId, 'board', boardRow.id, columnKey, i);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             console.log(`✅ Created ${positionCount} entity position records`);
             addMigrationLog(`Created ${positionCount} entity position records`, 'success');
         } else {
@@ -413,23 +419,23 @@ export async function exportToJSON() {
         const [
             entities,
             boards,
-            appConfig,
             entityPositions,
             weeklyPlans,
             people,
             templates,
             tags,
-            collections
+            collections,
+            settings
         ] = await Promise.all([
-            entityAdapter.getAll(),
-            boardAdapter.getAll(),
-            appMetadataAdapter.getAppConfig(),
-            entityPositionsAdapter.getAll(),
-            weeklyPlanAdapter.getAll(),
-            peopleAdapter.getAll(),
-            templateAdapter.getAll(),
-            tagsAdapter.getAll(),
-            collectionsAdapter.getAll()
+            entityService.getAll(),
+            boardService.getAll(),
+            db.entityPositions.toArray(),
+            db.weeklyPlans.toArray(),
+            metaService.getAllPeople(),
+            metaService.getAllTemplates(),
+            metaService.getAllTags(),
+            metaService.getAllCollections(),
+            metaService.getAllSettings()
         ]);
         
         console.log('📊 Export data gathered:', {
@@ -462,24 +468,24 @@ export async function exportToJSON() {
         // Create comprehensive export data
         const exportData = {
             // Core app data (localStorage compatible format)
-            currentBoardId: appConfig.currentBoardId || 'default',
-            version: '6.0', // IndexedDB-only version
+            currentBoardId: appData.currentBoardId || 'default',
+            version: '7.0', // Dexie architecture version
             boards: boardsObj,
             entities: entitiesObj,
             weeklyPlans: weeklyPlansObj,
             
-            // IndexedDB-specific data
+            // Dexie-specific data
             entityPositions: entityPositions,
             people: people,
             templates: templates,
             tags: tags,
             collections: collections,
+            settings: settings,
             
             // Metadata
             exportedAt: new Date().toISOString(),
-            exportedFrom: 'GridFlow IndexedDB',
-            exportFormat: 'indexeddb',
-            appConfig: appConfig
+            exportedFrom: 'GridFlow Dexie',
+            exportFormat: 'dexie'
         };
         
         const dataStr = JSON.stringify(exportData, null, 2);
@@ -499,7 +505,7 @@ export async function exportToJSON() {
         URL.revokeObjectURL(url);
         
         // Store last export time in IndexedDB
-        await settingsAdapter.setLastExportTimestamp(new Date().toISOString());
+        await metaService.setSetting('last_export_timestamp', new Date().toISOString(), 'import_export');
         
         showStatusMessage(`IndexedDB backup saved (${entities.length} entities, ${boards.length} boards)! Upload to your cloud storage to sync across devices.`, 'success');
     } catch (error) {
@@ -749,10 +755,10 @@ async function performImportWithProgress(fileContent, fileName) {
     // Ensure appData is properly initialized
     ensureAppDataInitialized();
     
-    // IndexedDB should already be initialized by app startup
-    addMigrationLog('Using existing IndexedDB connection...', 'info');
+    // Dexie should already be initialized by app startup
+    addMigrationLog('Using existing Dexie database connection...', 'info');
     
-    // Set up a completion timeout as a fallback
+    // Reduced timeout since Dexie operations are faster
     const forceCompletion = setTimeout(() => {
         console.warn('Import taking too long, forcing completion...');
         updateProgress(100, 'Import completed (with timeout)');
@@ -763,7 +769,7 @@ async function performImportWithProgress(fileContent, fileName) {
         if (actions) actions.style.display = 'flex';
         
         showStatusMessage('Import may have completed with issues. Check the migration log for details.', 'warning');
-    }, 60000); // 60 second timeout to allow for store creation
+    }, 30000); // 30 second timeout for Dexie operations
     
     // Step 1: Parse JSON
     updateProgress(10, 'Parsing JSON file...');
@@ -807,10 +813,39 @@ async function performImportWithProgress(fileContent, fileName) {
     
     let migratedData;
     try {
-        const originalVersion = importedData.version || detectVersion(importedData);
-        migratedData = migrateData(importedData);
+        const originalVersion = importedData.version || dataMigrator.detectVersion(importedData);
+        migratedData = await migrateData(importedData);
         updateImportStep('migrate', 'completed', 'Migrated');
         addMigrationLog(`Migrated from version ${originalVersion} to ${migratedData.version}`, 'success');
+        
+        // Add migration log details
+        const migrationLog = dataMigrator.getMigrationLog();
+        migrationLog.forEach(entry => {
+            addMigrationLog(entry.message, entry.level);
+        });
+
+        // Validate migrated data
+        addMigrationLog('Validating migrated data...', 'info');
+        const validation = dataValidator.validateData(migratedData);
+        
+        if (!validation.isValid) {
+            addMigrationLog(`Validation failed with ${validation.errors.length} errors`, 'error');
+            validation.errors.forEach(error => addMigrationLog(error, 'error'));
+        } else {
+            addMigrationLog('Data validation passed', 'success');
+        }
+        
+        if (validation.warnings.length > 0) {
+            addMigrationLog(`${validation.warnings.length} warnings found`, 'warning');
+            validation.warnings.slice(0, 5).forEach(warning => addMigrationLog(warning, 'warning'));
+            if (validation.warnings.length > 5) {
+                addMigrationLog(`... and ${validation.warnings.length - 5} more warnings`, 'warning');
+            }
+        }
+
+        if (validation.fixes.length > 0) {
+            addMigrationLog(`Applied ${validation.fixes.length} automatic fixes`, 'success');
+        }
     } catch (error) {
         updateImportStep('migrate', 'error', 'Failed');
         addMigrationLog(`Migration failed: ${error.message}`, 'error');
@@ -885,7 +920,7 @@ async function performImportWithProgress(fileContent, fileName) {
             const entities = Object.values(appData.entities);
             for (const entity of entities) {
                 try {
-                    await entityAdapter.save(entity);
+                    await entityService.save(entity);
                     savedEntities++;
                 } catch (error) {
                     addMigrationLog(`Failed to save entity ${entity.id}: ${error.message}`, 'warning');
@@ -900,7 +935,7 @@ async function performImportWithProgress(fileContent, fileName) {
             const boards = Object.entries(appData.boards);
             for (const [boardId, board] of boards) {
                 try {
-                    await boardAdapter.save({ id: boardId, ...board });
+                    await boardService.save({ id: boardId, ...board });
                     savedBoards++;
                 } catch (error) {
                     addMigrationLog(`Failed to save board ${boardId}: ${error.message}`, 'warning');
@@ -912,7 +947,7 @@ async function performImportWithProgress(fileContent, fileName) {
         // Save app metadata
         try {
             addMigrationLog('Saving app metadata...', 'info');
-            await appMetadataAdapter.updateAppConfig({
+            await metaService.setSetting('app_config', {
                 currentBoardId: appData.currentBoardId,
                 version: appData.version || '6.0'
             });

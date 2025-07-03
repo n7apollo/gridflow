@@ -74,23 +74,23 @@ export function populateTaskFilters() {
 
 /**
  * Get all tasks from all boards
- * @returns {Array} Array of task objects with metadata
+ * @returns {Promise<Array>} Array of task objects with metadata
  */
-export function getAllTasks() {
+export async function getAllTasks() {
     const appData = getAppData();
     const tasks = [];
     
-    Object.keys(appData.boards).forEach(boardId => {
+    for (const boardId of Object.keys(appData.boards)) {
         const board = appData.boards[boardId];
         if (board.rows) {
-            board.rows.forEach(row => {
+            for (const row of board.rows) {
                 if (row.cards) {
-                    Object.keys(row.cards).forEach(columnKey => {
+                    for (const columnKey of Object.keys(row.cards)) {
                         const column = board.columns.find(c => c.key === columnKey);
                         const group = board.groups.find(g => g.id === row.groupId);
                         
-                        row.cards[columnKey].forEach(entityId => {
-                            const entity = getEntity(entityId);
+                        for (const entityId of row.cards[columnKey]) {
+                            const entity = await getEntity(entityId);
                             if (entity) {
                                 tasks.push({
                                     ...entity,
@@ -105,12 +105,12 @@ export function getAllTasks() {
                                     groupColor: group ? group.color : '#666'
                                 });
                             }
-                        });
-                    });
+                        }
+                    }
                 }
-            });
+            }
         }
-    });
+    }
     
     return tasks;
 }
@@ -118,31 +118,135 @@ export function getAllTasks() {
 /**
  * Render the task list view
  */
-export function renderTaskList() {
-    const allTasks = getAllTasks();
-    const filteredTasks = filterTaskList(allTasks);
-    const sortedTasks = sortTaskList(filteredTasks);
-    
+export async function renderTaskList() {
     const container = document.getElementById('taskList');
+    const emptyState = document.getElementById('taskEmptyState');
     if (!container) return;
     
-    container.innerHTML = '';
+    // Show loading state
+    showTaskLoadingState(container);
     
-    if (sortedTasks.length === 0) {
-        container.innerHTML = '<div class="no-tasks">No tasks found matching the current filters.</div>';
-        return;
+    try {
+        const allTasks = await getAllTasks();
+        const filteredTasks = filterTaskList(allTasks);
+        const sortedTasks = sortTaskList(filteredTasks);
+        
+        // Update task statistics with animation
+        updateTaskStats(allTasks, filteredTasks);
+        
+        // Hide loading state
+        hideTaskLoadingState(container);
+        
+        // Show/hide empty state with animation
+        if (sortedTasks.length === 0) {
+            container.classList.add('hidden');
+            if (emptyState) {
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('empty-state');
+                
+                // Update empty state based on whether there are any tasks at all
+                const isFiltered = allTasks.length > 0;
+                const emptyIcon = emptyState.querySelector('i[data-lucide]');
+                const emptyTitle = emptyState.querySelector('h3');
+                const emptyText = emptyState.querySelector('p');
+                
+                if (emptyIcon) emptyIcon.setAttribute('data-lucide', isFiltered ? 'search' : 'inbox');
+                if (emptyTitle) emptyTitle.textContent = isFiltered ? 'No tasks match your filters' : 'No tasks found';
+                if (emptyText) emptyText.textContent = isFiltered ? 'Try adjusting your filters or create a new task' : 'Create your first task or adjust your filters';
+                
+                // Re-render Lucide icons
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+            }
+            return;
+        }
+        
+        // Hide empty state and show tasks
+        if (emptyState) emptyState.classList.add('hidden');
+        container.classList.remove('hidden');
+        container.innerHTML = '';
+        
+        // Create task elements with enhanced staggered animation
+        sortedTasks.forEach((task, index) => {
+            const taskElement = createTaskElement(task);
+            
+            // Add enhanced animation classes
+            taskElement.classList.add('stagger-item', 'task-card', 'filter-transition');
+            taskElement.style.opacity = '0';
+            taskElement.style.transform = 'translateY(20px)';
+            container.appendChild(taskElement);
+            
+            // Animate in with staggered delay
+            setTimeout(() => {
+                taskElement.classList.add('animate-in');
+                taskElement.style.opacity = '1';
+                taskElement.style.transform = 'translateY(0)';
+            }, index * 80 + 200); // Increased delay for better effect
+        });
+        
+        // Re-render Lucide icons after all animations
+        setTimeout(() => {
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+        }, sortedTasks.length * 80 + 500);
+        
+    } catch (error) {
+        console.error('Error rendering task list:', error);
+        hideTaskLoadingState(container);
+        if (emptyState) {
+            emptyState.classList.remove('hidden');
+            const emptyTitle = emptyState.querySelector('h3');
+            const emptyText = emptyState.querySelector('p');
+            if (emptyTitle) emptyTitle.textContent = 'Error loading tasks';
+            if (emptyText) emptyText.textContent = 'Please try refreshing the page';
+        }
     }
+}
+
+/**
+ * Update task statistics in the dashboard
+ */
+function updateTaskStats(allTasks, filteredTasks) {
+    const stats = {
+        total: allTasks.length,
+        completed: allTasks.filter(t => t.completed).length,
+        pending: allTasks.filter(t => !t.completed).length,
+        highPriority: allTasks.filter(t => t.priority === 'high').length
+    };
     
-    sortedTasks.forEach(task => {
-        const taskElement = createTaskElement(task);
-        container.appendChild(taskElement);
-    });
+    // Update stat counters with animation
+    updateStatCounter('totalTaskCount', stats.total);
+    updateStatCounter('completedTaskCount', stats.completed);
+    updateStatCounter('pendingTaskCount', stats.pending);
+    updateStatCounter('highPriorityTaskCount', stats.highPriority);
+}
+
+/**
+ * Animate counter updates
+ */
+function updateStatCounter(elementId, newValue) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
     
-    // Update task count
-    const taskCount = document.getElementById('taskCount');
-    if (taskCount) {
-        taskCount.textContent = `${sortedTasks.length} tasks`;
-    }
+    const currentValue = parseInt(element.textContent) || 0;
+    if (currentValue === newValue) return;
+    
+    // Simple counter animation
+    const increment = newValue > currentValue ? 1 : -1;
+    const steps = Math.abs(newValue - currentValue);
+    const stepDuration = Math.min(50, 300 / steps);
+    
+    let current = currentValue;
+    const interval = setInterval(() => {
+        current += increment;
+        element.textContent = current;
+        
+        if (current === newValue) {
+            clearInterval(interval);
+        }
+    }, stepDuration);
 }
 
 /**
@@ -152,25 +256,16 @@ export function renderTaskList() {
  */
 export function filterTaskList(tasks) {
     const boardFilter = document.getElementById('taskBoardFilter')?.value || 'all';
-    const groupFilter = document.getElementById('taskGroupFilter')?.value || 'all';
-    const rowFilter = document.getElementById('taskRowFilter')?.value || 'all';
-    const columnFilter = document.getElementById('taskColumnFilter')?.value || 'all';
     const statusFilter = document.getElementById('taskStatusFilter')?.value || 'all';
     const priorityFilter = document.getElementById('taskPriorityFilter')?.value || 'all';
-    const searchTerm = document.getElementById('taskSearch')?.value.toLowerCase() || '';
+    const searchTerm = document.getElementById('taskSearchInput')?.value.toLowerCase() || '';
+    
+    // Get active quick filter
+    const activeQuickFilter = document.querySelector('.badge[data-filter].badge-primary')?.dataset.filter;
     
     return tasks.filter(task => {
         // Board filter
         if (boardFilter !== 'all' && task.boardId !== boardFilter) return false;
-        
-        // Group filter
-        if (groupFilter !== 'all' && task.groupId?.toString() !== groupFilter) return false;
-        
-        // Row filter
-        if (rowFilter !== 'all' && task.rowId?.toString() !== rowFilter) return false;
-        
-        // Column filter
-        if (columnFilter !== 'all' && task.columnKey !== columnFilter) return false;
         
         // Status filter
         if (statusFilter !== 'all') {
@@ -182,8 +277,36 @@ export function filterTaskList(tasks) {
         if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
         
         // Search filter
-        if (searchTerm && !task.title.toLowerCase().includes(searchTerm) && 
-            !task.description?.toLowerCase().includes(searchTerm)) return false;
+        if (searchTerm && 
+            !task.title.toLowerCase().includes(searchTerm) && 
+            !task.description?.toLowerCase().includes(searchTerm) &&
+            !task.boardName?.toLowerCase().includes(searchTerm) &&
+            !task.groupName?.toLowerCase().includes(searchTerm) &&
+            !task.rowName?.toLowerCase().includes(searchTerm)) return false;
+        
+        // Quick filters
+        if (activeQuickFilter && activeQuickFilter !== 'all') {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            
+            switch (activeQuickFilter) {
+                case 'today':
+                    if (!task.dueDate) return false;
+                    const dueDate = new Date(task.dueDate);
+                    dueDate.setHours(0, 0, 0, 0);
+                    if (dueDate.getTime() !== today.getTime()) return false;
+                    break;
+                case 'overdue':
+                    if (!task.dueDate || task.completed) return false;
+                    if (new Date(task.dueDate) >= today) return false;
+                    break;
+                case 'completed':
+                    if (!task.completed) return false;
+                    break;
+            }
+        }
         
         return true;
     });
@@ -245,39 +368,183 @@ export function sortTaskList(tasks) {
 }
 
 /**
+ * Show loading state for task list
+ */
+function showTaskLoadingState(container) {
+    container.classList.add('task-loading');
+    container.innerHTML = `
+        <div class="grid grid-cols-1 gap-4">
+            ${Array(3).fill(0).map(() => `
+                <div class="card bg-base-100 shadow-sm border-l-4 border-l-base-300 animate-pulse">
+                    <div class="card-body p-4">
+                        <div class="flex items-start gap-3 mb-3">
+                            <div class="w-4 h-4 bg-base-300 rounded"></div>
+                            <div class="flex-1">
+                                <div class="h-4 bg-base-300 rounded w-3/4 mb-2"></div>
+                                <div class="h-3 bg-base-300 rounded w-1/2"></div>
+                            </div>
+                            <div class="w-16 h-6 bg-base-300 rounded-full"></div>
+                        </div>
+                        <div class="flex gap-2 mb-3">
+                            <div class="h-5 bg-base-300 rounded w-20"></div>
+                            <div class="h-5 bg-base-300 rounded w-16"></div>
+                            <div class="h-5 bg-base-300 rounded w-24"></div>
+                        </div>
+                        <div class="flex justify-end">
+                            <div class="flex gap-1">
+                                <div class="w-6 h-6 bg-base-300 rounded"></div>
+                                <div class="w-6 h-6 bg-base-300 rounded"></div>
+                                <div class="w-6 h-6 bg-base-300 rounded"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+/**
+ * Hide loading state for task list
+ */
+function hideTaskLoadingState(container) {
+    container.classList.remove('task-loading');
+}
+
+/**
  * Create HTML element for a task
  * @param {Object} task - Task object
  * @returns {HTMLElement} Task element
  */
 export function createTaskElement(task) {
     const taskElement = document.createElement('div');
-    taskElement.className = `task-item ${task.completed ? 'completed' : ''}`;
     
-    const priorityClass = task.priority ? `priority-${task.priority}` : '';
+    // Priority colors and icons
+    const priorityConfig = {
+        high: { color: 'border-l-error', bg: 'bg-error/5', icon: '🔴', badge: 'badge-error' },
+        medium: { color: 'border-l-warning', bg: 'bg-warning/5', icon: '🟡', badge: 'badge-warning' },
+        low: { color: 'border-l-success', bg: 'bg-success/5', icon: '🟢', badge: 'badge-success' },
+        default: { color: 'border-l-base-300', bg: 'bg-base-100', icon: '⚪', badge: 'badge-ghost' }
+    };
+    
+    const priority = priorityConfig[task.priority] || priorityConfig.default;
+    const isCompleted = task.completed;
+    const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && !isCompleted;
+    const priorityClass = task.priority === 'high' ? 'priority-high' : '';
+    
+    // Format due date
+    const formatDueDate = (dateString) => {
+        if (!dateString) return null;
+        const date = new Date(dateString);
+        const today = new Date();
+        const diffTime = date - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays === 0) return 'Today';
+        if (diffDays === 1) return 'Tomorrow';
+        if (diffDays === -1) return 'Yesterday';
+        if (diffDays < 0) return `${Math.abs(diffDays)} days ago`;
+        if (diffDays < 7) return `In ${diffDays} days`;
+        return date.toLocaleDateString();
+    };
+    
+    taskElement.className = `card bg-base-100 shadow-sm hover:shadow-md transition-all duration-200 border-l-4 ${priority.color} ${isCompleted ? 'opacity-60' : ''} ${priorityClass} group cursor-pointer task-card`;
     
     taskElement.innerHTML = `
-        <div class="task-header">
-            <div class="task-checkbox">
-                <input type="checkbox" ${task.completed ? 'checked' : ''} 
-                       onchange="window.taskManagement.toggleTaskCompletion('${task.id}', '${task.boardId}', '${task.rowId}', '${task.columnKey}')">
+        <div class="card-body p-4">
+            <!-- Task Header -->
+            <div class="flex items-start justify-between mb-3">
+                <div class="flex items-start gap-3 flex-1">
+                    <div class="form-control">
+                        <label class="cursor-pointer">
+                            <input type="checkbox" class="checkbox checkbox-sm task-checkbox ${isCompleted ? 'checkbox-success' : ''}" 
+                                   ${isCompleted ? 'checked' : ''} 
+                                   onchange="window.taskManagement.toggleTaskCompletion('${task.id}', '${task.boardId}', '${task.rowId}', '${task.columnKey}')">
+                        </label>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h3 class="font-semibold text-base-content ${isCompleted ? 'line-through text-base-content/50' : ''} truncate">${task.title}</h3>
+                        ${task.description ? `<p class="text-sm text-base-content/70 mt-1 line-clamp-2">${task.description}</p>` : ''}
+                    </div>
+                </div>
+                
+                <!-- Priority Badge -->
+                <div class="badge ${priority.badge} badge-sm">
+                    ${priority.icon} ${task.priority || 'normal'}
+                </div>
             </div>
-            <div class="task-title ${priorityClass}">${task.title}</div>
-            <div class="task-actions">
-                <button class="btn btn-small btn-secondary" 
-                        onclick="window.taskManagement.editTaskFromList('${task.id}', '${task.boardId}', '${task.rowId}', '${task.columnKey}')">Edit</button>
-                <button class="btn btn-small btn-danger" 
-                        onclick="window.taskManagement.deleteTaskFromList('${task.id}', '${task.boardId}', '${task.rowId}', '${task.columnKey}')">Delete</button>
+            
+            <!-- Task Metadata -->
+            <div class="flex flex-wrap gap-2 mb-3 text-xs">
+                <div class="badge badge-outline badge-sm">
+                    <i data-lucide="layers" class="w-3 h-3 mr-1"></i>
+                    ${task.boardName}
+                </div>
+                ${task.groupName ? `
+                    <div class="badge badge-outline badge-sm" style="border-color: ${task.groupColor}; color: ${task.groupColor}">
+                        <i data-lucide="folder" class="w-3 h-3 mr-1"></i>
+                        ${task.groupName}
+                    </div>
+                ` : ''}
+                <div class="badge badge-outline badge-sm">
+                    <i data-lucide="list" class="w-3 h-3 mr-1"></i>
+                    ${task.rowName}
+                </div>
+                <div class="badge badge-outline badge-sm">
+                    <i data-lucide="columns" class="w-3 h-3 mr-1"></i>
+                    ${task.columnName}
+                </div>
             </div>
-        </div>
-        ${task.description ? `<div class="task-description">${task.description}</div>` : ''}
-        <div class="task-metadata">
-            <span class="task-board">${task.boardName}</span>
-            <span class="task-group" style="color: ${task.groupColor}">${task.groupName}</span>
-            <span class="task-row">${task.rowName}</span>
-            <span class="task-column">${task.columnName}</span>
-            ${task.priority ? `<span class="task-priority priority-${task.priority}">${task.priority}</span>` : ''}
+            
+            <!-- Due Date and Status -->
+            ${task.dueDate || isCompleted ? `
+                <div class="flex items-center gap-2 mb-3">
+                    ${task.dueDate ? `
+                        <div class="flex items-center gap-1 text-xs ${isOverdue ? 'text-error' : 'text-base-content/70'}">
+                            <i data-lucide="calendar" class="w-3 h-3"></i>
+                            <span>${formatDueDate(task.dueDate)}</span>
+                            ${isOverdue ? '<i data-lucide="alert-triangle" class="w-3 h-3 text-error"></i>' : ''}
+                        </div>
+                    ` : ''}
+                    ${isCompleted ? `
+                        <div class="badge badge-success badge-sm">
+                            <i data-lucide="check" class="w-3 h-3 mr-1"></i>
+                            Completed
+                        </div>
+                    ` : ''}
+                </div>
+            ` : ''}
+            
+            <!-- Task Actions -->
+            <div class="card-actions justify-end">
+                <div class="task-actions flex gap-1">
+                    <button class="btn btn-ghost btn-xs task-action-btn" 
+                            onclick="event.stopPropagation(); window.taskManagement.editTaskFromList('${task.id}', '${task.boardId}', '${task.rowId}', '${task.columnKey}')"
+                            title="Edit task">
+                        <i data-lucide="edit-2" class="w-3 h-3"></i>
+                    </button>
+                    <button class="btn btn-ghost btn-xs task-action-btn" 
+                            onclick="event.stopPropagation(); window.taskManagement.duplicateTask('${task.id}', '${task.boardId}', '${task.rowId}', '${task.columnKey}')"
+                            title="Duplicate task">
+                        <i data-lucide="copy" class="w-3 h-3"></i>
+                    </button>
+                    <button class="btn btn-ghost btn-xs task-action-btn hover:btn-error" 
+                            onclick="event.stopPropagation(); window.taskManagement.deleteTaskFromList('${task.id}', '${task.boardId}', '${task.rowId}', '${task.columnKey}')"
+                            title="Delete task">
+                        <i data-lucide="trash-2" class="w-3 h-3"></i>
+                    </button>
+                </div>
+            </div>
         </div>
     `;
+    
+    // Add click handler to open task details (optional feature)
+    taskElement.addEventListener('click', (e) => {
+        if (!e.target.closest('button') && !e.target.closest('input')) {
+            // Could open a task detail modal here
+            console.log('Task clicked:', task.id);
+        }
+    });
     
     return taskElement;
 }
@@ -665,6 +932,143 @@ export function toggleTaskCompletion(taskId, boardId, rowId, columnKey) {
     }
 }
 
+/**
+ * Duplicate a task
+ * @param {string} taskId - Task ID
+ * @param {string} boardId - Board ID
+ * @param {string} rowId - Row ID
+ * @param {string} columnKey - Column key
+ */
+export function duplicateTask(taskId, boardId, rowId, columnKey) {
+    const appData = getAppData();
+    const board = appData.boards[boardId];
+    const row = board.rows.find(r => r.id?.toString() === rowId?.toString());
+    
+    if (row && row.cards[columnKey]) {
+        const originalTask = row.cards[columnKey].find(c => c.id?.toString() === taskId?.toString());
+        if (originalTask) {
+            const newTask = {
+                ...originalTask,
+                id: board.nextCardId++,
+                title: `${originalTask.title} (Copy)`,
+                completed: false
+            };
+            
+            row.cards[columnKey].push(newTask);
+            setAppData(appData);
+            saveData();
+            renderTaskList();
+            
+            // Update board view if visible
+            if (window.renderBoard) window.renderBoard();
+            
+            showStatusMessage('Task duplicated successfully', 'success');
+        }
+    }
+}
+
+/**
+ * Clear all task filters
+ */
+export function clearTaskFilters() {
+    // Reset all filter dropdowns to default values
+    const filters = [
+        'taskBoardFilter',
+        'taskStatusFilter',
+        'taskPriorityFilter'
+    ];
+    
+    filters.forEach(filterId => {
+        const filterElement = document.getElementById(filterId);
+        if (filterElement) {
+            filterElement.value = filterElement.querySelector('option')?.value || '';
+        }
+    });
+    
+    // Clear search input
+    const searchInput = document.getElementById('taskSearchInput');
+    if (searchInput) {
+        searchInput.value = '';
+    }
+    
+    // Reset quick filters
+    document.querySelectorAll('.quick-filter-badge').forEach(badge => {
+        badge.classList.remove('badge-primary');
+        badge.classList.add('badge-ghost');
+    });
+    
+    const allFilter = document.getElementById('filterAll');
+    if (allFilter) {
+        allFilter.classList.remove('badge-ghost');
+        allFilter.classList.add('badge-primary');
+    }
+    
+    // Re-render the task list
+    renderTaskList();
+}
+
+/**
+ * Setup enhanced task management event listeners
+ */
+export function setupTaskManagementEvents() {
+    // Quick filter badge click handlers
+    document.addEventListener('click', (event) => {
+        const badge = event.target.closest('.quick-filter-badge');
+        if (badge) {
+            event.preventDefault();
+            
+            // Remove active state from all badges
+            document.querySelectorAll('.quick-filter-badge').forEach(b => {
+                b.classList.remove('badge-primary');
+                b.classList.add('badge-ghost');
+            });
+            
+            // Add active state to clicked badge
+            badge.classList.remove('badge-ghost');
+            badge.classList.add('badge-primary');
+            
+            // Trigger filter update
+            renderTaskList();
+        }
+    });
+    
+    // Enhanced search input with debouncing
+    let searchTimeout;
+    const searchInput = document.getElementById('taskSearchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', (event) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                renderTaskList();
+            }, 300); // 300ms debounce
+        });
+        
+        // Add focus animation
+        searchInput.addEventListener('focus', (event) => {
+            event.target.classList.add('input-primary');
+        });
+        
+        searchInput.addEventListener('blur', (event) => {
+            event.target.classList.remove('input-primary');
+        });
+    }
+}
+
+/**
+ * Initialize task management with enhanced features
+ */
+export function initializeTaskManagement() {
+    populateTaskView();
+    setupTaskManagementEvents();
+    
+    // Set initial quick filter state
+    const allFilter = document.getElementById('filterAll');
+    if (allFilter) {
+        allFilter.classList.remove('badge-ghost');
+        allFilter.classList.add('badge-primary');
+    }
+}
+
 // Make functions available globally for backwards compatibility during transition
 window.populateTaskView = populateTaskView;
 window.populateTaskBoardFilters = populateTaskBoardFilters;
@@ -683,10 +1087,13 @@ window.updateTaskColumnOptions = updateTaskColumnOptions;
 window.editTaskFromList = editTaskFromList;
 window.deleteTaskFromList = deleteTaskFromList;
 window.toggleTaskCompletion = toggleTaskCompletion;
+window.duplicateTask = duplicateTask;
+window.clearTaskFilters = clearTaskFilters;
+window.setupTaskManagementEvents = setupTaskManagementEvents;
+window.initializeTaskManagement = initializeTaskManagement;
 
 // Export module for access by other modules
 window.taskManagement = {
-    switchToView,
     populateTaskView,
     populateTaskBoardFilters,
     populateTaskFilters,
@@ -703,5 +1110,9 @@ window.taskManagement = {
     updateTaskColumnOptions,
     editTaskFromList,
     deleteTaskFromList,
-    toggleTaskCompletion
+    toggleTaskCompletion,
+    duplicateTask,
+    clearTaskFilters,
+    setupTaskManagementEvents,
+    initializeTaskManagement
 };

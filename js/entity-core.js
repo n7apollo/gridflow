@@ -1,14 +1,16 @@
 /**
- * GridFlow - Unified Entity Core System (IndexedDB-Only)
+ * GridFlow - Unified Entity Core System (Dexie)
  * 
  * This module provides a unified entity system where all content (tasks, notes, 
  * checklists, etc.) are stored as entities that can exist in multiple contexts
- * (boards, weekly plans, task lists) while maintaining a single source of truth in IndexedDB.
+ * (boards, weekly plans, task lists) while maintaining a single source of truth in Dexie.
  */
 
 import { getAppData, setAppData, saveData, incrementNextId } from './core-data.js';
 import { showStatusMessage } from './utilities.js';
-import { entityAdapter, boardAdapter, weeklyPlanAdapter } from './indexeddb/adapters.js';
+import { db } from './db.js';
+import { entityService } from './entity-service.js';
+import { boardService } from './board-service.js';
 
 /**
  * Entity Types and their schemas
@@ -57,8 +59,8 @@ export async function createEntity(type, data) {
             ...getTypeSpecificFields(type, data)
         };
         
-        // Save to IndexedDB
-        await entityAdapter.save(entity);
+        // Save to Dexie
+        await entityService.save(entity);
         
         // Update local appData cache
         const appData = getAppData();
@@ -163,8 +165,8 @@ export async function getEntity(entityId) {
             return appData.entities[entityId];
         }
         
-        // Load from IndexedDB
-        const entity = await entityAdapter.getById(entityId);
+        // Load from Dexie
+        const entity = await entityService.getById(entityId);
         
         // Update local cache if found
         if (entity) {
@@ -203,8 +205,8 @@ export async function updateEntity(entityId, updates) {
             updatedAt: new Date().toISOString()
         };
         
-        // Save to IndexedDB
-        await entityAdapter.save(updatedEntity);
+        // Save to Dexie
+        await entityService.save(updatedEntity);
         
         // Update local cache
         const appData = getAppData();
@@ -242,8 +244,8 @@ export async function deleteEntity(entityId) {
         // Remove from all contexts first
         await removeEntityFromAllContexts(entityId);
         
-        // Delete from IndexedDB
-        await entityAdapter.delete(entityId);
+        // Delete from Dexie (includes cleanup of related data)
+        await entityService.delete(entityId);
         
         // Remove from local cache
         const appData = getAppData();
@@ -374,14 +376,17 @@ export async function removeEntityFromContext(entityId, contextType, contextData
  */
 async function addEntityToBoard(entityId, boardId, rowId, columnKey) {
     try {
-        // Get board from IndexedDB
-        const board = await boardAdapter.getById(boardId);
+        // Use entity service to set position and board service for board updates
+        await entityService.setPosition(entityId, boardId, 'board', rowId, columnKey);
+        
+        // Get board for row.cards structure update
+        const board = await boardService.getById(boardId);
         if (!board) {
             console.warn('Board not found:', boardId);
             return false;
         }
         
-        const row = board.rows.find(r => r.id === rowId);
+        const row = board.rows.find(r => r.id == rowId);
         if (!row) {
             console.warn('Row not found:', rowId);
             return false;
@@ -391,11 +396,13 @@ async function addEntityToBoard(entityId, boardId, rowId, columnKey) {
         if (!row.cards) row.cards = {};
         if (!row.cards[columnKey]) row.cards[columnKey] = [];
         
-        // Add entity reference to board
-        row.cards[columnKey].push(entityId);
+        // Add entity reference to board (for backward compatibility)
+        if (!row.cards[columnKey].includes(entityId)) {
+            row.cards[columnKey].push(entityId);
+        }
         
         // Save updated board
-        await boardAdapter.save(board);
+        await boardService.save(board);
         
         // Update local cache
         const appData = getAppData();
@@ -423,14 +430,17 @@ async function addEntityToBoard(entityId, boardId, rowId, columnKey) {
  */
 async function removeEntityFromBoard(entityId, boardId, rowId = null, columnKey = null) {
     try {
-        // Get board from IndexedDB
-        const board = await boardAdapter.getById(boardId);
+        // Remove entity position from Dexie
+        await entityService.removePosition(entityId, boardId, 'board');
+        
+        // Get board for row.cards structure update
+        const board = await boardService.getById(boardId);
         if (!board) return false;
         
         let removed = false;
         
         board.rows.forEach(row => {
-            if (rowId && row.id !== rowId) return;
+            if (rowId && row.id != rowId) return;
             
             if (row.cards) {
                 Object.keys(row.cards).forEach(colKey => {
@@ -447,7 +457,7 @@ async function removeEntityFromBoard(entityId, boardId, rowId = null, columnKey 
         
         if (removed) {
             // Save updated board
-            await boardAdapter.save(board);
+            await boardService.save(board);
             
             // Update local cache
             const appData = getAppData();
@@ -476,8 +486,11 @@ async function removeEntityFromBoard(entityId, boardId, rowId = null, columnKey 
  */
 async function addEntityToWeekly(entityId, weekKey, day = null) {
     try {
-        // Get or create weekly plan
-        let weeklyPlan = await weeklyPlanAdapter.getById(weekKey);
+        // Use entity service to add to weekly plan
+        await entityService.addToWeeklyPlan(entityId, weekKey, day);
+        
+        // Get or create weekly plan for local cache update
+        let weeklyPlan = await db.weeklyPlans.get(weekKey);
         if (!weeklyPlan) {
             weeklyPlan = {
                 weekKey,
@@ -486,27 +499,19 @@ async function addEntityToWeekly(entityId, weekKey, day = null) {
                 items: [],
                 reflection: { wins: '', challenges: '', learnings: '', nextWeekFocus: '' }
             };
+            await db.weeklyPlans.put(weeklyPlan);
         }
-        
-        // Add entity reference to weekly plan
-        const weeklyItem = {
-            id: `weekly_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            entityId: entityId,
-            day: day,
-            addedAt: new Date().toISOString()
-        };
-        
-        if (!weeklyPlan.items) weeklyPlan.items = [];
-        weeklyPlan.items.push(weeklyItem);
-        
-        // Save updated weekly plan
-        await weeklyPlanAdapter.save(weeklyPlan);
         
         // Update local cache
         const appData = getAppData();
         if (!appData.weeklyPlans) appData.weeklyPlans = {};
-        appData.weeklyPlans[weekKey] = weeklyPlan;
-        setAppData(appData);
+        
+        // Reload weekly plan to get updated items
+        const updatedPlan = await db.weeklyPlans.get(weekKey);
+        if (updatedPlan) {
+            appData.weeklyPlans[weekKey] = updatedPlan;
+            setAppData(appData);
+        }
         
         console.log('Added entity to weekly plan:', entityId, weekKey, day);
         return true;
@@ -525,24 +530,19 @@ async function addEntityToWeekly(entityId, weekKey, day = null) {
  */
 async function removeEntityFromWeekly(entityId, weekKey) {
     try {
-        const weeklyPlan = await weeklyPlanAdapter.getById(weekKey);
-        if (!weeklyPlan) return false;
-        
-        const originalLength = weeklyPlan.items?.length || 0;
-        if (!weeklyPlan.items) weeklyPlan.items = [];
-        
-        weeklyPlan.items = weeklyPlan.items.filter(item => item.entityId !== entityId);
-        const removed = weeklyPlan.items.length < originalLength;
+        // Use entity service to remove from weekly plan
+        const removed = await entityService.removeFromWeeklyPlan(entityId, weekKey);
         
         if (removed) {
-            // Save updated weekly plan
-            await weeklyPlanAdapter.save(weeklyPlan);
-            
             // Update local cache
             const appData = getAppData();
             if (appData.weeklyPlans && appData.weeklyPlans[weekKey]) {
-                appData.weeklyPlans[weekKey] = weeklyPlan;
-                setAppData(appData);
+                // Reload weekly plan to get updated items
+                const updatedPlan = await db.weeklyPlans.get(weekKey);
+                if (updatedPlan) {
+                    appData.weeklyPlans[weekKey] = updatedPlan;
+                    setAppData(appData);
+                }
             }
             
             console.log('Removed entity from weekly plan:', entityId, weekKey);
@@ -609,46 +609,18 @@ export async function getEntitiesInContext(contextType, contextData) {
     try {
         switch (contextType) {
             case CONTEXT_TYPES.BOARD: {
-                const board = await boardAdapter.getById(contextData.boardId);
-                if (!board) return [];
-                
-                const entityIds = new Set();
-                
-                board.rows.forEach(row => {
-                    if (row.cards) {
-                        Object.values(row.cards).forEach(cardList => {
-                            cardList.forEach(id => entityIds.add(id));
-                        });
-                    }
-                });
-                
-                // Get all entities
-                const entities = [];
-                for (const entityId of entityIds) {
-                    const entity = await getEntity(entityId);
-                    if (entity) entities.push(entity);
-                }
-                
-                return entities;
+                // Use entity service to get entities by board
+                return await entityService.getByBoard(contextData.boardId);
             }
             
             case CONTEXT_TYPES.WEEKLY: {
-                const weeklyPlan = await weeklyPlanAdapter.getById(contextData.weekKey);
-                if (!weeklyPlan) return [];
-                
-                const entities = [];
-                for (const item of weeklyPlan.items || []) {
-                    const entity = await getEntity(item.entityId);
-                    if (entity) entities.push(entity);
-                }
-                
-                return entities;
+                // Use entity service to get weekly plan entities
+                return await entityService.getWeeklyPlanEntities(contextData.weekKey);
             }
             
             case CONTEXT_TYPES.TASK_LIST: {
-                // Return all task-type entities
-                const allEntities = await entityAdapter.getByType(ENTITY_TYPES.TASK);
-                return allEntities;
+                // Return all task-type entities using Dexie query
+                return await entityService.getByType(ENTITY_TYPES.TASK);
             }
             
             default:
@@ -668,34 +640,52 @@ export async function getEntitiesInContext(contextType, contextData) {
  */
 export async function searchEntities(criteria = {}) {
     try {
+        // Use Dexie's optimized queries for better performance
         let entities = [];
         
-        // If we have a type filter, use the type index
+        // If we have a type filter, use the indexed type query
         if (criteria.type) {
-            entities = await entityAdapter.getByType(criteria.type);
+            entities = await entityService.getByType(criteria.type);
+        } else if (criteria.completed !== undefined) {
+            // Use completion index if available
+            entities = criteria.completed ? await entityService.getCompleted() : await entityService.getPending();
+        } else if (criteria.priority) {
+            // Use priority index if available
+            entities = await entityService.getByPriority(criteria.priority);
+        } else if (criteria.tags && criteria.tags.length > 0) {
+            // Use tag index for better performance
+            entities = await entityService.getByTags(criteria.tags);
+        } else if (criteria.search) {
+            // Use entity service's optimized search
+            return await entityService.search(criteria.search);
         } else {
-            entities = await entityAdapter.getAll();
+            entities = await entityService.getAll();
         }
         
-        // Apply additional filters
+        // Apply remaining filters client-side (only if we need additional filtering)
+        if (Object.keys(criteria).length <= 1) {
+            // Single criterion already filtered by index
+            return entities;
+        }
+        
         return entities.filter(entity => {
-            // Completion filter
-            if (criteria.completed !== undefined && entity.completed !== criteria.completed) return false;
+            // Completion filter (apply if not the primary filter)
+            if (criteria.completed !== undefined && criteria.type && entity.completed !== criteria.completed) return false;
             
-            // Priority filter
-            if (criteria.priority && entity.priority !== criteria.priority) return false;
+            // Priority filter (apply if not the primary filter)
+            if (criteria.priority && criteria.type && entity.priority !== criteria.priority) return false;
             
-            // Text search
-            if (criteria.search) {
+            // Text search (apply if not the primary filter)
+            if (criteria.search && (criteria.type || criteria.completed !== undefined || criteria.priority)) {
                 const searchTerm = criteria.search.toLowerCase();
-                const titleMatch = entity.title.toLowerCase().includes(searchTerm);
-                const contentMatch = entity.content.toLowerCase().includes(searchTerm);
+                const titleMatch = entity.title?.toLowerCase().includes(searchTerm);
+                const contentMatch = entity.content?.toLowerCase().includes(searchTerm);
                 if (!titleMatch && !contentMatch) return false;
             }
             
-            // Tag filter
-            if (criteria.tags && criteria.tags.length > 0) {
-                const hasTag = criteria.tags.some(tag => entity.tags.includes(tag));
+            // Tag filter (apply if not the primary filter)
+            if (criteria.tags && criteria.tags.length > 0 && (criteria.type || criteria.completed !== undefined || criteria.priority || criteria.search)) {
+                const hasTag = criteria.tags.some(tag => entity.tags?.includes(tag));
                 if (!hasTag) return false;
             }
             
@@ -715,7 +705,7 @@ export async function searchEntities(criteria = {}) {
  */
 export async function getEntitiesByType(type) {
     try {
-        return await entityAdapter.getByType(type);
+        return await entityService.getByType(type);
     } catch (error) {
         console.error('Failed to get entities by type:', error);
         return [];
@@ -728,7 +718,7 @@ export async function getEntitiesByType(type) {
  */
 export async function getAllEntities() {
     try {
-        return await entityAdapter.getAll();
+        return await entityService.getAll();
     } catch (error) {
         console.error('Failed to get all entities:', error);
         return [];
@@ -741,12 +731,14 @@ export async function getAllEntities() {
  */
 export async function debugEntities() {
     try {
-        const entities = await entityAdapter.getAll();
-        const boards = await boardAdapter.getAll();
-        const weeklyPlans = await weeklyPlanAdapter.getAll();
+        const entities = await entityService.getAll();
+        const boards = await boardService.getAll();
+        const weeklyPlans = await db.weeklyPlans.toArray();
+        const entityStats = await entityService.getEntityStats();
         
-        console.log('=== ENTITY DEBUG (IndexedDB) ===');
+        console.log('=== ENTITY DEBUG (Dexie) ===');
         console.log('Total entities:', entities.length);
+        console.log('Entity stats:', entityStats);
         
         entities.forEach(entity => {
             console.log(`${entity.id}: ${entity.title || 'Untitled'} (${entity.type})`);
@@ -754,19 +746,24 @@ export async function debugEntities() {
         
         // Check weekly items
         console.log('\n=== WEEKLY ITEMS ===');
-        weeklyPlans.forEach(plan => {
+        for (const plan of weeklyPlans) {
             console.log(`Week ${plan.weekKey}:`);
-            (plan.items || []).forEach(item => {
-                const entity = entities.find(e => e.id === item.entityId);
-                console.log(`  ${item.id}: entityId=${item.entityId} (${entity ? '✓' : '✗ MISSING'})`);
+            const weeklyEntities = await entityService.getWeeklyPlanEntities(plan.weekKey);
+            weeklyEntities.forEach(entity => {
+                console.log(`  ${entity.id}: ${entity.title || 'Untitled'} (${entity.type})`);
             });
-        });
+        }
         
-        return { entities, boards, weeklyPlans };
+        // Check entity positions
+        console.log('\n=== ENTITY POSITIONS ===');
+        const positions = await db.entityPositions.toArray();
+        console.log(`Total positions: ${positions.length}`);
+        
+        return { entities, boards, weeklyPlans, entityStats, positions };
         
     } catch (error) {
         console.error('Failed to debug entities:', error);
-        return { entities: [], boards: [], weeklyPlans: [] };
+        return { entities: [], boards: [], weeklyPlans: [], entityStats: {}, positions: [] };
     }
 }
 

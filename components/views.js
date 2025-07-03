@@ -163,47 +163,169 @@ class GridFlowViews extends HTMLElement {
             </div>
 
             <!-- Task Management Interface -->
-            <div class="task-container card bg-base-100 shadow-lg p-4 mt-4 hidden" id="taskContainer">
-                <div class="task-header mb-4">
-                    <div class="task-controls flex flex-wrap gap-2 items-end">
+            <div class="task-container w-full max-w-none hidden" id="taskContainer">
+                <!-- Task Header with Search and Actions -->
+                <div class="task-header bg-gradient-to-r from-primary/10 to-secondary/10 rounded-2xl p-6 mb-6">
+                    <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6">
+                        <div class="flex items-center gap-3">
+                            <div class="p-3 bg-primary/20 rounded-xl">
+                                <i data-lucide="check-square" class="w-6 h-6 text-primary"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-2xl font-bold text-base-content">Task Management</h2>
+                                <p class="text-sm text-base-content/70">Organize and track all your tasks across boards</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="btn btn-primary shadow-lg" data-action="openTaskModal">
+                                <i data-lucide="plus" class="w-4 h-4"></i>
+                                Add Task
+                            </button>
+                            <div class="dropdown dropdown-end">
+                                <button class="btn btn-ghost" tabindex="0">
+                                    <i data-lucide="filter" class="w-4 h-4"></i>
+                                </button>
+                                <div class="dropdown-content menu p-2 shadow-xl bg-base-100 rounded-box w-52 mt-1">
+                                    <button class="btn btn-ghost btn-sm justify-start" data-action="clearAllFilters">
+                                        <i data-lucide="x" class="w-4 h-4"></i>
+                                        Clear Filters
+                                    </button>
+                                    <button class="btn btn-ghost btn-sm justify-start" data-action="exportTasks">
+                                        <i data-lucide="download" class="w-4 h-4"></i>
+                                        Export Tasks
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Search and Filters -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+                        <!-- Search -->
+                        <div class="lg:col-span-2">
+                            <div class="form-control">
+                                <div class="input-group">
+                                    <span class="bg-base-200">
+                                        <i data-lucide="search" class="w-4 h-4"></i>
+                                    </span>
+                                    <input type="text" id="taskSearchInput" placeholder="Search tasks..." 
+                                           class="input input-bordered w-full task-search-input" data-action="filterTasks">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Board Filter -->
                         <div class="form-control">
-                            <label class="label" for="taskBoardFilter">Board:</label>
-                            <select id="taskBoardFilter" data-action="filterTasksByBoard" class="select select-bordered min-w-[8rem]">
-                                <option value="">All Boards</option>
+                            <select id="taskBoardFilter" data-action="filterTasksByBoard" class="select select-bordered">
+                                <option value="all">All Boards</option>
                                 <!-- Board options will be populated dynamically -->
                             </select>
                         </div>
+
+                        <!-- Status Filter -->
                         <div class="form-control">
-                            <label class="label" for="taskStatusFilter">Status:</label>
-                            <select id="taskStatusFilter" data-action="filterTasks" class="select select-bordered min-w-[8rem]">
-                                <option value="">All Statuses</option>
-                                <option value="pending">Pending</option>
-                                <option value="completed">Completed</option>
+                            <select id="taskStatusFilter" data-action="filterTasks" class="select select-bordered">
+                                <option value="all">All Statuses</option>
+                                <option value="pending">📋 Pending</option>
+                                <option value="completed">✅ Completed</option>
                             </select>
                         </div>
+
+                        <!-- Priority Filter -->
                         <div class="form-control">
-                            <label class="label" for="taskPriorityFilter">Priority:</label>
-                            <select id="taskPriorityFilter" data-action="filterTasks" class="select select-bordered min-w-[8rem]">
-                                <option value="">All Priorities</option>
-                                <option value="high">High</option>
-                                <option value="medium">Medium</option>
-                                <option value="low">Low</option>
+                            <select id="taskPriorityFilter" data-action="filterTasks" class="select select-bordered">
+                                <option value="all">All Priorities</option>
+                                <option value="high">🔴 High</option>
+                                <option value="medium">🟡 Medium</option>
+                                <option value="low">🟢 Low</option>
                             </select>
                         </div>
+
+                        <!-- Sort Options -->
                         <div class="form-control">
-                            <label class="label" for="taskSortBy">Sort by:</label>
-                            <select id="taskSortBy" data-action="sortTasks" class="select select-bordered min-w-[8rem]">
-                                <option value="title">Title</option>
-                                <option value="priority">Priority</option>
-                                <option value="dueDate">Due Date</option>
-                                <option value="board">Board</option>
-                            </select>
+                            <div class="join">
+                                <select id="taskSortBy" data-action="sortTasks" class="select select-bordered join-item">
+                                    <option value="title">Title</option>
+                                    <option value="priority">Priority</option>
+                                    <option value="dueDate">Due Date</option>
+                                    <option value="board">Board</option>
+                                    <option value="status">Status</option>
+                                </select>
+                                <button class="btn btn-square join-item" id="taskSortOrder" data-action="toggleSortOrder" title="Toggle sort order">
+                                    <i data-lucide="arrow-down" class="w-4 h-4"></i>
+                                </button>
+                            </div>
                         </div>
-                        <button class="btn btn-primary ml-2" data-action="openTaskModal">+ Add Task</button>
+                    </div>
+
+                    <!-- Task Stats -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+                        <div class="stat bg-base-100/50 rounded-xl stat-card">
+                            <div class="stat-figure text-primary">
+                                <i data-lucide="list-todo" class="w-8 h-8"></i>
+                            </div>
+                            <div class="stat-title text-xs">Total Tasks</div>
+                            <div class="stat-value text-lg stat-counter" id="totalTaskCount">0</div>
+                        </div>
+                        <div class="stat bg-base-100/50 rounded-xl stat-card">
+                            <div class="stat-figure text-success">
+                                <i data-lucide="check-circle" class="w-8 h-8"></i>
+                            </div>
+                            <div class="stat-title text-xs">Completed</div>
+                            <div class="stat-value text-lg stat-counter" id="completedTaskCount">0</div>
+                        </div>
+                        <div class="stat bg-base-100/50 rounded-xl stat-card">
+                            <div class="stat-figure text-warning">
+                                <i data-lucide="clock" class="w-8 h-8"></i>
+                            </div>
+                            <div class="stat-title text-xs">Pending</div>
+                            <div class="stat-value text-lg stat-counter" id="pendingTaskCount">0</div>
+                        </div>
+                        <div class="stat bg-base-100/50 rounded-xl stat-card">
+                            <div class="stat-figure text-error">
+                                <i data-lucide="alert-circle" class="w-8 h-8"></i>
+                            </div>
+                            <div class="stat-title text-xs">High Priority</div>
+                            <div class="stat-value text-lg stat-counter" id="highPriorityTaskCount">0</div>
+                        </div>
                     </div>
                 </div>
-                <div class="task-list" id="taskList">
-                    <!-- Tasks will be populated here -->
+
+                <!-- Task List -->
+                <div class="task-list-container">
+                    <!-- Quick Filters -->
+                    <div class="flex flex-wrap gap-2 mb-4">
+                        <div class="badge badge-ghost badge-lg quick-filter-badge" data-filter="all" id="filterAll">
+                            All Tasks
+                        </div>
+                        <div class="badge badge-primary badge-lg quick-filter-badge" data-filter="today" id="filterToday">
+                            Due Today
+                        </div>
+                        <div class="badge badge-warning badge-lg quick-filter-badge" data-filter="overdue" id="filterOverdue">
+                            Overdue
+                        </div>
+                        <div class="badge badge-success badge-lg quick-filter-badge" data-filter="completed" id="filterCompleted">
+                            Completed
+                        </div>
+                    </div>
+
+                    <!-- Task List Grid -->
+                    <div class="task-list grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4" id="taskList">
+                        <!-- Tasks will be populated here -->
+                    </div>
+
+                    <!-- Empty State -->
+                    <div class="task-empty-state text-center py-12 hidden" id="taskEmptyState">
+                        <div class="mb-4">
+                            <i data-lucide="inbox" class="w-16 h-16 mx-auto text-base-content/30"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-base-content/70 mb-2">No tasks found</h3>
+                        <p class="text-base-content/50 mb-4">Create your first task or adjust your filters</p>
+                        <button class="btn btn-primary" data-action="openTaskModal">
+                            <i data-lucide="plus" class="w-4 h-4"></i>
+                            Create Task
+                        </button>
+                    </div>
                 </div>
             </div>
 

@@ -150,7 +150,7 @@ export function switchToWeeklyView() {
 /**
  * Render the weekly planning interface
  */
-export function renderWeeklyPlan() {
+export async function renderWeeklyPlan() {
     const appData = getAppData();
     const currentWeek = appData.weeklyPlans[currentWeekKey] || {};
     
@@ -168,7 +168,7 @@ export function renderWeeklyPlan() {
     }
     
     // Render weekly items
-    renderWeeklyItems();
+    await renderWeeklyItems();
     
     // Update week progress
     updateWeekProgress();
@@ -180,7 +180,7 @@ export function renderWeeklyPlan() {
 /**
  * Render weekly planning items
  */
-export function renderWeeklyItems() {
+export async function renderWeeklyItems() {
     const appData = getAppData();
     const currentWeek = appData.weeklyPlans[currentWeekKey] || {};
     const items = currentWeek.items || [];
@@ -190,9 +190,9 @@ export function renderWeeklyItems() {
     // Update date badges first
     updateDateBadges();
     
-    days.forEach(day => {
+    for (const day of days) {
         const dayItemsContainer = document.getElementById(`${day}Items`);
-        if (!dayItemsContainer) return;
+        if (!dayItemsContainer) continue;
         
         // Clear existing items (but keep the header structure from views.js)
         dayItemsContainer.innerHTML = '';
@@ -200,10 +200,22 @@ export function renderWeeklyItems() {
         // Filter and render items for this day
         const dayItems = items.filter(item => item.day === day);
         
-        dayItems.forEach(item => {
-            const itemElement = createWeeklyItemElement(item);
-            dayItemsContainer.appendChild(itemElement);
-        });
+        if (dayItems.length === 0) {
+            // Add empty state for this day
+            const emptyState = document.createElement('div');
+            emptyState.className = 'empty-day-state text-center py-6 text-base-content/40';
+            emptyState.innerHTML = `
+                <i data-lucide="calendar-plus" class="w-8 h-8 mx-auto mb-2"></i>
+                <p class="text-sm">No plans yet</p>
+                <p class="text-xs">Add notes, tasks, or goals</p>
+            `;
+            dayItemsContainer.appendChild(emptyState);
+        } else {
+            for (const item of dayItems) {
+                const itemElement = await createWeeklyItemElement(item);
+                dayItemsContainer.appendChild(itemElement);
+            }
+        }
         
         // Add "Add Item" button at the bottom
         const addButton = document.createElement('button');
@@ -216,22 +228,22 @@ export function renderWeeklyItems() {
         if (window.lucide) {
             window.lucide.createIcons();
         }
-    });
+    }
 }
 
 /**
  * Create weekly item element
  * @param {Object} item - Weekly item object
- * @returns {HTMLElement} Item element
+ * @returns {Promise<HTMLElement>} Item element
  */
-export function createWeeklyItemElement(item) {
+export async function createWeeklyItemElement(item) {
     // DEBUG: Log the full item object to console
     console.log('Creating weekly item element for:', JSON.stringify(item, null, 2));
     
     // Handle both legacy items and new entity-based items
     if (item.entityId) {
         // New entity-based system
-        const entity = getEntity(item.entityId);
+        const entity = await getEntity(item.entityId);
         if (!entity) {
             console.warn('Entity not found for weekly item:', item.entityId);
             // Create error element
@@ -248,7 +260,7 @@ export function createWeeklyItemElement(item) {
             weeklyItemId: item.id
         };
         
-        const itemElement = renderEntity(item.entityId, CONTEXT_TYPES.WEEKLY, contextData);
+        const itemElement = await renderEntity(item.entityId, CONTEXT_TYPES.WEEKLY, contextData);
         
         if (!itemElement) {
             console.warn('Entity renderer failed for weekly item:', item.entityId);

@@ -26,20 +26,20 @@ export function initializeEntitySync() {
  * Handle entity update events
  * @param {CustomEvent} event - Entity update event
  */
-function handleEntityUpdate(event) {
+async function handleEntityUpdate(event) {
     const { entityId } = event.detail;
     console.log('Synchronizing entity update across all contexts:', entityId);
     
     // Find all DOM elements displaying this entity
     const elements = document.querySelectorAll(`[data-entity-id="${entityId}"]`);
     
-    elements.forEach(element => {
+    for (const element of elements) {
         try {
             const contextType = getContextTypeFromElement(element);
             const contextData = getContextDataFromElement(element);
             
             // Re-render the entity in its current context
-            const newElement = renderEntity(entityId, contextType, contextData);
+            const newElement = await renderEntity(entityId, contextType, contextData);
             
             if (newElement) {
                 // Preserve important attributes
@@ -53,7 +53,7 @@ function handleEntityUpdate(event) {
         } catch (error) {
             console.error('Failed to update entity display:', entityId, error);
         }
-    });
+    }
     
     // Update any summary displays (progress bars, counts, etc.)
     updateSummaryDisplays(entityId);

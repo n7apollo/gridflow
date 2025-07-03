@@ -1,11 +1,11 @@
 /**
- * GridFlow - People Service
+ * GridFlow - People Service (Dexie)
  * Provides high-level operations for managing people and their relationships
  */
 
 import { createEntity, updateEntity, deleteEntity, getEntity, ENTITY_TYPES } from './entity-core.js';
-import { getAppData } from './core-data.js';
-import { peopleAdapter, relationshipAdapter } from './indexeddb/adapters.js';
+import { metaService } from './meta-service.js';
+import { entityService } from './entity-service.js';
 
 class PeopleService {
   /**
@@ -69,21 +69,23 @@ class PeopleService {
   /**
    * Get person by ID
    * @param {string} personId - Person ID
-   * @returns {Object|null} Person entity or null
+   * @returns {Promise<Object|null>} Person entity or null
    */
-  getPerson(personId) {
-    return getEntity(personId);
+  async getPerson(personId) {
+    return await getEntity(personId);
   }
 
   /**
    * Get all people
    * @returns {Array} Array of person entities
    */
-  getAllPeople() {
-    const appData = getAppData();
-    return Object.values(appData.entities || {}).filter(entity => 
-      entity.type === ENTITY_TYPES.PERSON
-    );
+  async getAllPeople() {
+    try {
+      return await metaService.getAllPeople();
+    } catch (error) {
+      console.error('Failed to get all people:', error);
+      return [];
+    }
   }
 
   /**
@@ -91,15 +93,13 @@ class PeopleService {
    * @param {string} searchTerm - Search term
    * @returns {Array} Matching people
    */
-  searchPeople(searchTerm) {
-    const allPeople = this.getAllPeople();
-    const term = searchTerm.toLowerCase();
-    
-    return allPeople.filter(person =>
-      person.name.toLowerCase().includes(term) ||
-      (person.email && person.email.toLowerCase().includes(term)) ||
-      (person.company && person.company.toLowerCase().includes(term))
-    );
+  async searchPeople(searchTerm) {
+    try {
+      return await metaService.searchPeople(searchTerm);
+    } catch (error) {
+      console.error('Failed to search people:', error);
+      return [];
+    }
   }
 
   /**
@@ -111,16 +111,16 @@ class PeopleService {
    * @returns {Object} Created relationship
    */
   async createRelationship(entityId, personId, relationshipType = 'mentions', context = '') {
-    // Update person's last interaction time
-    await this.updatePerson(personId, {
-      lastInteraction: new Date().toISOString()
-    });
-
-    // Create relationship in IndexedDB
     try {
-      return await relationshipAdapter.createRelationship(entityId, personId, relationshipType, context);
+      // Link entity to person using entity service
+      await entityService.linkToPerson(entityId, personId);
+      
+      // Update person's last interaction time
+      await metaService.updateLastInteraction(personId);
+      
+      return { entityId, personId, relationshipType, context };
     } catch (error) {
-      console.error('Failed to create relationship in IndexedDB:', error);
+      console.error('Failed to create relationship:', error);
       throw error;
     }
   }
@@ -133,9 +133,10 @@ class PeopleService {
    */
   async removeRelationship(entityId, personId) {
     try {
-      return await relationshipAdapter.removeRelationship(entityId, personId);
+      await entityService.unlinkFromPerson(entityId, personId);
+      return true;
     } catch (error) {
-      console.error('Failed to remove relationship from IndexedDB:', error);
+      console.error('Failed to remove relationship:', error);
       throw error;
     }
   }
@@ -147,13 +148,17 @@ class PeopleService {
    */
   async removeAllRelationships(personId) {
     try {
-      const relationships = await relationshipAdapter.getByRelated(personId);
-      for (const rel of relationships) {
-        await relationshipAdapter.delete(rel.id);
+      // Get all entities linked to this person
+      const linkedEntities = await entityService.getByPerson(personId);
+      
+      // Remove the person from each entity
+      for (const entity of linkedEntities) {
+        await entityService.unlinkFromPerson(entity.id, personId);
       }
-      return relationships.length;
+      
+      return linkedEntities.length;
     } catch (error) {
-      console.error('Failed to remove relationships from IndexedDB:', error);
+      console.error('Failed to remove relationships:', error);
       throw error;
     }
   }
@@ -164,34 +169,13 @@ class PeopleService {
    * @returns {Array} Array of related entities with relationship context
    */
   async getPersonTimeline(personId) {
-    // Get relationships from IndexedDB
-    let relationships = [];
     try {
-      relationships = await relationshipAdapter.getByRelated(personId);
+      // Use entity service to get person timeline
+      return await entityService.getPersonTimeline(personId);
     } catch (error) {
-      console.error('Failed to get relationships from IndexedDB:', error);
+      console.error('Failed to get person timeline:', error);
       return [];
     }
-
-    // Get all related entities
-    const entityIds = relationships.map(rel => rel.entityId);
-    const entities = entityIds.map(id => getEntity(id)).filter(Boolean);
-
-    // Add relationship context and sort chronologically
-    const timelineItems = entities.map(entity => {
-      const relationship = relationships.find(rel => rel.entityId === entity.id);
-      return {
-        ...entity,
-        relationshipContext: relationship,
-        relationshipType: relationship?.relationshipType || 'mentions',
-        relationshipCreatedAt: relationship?.createdAt
-      };
-    });
-
-    // Sort by most recent update/creation
-    return timelineItems.sort((a, b) => 
-      new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)
-    );
   }
 
   /**
@@ -199,39 +183,44 @@ class PeopleService {
    * @returns {Array} People needing follow-up with suggestion context
    */
   async getPeopleNeedingFollowUp() {
-    const allPeople = this.getAllPeople();
-    const now = new Date();
-    const followUps = [];
+    try {
+      const allPeople = await this.getAllPeople();
+      const now = new Date();
+      const followUps = [];
 
-    for (const person of allPeople) {
-      const lastInteraction = new Date(person.lastInteraction);
-      const daysSince = Math.floor((now - lastInteraction) / (1000 * 60 * 60 * 24));
-      
-      let expectedFrequencyDays;
-      switch (person.interactionFrequency) {
-        case 'daily': expectedFrequencyDays = 1; break;
-        case 'weekly': expectedFrequencyDays = 7; break;
-        case 'monthly': expectedFrequencyDays = 30; break;
-        case 'quarterly': expectedFrequencyDays = 90; break;
-        case 'yearly': expectedFrequencyDays = 365; break;
-        default: expectedFrequencyDays = 30; break;
-      }
-
-      if (daysSince > expectedFrequencyDays) {
-        const timeline = await this.getPersonTimeline(person.id);
-        const lastNote = timeline.find(item => item.type === 'note');
+      for (const person of allPeople) {
+        const lastInteraction = new Date(person.lastInteraction);
+        const daysSince = Math.floor((now - lastInteraction) / (1000 * 60 * 60 * 24));
         
-        followUps.push({
-          person,
-          daysSinceContact: daysSince,
-          expectedFrequency: person.interactionFrequency,
-          lastContext: lastNote?.title || lastNote?.content?.substring(0, 100),
-          suggestion: this.generateFollowUpSuggestion(person, daysSince, lastNote)
-        });
-      }
-    }
+        let expectedFrequencyDays;
+        switch (person.interactionFrequency) {
+          case 'daily': expectedFrequencyDays = 1; break;
+          case 'weekly': expectedFrequencyDays = 7; break;
+          case 'monthly': expectedFrequencyDays = 30; break;
+          case 'quarterly': expectedFrequencyDays = 90; break;
+          case 'yearly': expectedFrequencyDays = 365; break;
+          default: expectedFrequencyDays = 30; break;
+        }
 
-    return followUps.sort((a, b) => b.daysSinceContact - a.daysSinceContact);
+        if (daysSince > expectedFrequencyDays) {
+          const timeline = await this.getPersonTimeline(person.id);
+          const lastNote = timeline.find(item => item.type === 'note');
+          
+          followUps.push({
+            person,
+            daysSinceContact: daysSince,
+            expectedFrequency: person.interactionFrequency,
+            lastContext: lastNote?.title || lastNote?.content?.substring(0, 100),
+            suggestion: this.generateFollowUpSuggestion(person, daysSince, lastNote)
+          });
+        }
+      }
+
+      return followUps.sort((a, b) => b.daysSinceContact - a.daysSinceContact);
+    } catch (error) {
+      console.error('Failed to get people needing follow-up:', error);
+      return [];
+    }
   }
 
   /**
@@ -264,10 +253,16 @@ class PeopleService {
    * @param {string} relationshipType - Relationship type
    * @returns {Array} People with specified relationship type
    */
-  getPeopleByRelationshipType(relationshipType) {
-    return this.getAllPeople().filter(person => 
-      person.relationshipType === relationshipType
-    );
+  async getPeopleByRelationshipType(relationshipType) {
+    try {
+      const allPeople = await this.getAllPeople();
+      return allPeople.filter(person => 
+        person.relationshipType === relationshipType
+      );
+    } catch (error) {
+      console.error('Failed to get people by relationship type:', error);
+      return [];
+    }
   }
 }
 

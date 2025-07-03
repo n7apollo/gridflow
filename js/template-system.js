@@ -5,7 +5,7 @@
 
 import { getAppData, setAppData, saveData, createDefaultBoard } from './core-data.js';
 import { showStatusMessage } from './utilities.js';
-import { templateAdapter } from './indexeddb/adapters.js';
+import { metaService } from './meta-service.js';
 
 // Template selection state
 let selectedTemplateId = null;
@@ -122,7 +122,7 @@ export async function saveAsTemplate(event) {
     }
     
     try {
-        await templateAdapter.createTemplate(newTemplate);
+        await metaService.createTemplate(newTemplate.name, newTemplate.description, newTemplate.category, newTemplate);
     } catch (error) {
         console.error('Failed to save template:', error);
         showStatusMessage('Failed to save template', 'error');
@@ -179,7 +179,7 @@ export async function createTemplate(event) {
     };
     
     try {
-        await templateAdapter.createTemplate(newTemplate);
+        await metaService.createTemplate(newTemplate.name, newTemplate.description, newTemplate.category, newTemplate);
     } catch (error) {
         console.error('Failed to create template:', error);
         showStatusMessage('Failed to create template', 'error');
@@ -213,7 +213,7 @@ export function closeApplyTemplateModal() {
  * Populate template categories dropdown
  */
 export async function populateTemplateCategories() {
-    const templates = await templateAdapter.getAll();
+    const templates = await metaService.getAllTemplates();
     const categories = ['All', ...new Set(templates.map(t => t.category).filter(Boolean))];
     
     const container = document.getElementById('templateCategories');
@@ -245,7 +245,7 @@ export function filterTemplatesByCategory(category) {
  * @param {string} filterCategory - Category to filter by
  */
 export async function populateTemplateList(filterCategory = 'All') {
-    const allTemplates = await templateAdapter.getAll();
+    const allTemplates = await metaService.getTemplates();
     const templates = filterCategory === 'All' 
         ? allTemplates 
         : allTemplates.filter(t => t.category === filterCategory);
@@ -254,7 +254,36 @@ export async function populateTemplateList(filterCategory = 'All') {
     if (!container) return;
     
     if (templates.length === 0) {
-        container.innerHTML = '<div class="no-templates">No templates found in this category.</div>';
+        const allTemplatesEmpty = allTemplates.length === 0;
+        container.innerHTML = `
+            <div class="empty-templates-state text-center py-12">
+                <div class="text-base-content/60 mb-6">
+                    <i data-lucide="${allTemplatesEmpty ? 'layout-template' : 'search'}" class="w-12 h-12 mx-auto mb-4"></i>
+                    <h3 class="text-lg font-semibold mb-2">
+                        ${allTemplatesEmpty ? 'No templates yet' : 'No templates in this category'}
+                    </h3>
+                    <p class="text-sm">
+                        ${allTemplatesEmpty 
+                            ? 'Create templates to reuse board structures across projects' 
+                            : 'Try selecting a different category or create a new template'}
+                    </p>
+                </div>
+                <div class="flex flex-col gap-3 justify-center">
+                    <button class="btn btn-primary" onclick="showSaveAsTemplateModal()">
+                        <i data-lucide="save"></i> Save Current Board as Template
+                    </button>
+                    ${allTemplatesEmpty ? `
+                        <div class="text-xs text-base-content/40 mt-4">
+                            <p>💡 Tip: Templates preserve your board structure and can include sample content</p>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+        // Re-render Lucide icons
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
         return;
     }
     
@@ -311,7 +340,7 @@ export async function applySelectedTemplate() {
         return;
     }
     
-    const template = await templateAdapter.getById(selectedTemplateId);
+    const template = await metaService.getTemplate(selectedTemplateId);
     if (!template) {
         showStatusMessage('Template not found', 'error');
         return;
@@ -523,7 +552,7 @@ export async function updateTemplatesUI() {
     const templatesGrid = document.getElementById('templatesGrid');
     if (!templatesGrid) return;
     
-    const templates = await templateAdapter.getAll();
+    const templates = await metaService.getAllTemplates();
     
     if (templates.length === 0) {
         templatesGrid.innerHTML = '<div class="no-templates">No templates created yet.</div>';
@@ -559,7 +588,7 @@ export async function updateTemplatesUI() {
  * @param {number} templateId - Template ID
  */
 export async function applyTemplateQuick(templateId) {
-    const template = await templateAdapter.getById(templateId);
+    const template = await metaService.getTemplate(templateId);
     if (template) {
         await addTemplateToCurrentBoard(template);
     }
@@ -570,7 +599,7 @@ export async function applyTemplateQuick(templateId) {
  * @param {number} templateId - Template ID to delete
  */
 export async function deleteTemplate(templateId) {
-    const template = await templateAdapter.getById(templateId);
+    const template = await metaService.getTemplate(templateId);
     
     if (!template) {
         showStatusMessage('Template not found', 'error');
@@ -579,7 +608,7 @@ export async function deleteTemplate(templateId) {
     
     if (confirm(`Are you sure you want to delete the template "${template.name}"?`)) {
         try {
-            await templateAdapter.delete(templateId);
+            await metaService.deleteTemplate(templateId);
             await updateTemplatesUI();
             showStatusMessage('Template deleted', 'success');
         } catch (error) {
@@ -593,7 +622,7 @@ export async function deleteTemplate(templateId) {
  * Populate default templates for new installations
  */
 export async function populateDefaultTemplates() {
-    const existingTemplates = await templateAdapter.getAll();
+    const existingTemplates = await metaService.getAllTemplates();
     
     if (existingTemplates.length > 0) return; // Already has templates
     
@@ -695,7 +724,7 @@ export async function populateDefaultTemplates() {
     
     try {
         for (const template of defaultTemplates) {
-            await templateAdapter.createTemplate(template);
+            await metaService.createTemplate(template.name, template.description, template.category, template);
         }
     } catch (error) {
         console.error('Failed to populate default templates:', error);

@@ -1,11 +1,11 @@
 /**
- * GridFlow - Tagging System Module
+ * GridFlow - Tagging System Module (Dexie)
  * Handles tag creation, management, and entity relationships
  * Part of the Phase 2 architecture for enhanced organization and filtering
  */
 
-import { appData, saveData } from './core-data.js';
-import { tagsAdapter, relationshipAdapter } from './indexeddb/adapters.js';
+import { metaService } from './meta-service.js';
+import { entityService } from './entity-service.js';
 
 /**
  * Create a new tag with metadata
@@ -17,13 +17,7 @@ import { tagsAdapter, relationshipAdapter } from './indexeddb/adapters.js';
  */
 export async function createTag(name, color, category, description = '') {
     try {
-        const tag = await tagsAdapter.createTag({
-            name,
-            color,
-            category,
-            description
-        });
-        
+        const tag = await metaService.createTag(name, category, color);
         return tag.id;
     } catch (error) {
         console.error('Failed to create tag:', error);
@@ -40,14 +34,21 @@ export async function createTag(name, color, category, description = '') {
  */
 export async function addTagToEntity(entityType, entityId, tagId) {
     try {
-        const tag = await tagsAdapter.getById(tagId);
+        const tag = await metaService.getTag(tagId);
         if (!tag) return false;
         
-        // Create relationship
-        await relationshipAdapter.createRelationship(entityId, tagId, 'tagged');
+        // Get current entity and add tag to its tags array
+        const entity = await entityService.getById(entityId);
+        if (!entity) return false;
+        
+        if (!entity.tags) entity.tags = [];
+        if (!entity.tags.includes(tagId)) {
+            entity.tags.push(tagId);
+            await entityService.save(entity);
+        }
         
         // Increment tag usage
-        await tagsAdapter.incrementUsage(tagId);
+        await metaService.incrementTagUsage(tagId);
         
         return true;
     } catch (error) {
@@ -65,12 +66,14 @@ export async function addTagToEntity(entityType, entityId, tagId) {
  */
 export async function removeTagFromEntity(entityType, entityId, tagId) {
     try {
-        // Remove relationship
-        const removed = await relationshipAdapter.removeRelationship(entityId, tagId);
+        // Get current entity and remove tag from its tags array
+        const entity = await entityService.getById(entityId);
+        if (!entity || !entity.tags) return false;
         
-        if (removed) {
-            // Decrement tag usage
-            await tagsAdapter.decrementUsage(tagId);
+        const tagIndex = entity.tags.indexOf(tagId);
+        if (tagIndex !== -1) {
+            entity.tags.splice(tagIndex, 1);
+            await entityService.save(entity);
             return true;
         }
         
@@ -89,10 +92,10 @@ export async function removeTagFromEntity(entityType, entityId, tagId) {
 export async function getTagsByCategory(category = null) {
     try {
         if (category) {
-            return await tagsAdapter.getByCategory(category);
+            return await metaService.getTagsByCategory(category);
         }
         
-        return await tagsAdapter.getByUsage();
+        return await metaService.getPopularTags();
     } catch (error) {
         console.error('Failed to get tags by category:', error);
         return [];
@@ -106,7 +109,7 @@ export async function getTagsByCategory(category = null) {
  */
 export async function findTagByName(name) {
     try {
-        return await tagsAdapter.findByName(name);
+        return await metaService.getTagByName(name);
     } catch (error) {
         console.error('Failed to find tag by name:', error);
         return null;
@@ -121,12 +124,12 @@ export async function findTagByName(name) {
  */
 export async function getEntityTags(entityType, entityId) {
     try {
-        const relationships = await relationshipAdapter.getByEntity(entityId);
-        const tagRelationships = relationships.filter(rel => rel.relationshipType === 'tagged');
+        const entity = await entityService.getById(entityId);
+        if (!entity || !entity.tags) return [];
         
         const tags = [];
-        for (const rel of tagRelationships) {
-            const tag = await tagsAdapter.getById(rel.relatedId);
+        for (const tagId of entity.tags) {
+            const tag = await metaService.getTag(tagId);
             if (tag) {
                 tags.push(tag);
             }
@@ -146,12 +149,10 @@ export async function getEntityTags(entityType, entityId) {
  */
 export async function getEntitiesWithTag(tagId) {
     try {
-        const relationships = await relationshipAdapter.getByRelated(tagId);
-        const tagRelationships = relationships.filter(rel => rel.relationshipType === 'tagged');
-        
-        return tagRelationships.map(rel => ({
-            type: 'entity', // Generic type since we store entity relationships
-            id: rel.entityId
+        const entities = await entityService.getByTags([tagId]);
+        return entities.map(entity => ({
+            type: entity.type,
+            id: entity.id
         }));
     } catch (error) {
         console.error('Failed to get entities with tag:', error);
@@ -166,17 +167,11 @@ export async function getEntitiesWithTag(tagId) {
  */
 export async function deleteTag(tagId) {
     try {
-        const tag = await tagsAdapter.getById(tagId);
+        const tag = await metaService.getTag(tagId);
         if (!tag) return false;
         
-        // Remove tag from all entities
-        const entities = await getEntitiesWithTag(tagId);
-        for (const entity of entities) {
-            await removeTagFromEntity(entity.type, entity.id, tagId);
-        }
-        
-        // Delete the tag itself
-        await tagsAdapter.delete(tagId);
+        // Remove tag from all entities (metaService handles this automatically)
+        await metaService.deleteTag(tagId);
         return true;
     } catch (error) {
         console.error('Failed to delete tag:', error);
@@ -192,7 +187,7 @@ export async function deleteTag(tagId) {
  */
 export async function updateTag(tagId, updates) {
     try {
-        const updatedTag = await tagsAdapter.updateTag(tagId, updates);
+        const updatedTag = await metaService.updateTag(tagId, updates);
         return !!updatedTag;
     } catch (error) {
         console.error('Failed to update tag:', error);

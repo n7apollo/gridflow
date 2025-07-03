@@ -27,6 +27,13 @@ export function updateBoardTitle() {
 export function updateBoardSelector() {
     const appData = getAppData();
     
+    // Check if appData and boards exist
+    if (!appData || !appData.boards) {
+        console.warn('updateBoardSelector: appData or boards not available');
+        updateCurrentBoardDisplay(); // Still try to update display
+        return;
+    }
+    
     // Update legacy board selector if it exists
     const legacySelector = document.getElementById('boardSelect');
     if (legacySelector) {
@@ -77,8 +84,22 @@ export function switchBoard(boardId) {
  * Show board management modal
  */
 export function showBoardModal() {
+    const appData = getAppData();
+    
+    // Check if data is available before opening modal
+    if (!appData || !appData.boards) {
+        console.warn('showBoardModal: App data not available yet');
+        if (window.showStatusMessage) {
+            window.showStatusMessage('Loading boards...', 'info');
+        }
+        return;
+    }
+    
     renderBoardsList();
-    document.getElementById('boardModal').style.display = 'block';
+    const boardModal = document.getElementById('boardModal');
+    if (boardModal) {
+        boardModal.style.display = 'block';
+    }
 }
 
 /**
@@ -94,9 +115,31 @@ export function closeBoardModal() {
 export function renderBoardsList() {
     const appData = getAppData();
     const container = document.getElementById('boardsList');
+    
+    if (!container) {
+        console.warn('renderBoardsList: boardsList container not found');
+        return;
+    }
+    
     container.innerHTML = '';
     
-    Object.entries(appData.boards).forEach(([boardId, board]) => {
+    // Check if appData and boards exist
+    if (!appData || !appData.boards) {
+        console.warn('renderBoardsList: appData or boards not available:', { 
+            hasAppData: !!appData, 
+            hasBoards: !!(appData && appData.boards) 
+        });
+        container.innerHTML = '<div class="p-4 text-center text-base-content/60">No boards available</div>';
+        return;
+    }
+    
+    const boardEntries = Object.entries(appData.boards);
+    if (boardEntries.length === 0) {
+        container.innerHTML = '<div class="p-4 text-center text-base-content/60">No boards found</div>';
+        return;
+    }
+    
+    boardEntries.forEach(([boardId, board]) => {
         const boardItem = document.createElement('div');
         boardItem.className = `board-item ${boardId === appData.currentBoardId ? 'current' : ''}`;
         
@@ -320,6 +363,13 @@ export function generateUniqueBoardId(prefix = 'board') {
  */
 export function populateBoardDropdown() {
     const appData = getAppData();
+    
+    // Check if appData and boards exist
+    if (!appData || !appData.boards) {
+        console.warn('populateBoardDropdown: appData or boards not available');
+        return;
+    }
+    
     const recentBoards = getRecentBoards();
     
     // Populate recent boards
@@ -344,7 +394,8 @@ export function populateBoardDropdown() {
     if (allBoardsList) {
         allBoardsList.innerHTML = '';
         
-        Object.entries(appData.boards).forEach(([boardId, board]) => {
+        const boardEntries = Object.entries(appData.boards);
+        boardEntries.forEach(([boardId, board]) => {
             const boardElement = createBoardItem(boardId, board);
             allBoardsList.appendChild(boardElement);
         });
@@ -360,7 +411,13 @@ export function populateBoardDropdown() {
 export function createBoardItem(boardId, board) {
     const appData = getAppData();
     const item = document.createElement('div');
-    item.className = `board-dropdown-item ${boardId === appData.currentBoardId ? 'current' : ''}`;
+    
+    if (!board) {
+        console.warn('createBoardItem: board is null or undefined for boardId:', boardId);
+        return item;
+    }
+    
+    item.className = `board-dropdown-item ${boardId === (appData && appData.currentBoardId) ? 'current' : ''}`;
     
     const rowCount = board.rows ? board.rows.length : 0;
     const cardCount = board.rows ? board.rows.reduce((total, row) => {

@@ -3,7 +3,7 @@
  * Handles the collections UI interactions and data binding
  */
 
-import { collectionsAdapter } from './indexeddb/adapters.js';
+import { metaService } from './meta-service.js';
 import { createCollection, getCollectionItems, updateCollectionItems } from './collections.js';
 
 /**
@@ -23,7 +23,7 @@ export async function initializeCollectionsView() {
  */
 export async function renderCollectionsGrid() {
     try {
-        const collections = await collectionsAdapter.getAll();
+        const collections = await metaService.getAllCollections();
         const collectionsGrid = document.getElementById('collectionsGrid');
         
         if (!collectionsGrid) return;
@@ -87,7 +87,7 @@ export async function renderCollectionsGrid() {
  */
 export async function showCollectionDetail(collectionId) {
     try {
-        const collection = await collectionsAdapter.getById(collectionId);
+        const collection = await metaService.getCollection(collectionId);
         if (!collection) return;
         
         const detailPanel = document.getElementById('collectionDetailPanel');
@@ -167,7 +167,7 @@ function setupCollectionsEventListeners() {
  */
 async function handleCollectionsSearch() {
     const searchTerm = document.getElementById('collectionsSearch').value.toLowerCase();
-    const collections = await collectionsAdapter.getAll();
+    const collections = await metaService.getAllCollections();
     
     const filtered = collections.filter(collection => 
         collection.name.toLowerCase().includes(searchTerm) ||
@@ -185,7 +185,7 @@ async function handleCollectionsFilter() {
     const categoryFilter = document.getElementById('collectionCategoryFilter').value;
     const searchTerm = document.getElementById('collectionsSearch').value.toLowerCase();
     
-    let collections = await collectionsAdapter.getAll();
+    let collections = await metaService.getAllCollections();
     
     // Apply filters
     if (typeFilter) {
@@ -299,7 +299,7 @@ export async function deleteCollection(collectionId) {
     }
     
     try {
-        await collectionsAdapter.delete(collectionId);
+        await metaService.deleteCollection(collectionId);
         await renderCollectionsGrid();
         closeCollectionDetail();
     } catch (error) {

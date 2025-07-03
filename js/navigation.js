@@ -139,6 +139,16 @@ export function toggleBoardDropdown() {
     const dropdown = document.getElementById('boardDropdown');
     if (!dropdown) return; // Early return if element doesn't exist
     
+    // Check if app data is available
+    const appData = window.appData;
+    if (!appData || !appData.boards) {
+        console.warn('toggleBoardDropdown: App data not available yet');
+        if (window.showStatusMessage) {
+            window.showStatusMessage('Loading boards...', 'info');
+        }
+        return;
+    }
+    
     const isOpen = !dropdown.classList.contains('hidden');
     
     if (isOpen) {
