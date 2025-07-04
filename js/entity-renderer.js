@@ -38,6 +38,12 @@ export async function renderEntity(entityId, contextType, contextData = {}) {
         case CONTEXT_TYPES.TASK_LIST:
             return renderEntityAsTaskItem(entity, contextData);
             
+        case CONTEXT_TYPES.COLLECTION:
+            return renderEntityAsCollectionItem(entity, contextData);
+            
+        case CONTEXT_TYPES.TAG:
+            return renderEntityAsTagItem(entity, contextData);
+            
         default:
             console.warn('Unknown context type for rendering:', contextType);
             return null;
@@ -301,6 +307,116 @@ function renderEntityAsTaskItem(entity, contextData = {}) {
 }
 
 /**
+ * Render entity as a collection item
+ * @param {Object} entity - Entity object
+ * @param {Object} contextData - Collection context data
+ * @returns {HTMLElement} Collection item element
+ */
+function renderEntityAsCollectionItem(entity, contextData = {}) {
+    const itemElement = document.createElement('div');
+    itemElement.className = `collection-item border-l-2 border-${getEntityTypeColor(entity.type)} pl-4 pb-4 hover:bg-base-200 rounded-r cursor-pointer`;
+    itemElement.dataset.entityId = entity.id;
+    itemElement.onclick = () => openEntity(entity.id);
+    
+    // Add context data attributes
+    if (contextData.collectionId) itemElement.dataset.collectionId = contextData.collectionId;
+    
+    const itemContent = `
+        <div class="flex items-start gap-3">
+            <div class="flex-shrink-0 w-8 h-8 bg-${getEntityTypeColor(entity.type)} text-white rounded-full flex items-center justify-center text-sm">
+                ${getEntityTypeIcon(entity.type, true)}
+            </div>
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between mb-1">
+                    <h4 class="font-medium text-sm truncate">${entity.title || 'Untitled'}</h4>
+                    <span class="badge badge-outline badge-xs">${entity.type}</span>
+                </div>
+                ${entity.content ? `<p class="text-xs text-base-content/60 line-clamp-2 mb-2">${entity.content}</p>` : ''}
+                <div class="flex items-center gap-2 text-xs text-base-content/50">
+                    ${entity.completed ? '<span class="badge badge-success badge-xs">✓ Completed</span>' : ''}
+                    ${entity.priority && entity.priority !== 'medium' ? `<span class="badge badge-outline badge-xs">${entity.priority}</span>` : ''}
+                    ${entity.dueDate ? `<span class="badge badge-outline badge-xs">Due: ${formatDate(entity.dueDate)}</span>` : ''}
+                </div>
+            </div>
+            <div class="dropdown dropdown-end">
+                <label tabindex="0" class="btn btn-ghost btn-xs btn-circle">
+                    <i data-lucide="more-horizontal" class="w-3 h-3"></i>
+                </label>
+                <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-32 text-sm">
+                    <li><a onclick="event.stopPropagation(); entityRenderer.editEntity('${entity.id}')">Edit</a></li>
+                    <li><a onclick="event.stopPropagation(); removeFromCollection('${entity.id}', '${contextData.collectionId}')">Remove</a></li>
+                </ul>
+            </div>
+        </div>
+    `;
+    
+    itemElement.innerHTML = itemContent;
+    
+    // Render Lucide icons
+    if (window.lucide) {
+        window.lucide.createIcons({ attrs: { class: 'lucide' } });
+    }
+    
+    return itemElement;
+}
+
+/**
+ * Render entity as a tag item
+ * @param {Object} entity - Entity object
+ * @param {Object} contextData - Tag context data
+ * @returns {HTMLElement} Tag item element
+ */
+function renderEntityAsTagItem(entity, contextData = {}) {
+    const itemElement = document.createElement('div');
+    itemElement.className = `tagged-entity border-l-2 border-${getEntityTypeColor(entity.type)} pl-4 pb-4 hover:bg-base-200 rounded-r cursor-pointer`;
+    itemElement.dataset.entityId = entity.id;
+    itemElement.onclick = () => openEntity(entity.id);
+    
+    // Add context data attributes
+    if (contextData.tagId) itemElement.dataset.tagId = contextData.tagId;
+    if (contextData.tagName) itemElement.dataset.tagName = contextData.tagName;
+    
+    const itemContent = `
+        <div class="flex items-start gap-3">
+            <div class="flex-shrink-0 w-8 h-8 bg-${getEntityTypeColor(entity.type)} text-white rounded-full flex items-center justify-center text-sm">
+                ${getEntityTypeIcon(entity.type, true)}
+            </div>
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between mb-1">
+                    <h4 class="font-medium text-sm truncate">${entity.title || 'Untitled'}</h4>
+                    <span class="badge badge-outline badge-xs">${entity.type}</span>
+                </div>
+                ${entity.content ? `<p class="text-xs text-base-content/60 line-clamp-2 mb-2">${entity.content}</p>` : ''}
+                <div class="flex items-center gap-2 text-xs text-base-content/50">
+                    ${entity.completed ? '<span class="badge badge-success badge-xs">✓ Completed</span>' : ''}
+                    ${entity.priority && entity.priority !== 'medium' ? `<span class="badge badge-outline badge-xs">${entity.priority}</span>` : ''}
+                    ${entity.dueDate ? `<span class="badge badge-outline badge-xs">Due: ${formatDate(entity.dueDate)}</span>` : ''}
+                    ${entity.tags && entity.tags.length > 0 ? `<span class="text-xs">+${entity.tags.length - 1} more tags</span>` : ''}
+                </div>
+            </div>
+            <div class="dropdown dropdown-end">
+                <label tabindex="0" class="btn btn-ghost btn-xs btn-circle">
+                    <i data-lucide="more-horizontal" class="w-3 h-3"></i>
+                </label>
+                <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-32 text-sm">
+                    <li><a onclick="event.stopPropagation(); entityRenderer.editEntity('${entity.id}')">Edit</a></li>
+                    <li><a onclick="event.stopPropagation(); removeFromTag('${entity.id}', '${contextData.tagName}')">Remove Tag</a></li>
+                </ul>
+            </div>
+        </div>
+    `;
+    
+    itemElement.innerHTML = itemContent;
+    
+    // Render Lucide icons
+    if (window.lucide) {
+        window.lucide.createIcons({ attrs: { class: 'lucide' } });
+    }
+    
+    return itemElement;
+}
+
+/**
  * Render task-specific card content
  */
 function renderTaskCardContent(entity) {
@@ -441,6 +557,21 @@ function renderProjectCardContent(entity) {
     }
     
     return content;
+}
+
+/**
+ * Get color class for entity type
+ * @param {string} type - Entity type
+ * @returns {string} DaisyUI color class
+ */
+function getEntityTypeColor(type) {
+    const colors = {
+        [ENTITY_TYPES.TASK]: 'primary',
+        [ENTITY_TYPES.NOTE]: 'info', 
+        [ENTITY_TYPES.CHECKLIST]: 'success',
+        [ENTITY_TYPES.PROJECT]: 'warning'
+    };
+    return colors[type] || 'neutral';
 }
 
 /**
@@ -727,6 +858,8 @@ function getContextFromElement(element) {
     if (element.closest('.board-container')) return CONTEXT_TYPES.BOARD;
     if (element.closest('.weekly-container')) return CONTEXT_TYPES.WEEKLY;
     if (element.closest('.task-container')) return CONTEXT_TYPES.TASK_LIST;
+    if (element.closest('.collection-container')) return CONTEXT_TYPES.COLLECTION;
+    if (element.closest('.tag-container')) return CONTEXT_TYPES.TAG;
     return CONTEXT_TYPES.BOARD; // default
 }
 
@@ -743,6 +876,9 @@ function getContextDataFromElement(element) {
     if (element.dataset.weekKey) contextData.weekKey = element.dataset.weekKey;
     if (element.dataset.day) contextData.day = element.dataset.day;
     if (element.dataset.weeklyItemId) contextData.weeklyItemId = element.dataset.weeklyItemId;
+    if (element.dataset.collectionId) contextData.collectionId = element.dataset.collectionId;
+    if (element.dataset.tagId) contextData.tagId = element.dataset.tagId;
+    if (element.dataset.tagName) contextData.tagName = element.dataset.tagName;
     
     // Try to determine from parent containers
     const boardContainer = element.closest('[data-board-id]');

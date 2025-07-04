@@ -6,6 +6,8 @@
 import { metaService } from './meta-service.js';
 import { entityService } from './entity-service.js';
 import { getTagsByCategory, getEntitiesWithTag, deleteTag, updateTag } from './tagging-system.js';
+import { getEntityTypeIcon, renderEntity } from './entity-renderer.js';
+import { CONTEXT_TYPES } from './entity-core.js';
 
 /**
  * Initialize tags view
@@ -224,6 +226,9 @@ async function renderTaggedEntities(tagId) {
             }
         }
         
+        // Clear container
+        entitiesContainer.innerHTML = '';
+        
         if (entities.length === 0) {
             entitiesContainer.innerHTML = `
                 <div class="text-center py-4 text-base-content/60">
@@ -233,7 +238,17 @@ async function renderTaggedEntities(tagId) {
                 </div>
             `;
         } else {
-            entitiesContainer.innerHTML = entities.map(item => renderTaggedEntity(item)).join('');
+            // Render each entity using the unified entity renderer
+            for (const item of entities) {
+                // Add tag context to item
+                const tag = await metaService.getTagById(tagId);
+                item.tagName = tag?.name || '';
+                item.tagId = tagId;
+                const itemElement = await renderTaggedEntity(item);
+                if (itemElement) {
+                    entitiesContainer.appendChild(itemElement);
+                }
+            }
         }
         
         // Re-render Lucide icons
@@ -251,37 +266,18 @@ async function renderTaggedEntities(tagId) {
 }
 
 /**
- * Render a tagged entity
+ * Render a tagged entity using unified entity renderer
  * @param {Object} item - Tagged entity item
- * @returns {string} HTML for tagged entity
+ * @returns {Promise<HTMLElement>} Tagged entity element
  */
-function renderTaggedEntity(item) {
-    const typeColor = getEntityTypeColor(item.type);
-    const date = new Date(item.entity.updatedAt || item.entity.createdAt);
-    const dateStr = date.toLocaleDateString();
+async function renderTaggedEntity(item) {
+    // Use the unified entity renderer for tag context
+    const contextData = {
+        tagName: item.tagName, // Will be passed from the calling function
+        tagId: item.tagId
+    };
     
-    return `
-        <div class="tagged-entity border-l-2 border-${typeColor} pl-4 pb-4 hover:bg-base-200 rounded-r cursor-pointer"
-             onclick="openEntity('${item.entity.id}')">
-            <div class="flex items-start gap-3">
-                <div class="flex-shrink-0 w-8 h-8 bg-${typeColor} text-white rounded-full flex items-center justify-center text-sm">
-                    ${getEntityTypeIcon(item.type)}
-                </div>
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center justify-between mb-1">
-                        <h4 class="font-medium text-sm truncate">${item.entity.title}</h4>
-                        <span class="text-xs text-base-content/60">${dateStr}</span>
-                    </div>
-                    ${item.entity.content ? `<p class="text-sm text-base-content/80 line-clamp-2">${item.entity.content}</p>` : ''}
-                    <div class="flex items-center gap-2 mt-1">
-                        <span class="badge badge-${typeColor} badge-xs">${item.type}</span>
-                        ${item.entity.completed ? '<span class="badge badge-success badge-xs">✓ Completed</span>' : ''}
-                        ${item.entity.priority ? `<span class="badge badge-${item.entity.priority} badge-xs">${item.entity.priority}</span>` : ''}
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
+    return await renderEntity(item.entity.id, CONTEXT_TYPES.TAG, contextData);
 }
 
 /**
@@ -512,16 +508,6 @@ function getEntityTypeColor(type) {
         project: 'warning'
     };
     return colors[type] || 'neutral';
-}
-
-function getEntityTypeIcon(type) {
-    const icons = {
-        task: '✓',
-        note: '📝',
-        checklist: '☑',
-        project: '📊'
-    };
-    return icons[type] || '📄';
 }
 
 // ==============================================

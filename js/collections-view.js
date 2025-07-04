@@ -5,6 +5,8 @@
 
 import { metaService } from './meta-service.js';
 import { createCollection, getCollectionItems, updateCollectionItems } from './collections.js';
+import { getEntityTypeIcon, renderEntity } from './entity-renderer.js';
+import { CONTEXT_TYPES } from './entity-core.js';
 
 /**
  * Initialize collections view
@@ -213,6 +215,9 @@ async function renderCollectionItems(collectionId) {
     try {
         const items = await getCollectionItems(collectionId);
         
+        // Clear container
+        itemsContainer.innerHTML = '';
+        
         if (items.length === 0) {
             itemsContainer.innerHTML = `
                 <div class="text-center py-4 text-base-content/60">
@@ -222,7 +227,15 @@ async function renderCollectionItems(collectionId) {
                 </div>
             `;
         } else {
-            itemsContainer.innerHTML = items.map(item => renderCollectionItem(item)).join('');
+            // Render each item using the unified entity renderer
+            for (const item of items) {
+                // Add collection context to item
+                item.collectionId = collectionId;
+                const itemElement = await renderCollectionItem(item);
+                if (itemElement) {
+                    itemsContainer.appendChild(itemElement);
+                }
+            }
         }
         
         // Re-render Lucide icons
@@ -240,41 +253,17 @@ async function renderCollectionItems(collectionId) {
 }
 
 /**
- * Render a collection item
+ * Render a collection item using unified entity renderer
  * @param {Object} item - Collection item
- * @returns {string} HTML for collection item
+ * @returns {Promise<HTMLElement>} Collection item element
  */
-function renderCollectionItem(item) {
-    const typeColor = getEntityTypeColor(item.type);
-    const date = new Date(item.entity.updatedAt || item.entity.createdAt);
-    const dateStr = date.toLocaleDateString();
+async function renderCollectionItem(item) {
+    // Use the unified entity renderer for collection context
+    const contextData = {
+        collectionId: item.collectionId // Will be passed from the calling function
+    };
     
-    return `
-        <div class="collection-item border-l-2 border-${typeColor} pl-4 pb-4 hover:bg-base-200 rounded-r cursor-pointer"
-             onclick="openEntity('${item.entity.id}')">
-            <div class="flex items-start gap-3">
-                <div class="flex-shrink-0 w-8 h-8 bg-${typeColor} text-white rounded-full flex items-center justify-center text-sm">
-                    ${getEntityTypeIcon(item.type)}
-                </div>
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center justify-between mb-1">
-                        <h4 class="font-medium text-sm truncate">${item.entity.title}</h4>
-                        <span class="text-xs text-base-content/60">${dateStr}</span>
-                    </div>
-                    ${item.entity.content ? `<p class="text-sm text-base-content/80 line-clamp-2">${item.entity.content}</p>` : ''}
-                    <div class="flex items-center gap-2 mt-1">
-                        <span class="badge badge-${typeColor} badge-xs">${item.type}</span>
-                        ${item.entity.completed ? '<span class="badge badge-success badge-xs">✓ Completed</span>' : ''}
-                        ${item.tags && item.tags.length > 0 ? `
-                            <div class="flex gap-1">
-                                ${item.tags.map(tag => `<span class="badge badge-xs" style="background-color: ${tag.color}20; color: ${tag.color}">${tag.name}</span>`).join('')}
-                            </div>
-                        ` : ''}
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
+    return await renderEntity(item.entity.id, CONTEXT_TYPES.COLLECTION, contextData);
 }
 
 /**
@@ -486,16 +475,6 @@ function getEntityTypeColor(type) {
         project: 'warning'
     };
     return colors[type] || 'neutral';
-}
-
-function getEntityTypeIcon(type) {
-    const icons = {
-        task: '✓',
-        note: '📝',
-        checklist: '☑',
-        project: '📊'
-    };
-    return icons[type] || '📄';
 }
 
 // ==============================================

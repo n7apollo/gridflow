@@ -6,7 +6,7 @@
 import { getAppData, setAppData, saveData } from './core-data.js';
 import { showStatusMessage } from './utilities.js';
 import { renderEntity } from './entity-renderer.js';
-import { getEntity, CONTEXT_TYPES } from './entity-core.js';
+import { getEntity, CONTEXT_TYPES, ENTITY_TYPES } from './entity-core.js';
 
 // Current week key
 let currentWeekKey = null;
@@ -291,7 +291,7 @@ export async function createWeeklyItemElement(item) {
         
         let content = '';
         
-        if (item.type === 'note') {
+        if (item.type === ENTITY_TYPES.NOTE) {
             const noteTitle = item.title || '';
             const noteContent = item.content || '';
             const hasContent = noteTitle || noteContent;
@@ -308,7 +308,7 @@ export async function createWeeklyItemElement(item) {
                     <button class="btn btn-small btn-danger" onclick="window.weeklyPlanning.deleteWeeklyItem('${item.id}')">Delete</button>
                 </div>
             `;
-        } else if (item.type === 'checklist') {
+        } else if (item.type === ENTITY_TYPES.CHECKLIST) {
             // Handle migrated checklist data
             if (item.entityId && !item.title && !item.content) {
                 const appData = getAppData();
@@ -587,7 +587,7 @@ export function editWeeklyItem(itemId) {
     
     // Handle migrated data: resolve entity references before editing
     if (item.entityId && !item.title && !item.content) {
-        const entityType = item.type === 'checklist' ? 'checklists' : 'notes';
+        const entityType = item.type === ENTITY_TYPES.CHECKLIST ? 'checklists' : 'notes';
         const entity = appData.entities?.[entityType]?.[item.entityId];
         if (entity) {
             item.title = entity.title;
@@ -648,7 +648,7 @@ export function updateWeekProgress() {
     const currentWeek = appData.weeklyPlans[currentWeekKey];
     if (!currentWeek) return;
     
-    const items = currentWeek.items.filter(item => item.type === 'checklist');
+    const items = currentWeek.items.filter(item => item.type === ENTITY_TYPES.CHECKLIST);
     const completedItems = items.filter(item => item.completed);
     
     const progressElement = document.getElementById('weekProgress');
@@ -861,7 +861,7 @@ export async function saveWeeklyItem() {
         
         // If this is a migrated item with an entity reference, update the entity too
         if (currentEditingWeeklyItem.entityId) {
-            const entityType = type === 'checklist' ? 'checklists' : 'notes';
+            const entityType = type === ENTITY_TYPES.CHECKLIST ? 'checklists' : 'notes';
             const entity = appData.entities?.[entityType]?.[currentEditingWeeklyItem.entityId];
             if (entity) {
                 entity.title = title;
@@ -893,8 +893,8 @@ export async function saveWeeklyItem() {
             const { createEntity, ENTITY_TYPES } = await import('./entity-core.js');
             
             // Determine entity type
-            const entityType = type === 'checklist' ? ENTITY_TYPES.CHECKLIST : 
-                             type === 'project' ? ENTITY_TYPES.PROJECT :
+            const entityType = type === ENTITY_TYPES.CHECKLIST ? ENTITY_TYPES.CHECKLIST : 
+                             type === ENTITY_TYPES.PROJECT ? ENTITY_TYPES.PROJECT :
                              ENTITY_TYPES.NOTE; // Default to note for 'note' and 'task'
             
             // Create the entity

@@ -6,6 +6,7 @@
 import { getAppData, getBoardData, setAppData, setBoardData, saveData } from './core-data.js';
 import { showStatusMessage } from './utilities.js';
 import { db } from './db.js';
+import { ENTITY_TYPES } from './entity-core.js';
 
 // Current editing state
 let currentEditingTask = null;
@@ -100,7 +101,7 @@ export async function getAllTasks() {
             });
             
             for (const [entityId, entity] of Object.entries(appData.entities)) {
-                if (entity && entity.type === 'task') {
+                if (entity && entity.type === ENTITY_TYPES.TASK) {
                     console.log(`getAllTasks: Processing task entity ${entityId}: "${entity.title}"`);
                     
                     // Look up the position for this entity

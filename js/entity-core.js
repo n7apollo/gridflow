@@ -29,7 +29,9 @@ export const ENTITY_TYPES = {
 export const CONTEXT_TYPES = {
     BOARD: 'board',
     WEEKLY: 'weekly',
-    TASK_LIST: 'task_list'
+    TASK_LIST: 'task_list',
+    COLLECTION: 'collection',
+    TAG: 'tag'
 };
 
 /**
@@ -325,6 +327,12 @@ export async function addEntityToContext(entityId, contextType, contextData) {
                 // Task list doesn't need special storage - it's a view
                 return true;
                 
+            case CONTEXT_TYPES.COLLECTION:
+                return await addEntityToCollection(entityId, contextData.collectionId);
+                
+            case CONTEXT_TYPES.TAG:
+                return await addEntityToTag(entityId, contextData.tagName || contextData.tagId);
+                
             default:
                 console.warn('Unknown context type:', contextType);
                 return false;
@@ -354,6 +362,12 @@ export async function removeEntityFromContext(entityId, contextType, contextData
                 
             case CONTEXT_TYPES.TASK_LIST:
                 return true;
+                
+            case CONTEXT_TYPES.COLLECTION:
+                return await removeEntityFromCollection(entityId, contextData.collectionId);
+                
+            case CONTEXT_TYPES.TAG:
+                return await removeEntityFromTag(entityId, contextData.tagName || contextData.tagId);
                 
             default:
                 console.warn('Unknown context type:', contextType);
@@ -523,6 +537,116 @@ async function addEntityToWeekly(entityId, weekKey, day = null) {
 }
 
 /**
+ * Add entity to collection context
+ * @param {string} entityId - Entity ID
+ * @param {string} collectionId - Collection ID
+ * @returns {Promise<boolean>} Success
+ */
+async function addEntityToCollection(entityId, collectionId) {
+    try {
+        // This would integrate with the collections system
+        // For now, we'll use entity relationships to track collection membership
+        const relationshipId = `collection_${collectionId}_${entityId}`;
+        const relationship = {
+            id: relationshipId,
+            entityId: entityId,
+            relatedId: collectionId,
+            relationshipType: 'collection',
+            createdAt: new Date().toISOString()
+        };
+        
+        await db.entityRelationships.put(relationship);
+        
+        console.log('Added entity to collection:', entityId, collectionId);
+        return true;
+        
+    } catch (error) {
+        console.error('Failed to add entity to collection:', error);
+        return false;
+    }
+}
+
+/**
+ * Remove entity from collection context
+ * @param {string} entityId - Entity ID
+ * @param {string} collectionId - Collection ID
+ * @returns {Promise<boolean>} Success
+ */
+async function removeEntityFromCollection(entityId, collectionId) {
+    try {
+        await db.entityRelationships
+            .where('entityId').equals(entityId)
+            .and(rel => rel.relatedId === collectionId && rel.relationshipType === 'collection')
+            .delete();
+            
+        console.log('Removed entity from collection:', entityId, collectionId);
+        return true;
+        
+    } catch (error) {
+        console.error('Failed to remove entity from collection:', error);
+        return false;
+    }
+}
+
+/**
+ * Add entity to tag context
+ * @param {string} entityId - Entity ID
+ * @param {string} tagName - Tag name
+ * @returns {Promise<boolean>} Success
+ */
+async function addEntityToTag(entityId, tagName) {
+    try {
+        // Get the entity and add the tag to its tags array
+        const entity = await getEntity(entityId);
+        if (!entity) {
+            console.warn('Entity not found for tagging:', entityId);
+            return false;
+        }
+        
+        // Add tag to entity's tags array if not already present
+        if (!entity.tags) entity.tags = [];
+        if (!entity.tags.includes(tagName)) {
+            entity.tags.push(tagName);
+            await updateEntity(entityId, { tags: entity.tags });
+        }
+        
+        console.log('Added tag to entity:', entityId, tagName);
+        return true;
+        
+    } catch (error) {
+        console.error('Failed to add tag to entity:', error);
+        return false;
+    }
+}
+
+/**
+ * Remove entity from tag context
+ * @param {string} entityId - Entity ID
+ * @param {string} tagName - Tag name
+ * @returns {Promise<boolean>} Success
+ */
+async function removeEntityFromTag(entityId, tagName) {
+    try {
+        // Get the entity and remove the tag from its tags array
+        const entity = await getEntity(entityId);
+        if (!entity || !entity.tags) {
+            return true; // Already doesn't have the tag
+        }
+        
+        // Remove tag from entity's tags array
+        entity.tags = entity.tags.filter(tag => tag !== tagName);
+        await updateEntity(entityId, { tags: entity.tags });
+        
+        console.log('Removed tag from entity:', entityId, tagName);
+        return true;
+        
+    } catch (error) {
+        console.error('Failed to remove tag from entity:', error);
+        return false;
+    }
+}
+
+/**
  * Remove entity from weekly context
  * @param {string} entityId - Entity ID
  * @param {string} weekKey - Week key
@@ -621,6 +745,29 @@ export async function getEntitiesInContext(contextType, contextData) {
             case CONTEXT_TYPES.TASK_LIST: {
                 // Return all task-type entities using Dexie query
                 return await entityService.getByType(ENTITY_TYPES.TASK);
+            }
+            
+            case CONTEXT_TYPES.COLLECTION: {
+                // Get entities in a collection via relationships
+                const relationships = await db.entityRelationships
+                    .where('relatedId').equals(contextData.collectionId)
+                    .and(rel => rel.relationshipType === 'collection')
+                    .toArray();
+                    
+                const entityIds = relationships.map(rel => rel.entityId);
+                if (entityIds.length === 0) return [];
+                
+                return await entityService.getByEntityIds ? 
+                    await entityService.getByEntityIds(entityIds) : 
+                    await db.entities.where('id').anyOf(entityIds).toArray();
+            }
+            
+            case CONTEXT_TYPES.TAG: {
+                // Get entities with a specific tag
+                const tagName = contextData.tagName || contextData.tagId;
+                return await entityService.getByTags ? 
+                    await entityService.getByTags([tagName]) :
+                    await db.entities.where('tags').equals(tagName).toArray();
             }
             
             default:
