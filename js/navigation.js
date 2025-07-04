@@ -292,14 +292,19 @@ export function filterBoards() {
  * Toggle templates menu dropdown
  */
 export function toggleTemplatesMenu() {
+    const button = document.getElementById('templatesBtn');
+    const dropdownContainer = button ? button.closest('.dropdown') : null;
     const dropdown = document.getElementById('templatesDropdown');
-    const isOpen = !dropdown.classList.contains('hidden');
+    
+    if (!dropdown || !dropdownContainer) return;
+    
+    const isOpen = dropdownContainer.classList.contains('dropdown-open');
     
     // Close all other dropdowns first
     closeAllDropdowns();
     
     if (!isOpen) {
-        dropdown.classList.remove('hidden');
+        dropdownContainer.classList.add('dropdown-open');
         
         // Close when clicking outside
         setTimeout(() => {
@@ -312,8 +317,11 @@ export function toggleTemplatesMenu() {
  * Close templates menu dropdown
  */
 export function closeTemplatesMenu() {
-    const dropdown = document.getElementById('templatesDropdown');
-    if (dropdown) dropdown.classList.add('hidden');
+    const button = document.getElementById('templatesBtn');
+    const dropdownContainer = button ? button.closest('.dropdown') : null;
+    if (dropdownContainer) {
+        dropdownContainer.classList.remove('dropdown-open');
+    }
     document.removeEventListener('click', handleTemplatesOutsideClick);
 }
 
@@ -322,60 +330,73 @@ export function closeTemplatesMenu() {
  * @param {Event} event - Click event
  */
 function handleTemplatesOutsideClick(event) {
-    const dropdown = document.getElementById('templatesDropdown');
     const button = document.getElementById('templatesBtn');
+    const dropdownContainer = button ? button.closest('.dropdown') : null;
     
-    if (!dropdown.contains(event.target) && !button.contains(event.target)) {
+    if (dropdownContainer && !dropdownContainer.contains(event.target)) {
         closeTemplatesMenu();
     }
 }
 
 // ============================================
-// BOARD EXPORT MENU
+// MORE MENU (REPLACED BOARD EXPORT MENU)
 // ============================================
 
 /**
- * Toggle board export menu dropdown
+ * Toggle more menu dropdown
  */
-export function toggleBoardExportMenu() {
-    const dropdown = document.getElementById('boardExportDropdown');
-    const isOpen = !dropdown.classList.contains('hidden');
+export function toggleMoreMenu() {
+    const button = event.target.closest('button');
+    const dropdownContainer = button ? button.closest('.dropdown') : null;
     
-    // Close all other dropdowns first
-    closeAllDropdowns();
+    if (!dropdownContainer) return;
     
-    if (!isOpen) {
-        dropdown.classList.remove('hidden');
+    const isOpen = dropdownContainer.classList.contains('dropdown-open');
+    
+    if (isOpen) {
+        dropdownContainer.classList.remove('dropdown-open');
+    } else {
+        // Close all other dropdowns first
+        closeAllDropdowns();
+        dropdownContainer.classList.add('dropdown-open');
         
         // Close when clicking outside
         setTimeout(() => {
-            document.addEventListener('click', handleBoardExportOutsideClick);
+            document.addEventListener('click', handleMoreMenuOutsideClick);
         }, 0);
     }
 }
 
 /**
- * Close board export menu dropdown
+ * Close more menu dropdown
  */
-export function closeBoardExportMenu() {
-    const dropdown = document.getElementById('boardExportDropdown');
-    if (dropdown) {
-        dropdown.classList.add('hidden');
-        document.removeEventListener('click', handleBoardExportOutsideClick);
-    }
+export function closeMoreMenu() {
+    // Close all dropdown-open classes since we might have multiple more menus
+    document.querySelectorAll('.dropdown.dropdown-open').forEach(dropdown => {
+        dropdown.classList.remove('dropdown-open');
+    });
+    document.removeEventListener('click', handleMoreMenuOutsideClick);
 }
 
 /**
- * Handle clicks outside board export dropdown
+ * Handle clicks outside more menu dropdown
  * @param {Event} event - Click event
  */
-function handleBoardExportOutsideClick(event) {
-    const dropdown = document.getElementById('boardExportDropdown');
-    const button = document.getElementById('boardExportBtn');
-    
-    if (dropdown && button && !dropdown.contains(event.target) && !button.contains(event.target)) {
-        closeBoardExportMenu();
+function handleMoreMenuOutsideClick(event) {
+    const clickedDropdown = event.target.closest('.dropdown');
+    if (!clickedDropdown) {
+        closeMoreMenu();
     }
+}
+
+// Legacy functions for backward compatibility
+export function toggleBoardExportMenu() {
+    // Redirect to more menu functionality
+    toggleMoreMenu();
+}
+
+export function closeBoardExportMenu() {
+    closeMoreMenu();
 }
 
 // ============================================
@@ -409,10 +430,15 @@ export function switchToWeeklyView() {
  * Close all open dropdowns
  */
 export function closeAllDropdowns() {
-    closeBoardDropdown();
-    closeTemplatesMenu();
-    closeBoardExportMenu();
-    if (window.closeMoreMenu) window.closeMoreMenu();
+    // Close all DaisyUI dropdowns by removing dropdown-open class
+    document.querySelectorAll('.dropdown.dropdown-open').forEach(dropdown => {
+        dropdown.classList.remove('dropdown-open');
+    });
+    
+    // Remove all event listeners
+    document.removeEventListener('click', handleBoardDropdownOutsideClick);
+    document.removeEventListener('click', handleTemplatesOutsideClick);
+    document.removeEventListener('click', handleMoreMenuOutsideClick);
 }
 
 // ============================================
@@ -425,7 +451,9 @@ export function closeAllDropdowns() {
 export function toggleSettings() {
     const settingsPanel = document.getElementById('settingsPanel');
     if (settingsPanel) {
-        settingsPanel.classList.toggle('active');
+        settingsPanel.classList.toggle('hidden');
+        // Close the more menu when settings are toggled
+        closeMoreMenu();
     }
 }
 
@@ -527,6 +555,8 @@ if (typeof window !== 'undefined') {
     window.closeTemplatesMenu = closeTemplatesMenu;
     window.toggleBoardExportMenu = toggleBoardExportMenu;
     window.closeBoardExportMenu = closeBoardExportMenu;
+    window.toggleMoreMenu = toggleMoreMenu;
+    window.closeMoreMenu = closeMoreMenu;
     window.navigateWeek = navigateWeek;
     window.closeAllDropdowns = closeAllDropdowns;
     window.toggleSettings = toggleSettings;

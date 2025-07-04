@@ -46,112 +46,144 @@ class GridFlowViews extends HTMLElement {
         return `
             <!-- Board View -->
             <div class="board-container container mx-auto p-4" id="boardContainer">
-                <!-- Board Header Section -->
-                <div class="board-view-header flex flex-col md:flex-row items-center justify-between gap-4 mb-4">
-                    <div class="board-header-left flex items-center gap-2">
-                        <!-- Mobile Menu Button -->
-                        <button class="btn btn-square btn-ghost lg:hidden" onclick="document.getElementById('drawer-toggle').checked = true" title="Open Menu">
-                            <span class="text-xl">☰</span>
-                        </button>
-                        <div class="dropdown dropdown-bottom">
-                            <button class="btn btn-outline btn-primary flex items-center gap-2" data-action="toggleBoardDropdown" id="currentBoardBtn">
-                                <span class="current-board-name" id="currentBoardName">Loading...</span>
-                                <span class="ml-1">▼</span>
+                <!-- Streamlined Board Header -->
+                <div class="board-header bg-gradient-to-r from-primary/10 to-secondary/10 rounded-2xl p-4 mb-4">
+                    <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
+                        <!-- Left Section: Board Selector & Info -->
+                        <div class="flex items-center gap-3 w-full lg:w-auto">
+                            <!-- Mobile Menu Button -->
+                            <button class="btn btn-square btn-ghost lg:hidden" onclick="document.getElementById('drawer-toggle').checked = true" title="Open Menu">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-menu"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
                             </button>
-                            <div class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-64 mt-2" id="boardDropdown">
-                                <div class="mb-2">
-                                    <input type="text" placeholder="Search boards..." id="boardSearchInput" class="input input-bordered w-full" />
+                            
+                            <!-- Board Icon & Selector -->
+                            <div class="flex items-center gap-3 flex-1">
+                                <div class="p-2 bg-primary/20 rounded-xl hidden sm:block">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-layout-dashboard text-primary"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
                                 </div>
-                                <div class="board-list max-h-40 overflow-y-auto mb-2" id="boardList">
-                                    <!-- Populated dynamically -->
-                                </div>
-                                <div class="flex gap-2">
-                                    <button class="btn btn-success flex-1" data-action="createNewBoard">
-                                        <span class="mr-1">+</span>
-                                        <span>New Board</span>
+                                <div class="dropdown dropdown-bottom">
+                                    <button class="btn btn-sm btn-ghost p-0 h-auto font-normal text-left hover:bg-transparent" data-action="toggleBoardDropdown" id="currentBoardBtn">
+                                        <div>
+                                            <div class="text-lg font-semibold text-base-content flex items-center gap-2">
+                                                <span class="current-board-name" id="currentBoardName">Loading...</span>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down"><path d="m6 9 6 6 6-6"/></svg>
+                                            </div>
+                                            <div class="text-xs text-base-content/70">Kanban Board</div>
+                                        </div>
                                     </button>
-                                    <button class="btn btn-outline flex-1" data-action="showBoardModal">
-                                        <span class="mr-1">⚙️</span>
-                                        <span>Manage Boards</span>
-                                    </button>
+                                    <div class="dropdown-content z-[1] menu p-2 shadow-xl bg-base-100 rounded-box w-64 mt-2" id="boardDropdown">
+                                        <div class="mb-2">
+                                            <input type="text" placeholder="Search boards..." id="boardSearchInput" class="input input-bordered input-sm w-full" />
+                                        </div>
+                                        <div class="board-list max-h-40 overflow-y-auto mb-2" id="boardList">
+                                            <!-- Populated dynamically -->
+                                        </div>
+                                        <div class="flex gap-2">
+                                            <button class="btn btn-success btn-sm flex-1" data-action="createNewBoard">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                                                <span>New Board</span>
+                                            </button>
+                                            <button class="btn btn-outline btn-sm flex-1" data-action="showBoardModal">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                                                <span>Manage</span>
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    
-                    <div class="board-header-center flex gap-2">
-                        <button class="btn btn-primary" data-action="addRow">+ Add Row</button>
-                        <button class="btn btn-secondary" data-action="addGroup">+ Add Group</button>
-                        <button class="btn btn-secondary" data-action="addColumn">+ Add Column</button>
-                    </div>
-                    
-                    <div class="board-header-right flex items-center gap-2">
-                        <div class="dropdown dropdown-bottom">
-                            <button class="btn btn-secondary flex items-center gap-1" data-action="toggleTemplatesMenu" id="templatesBtn">
-                                📋 Templates
-                                <span>▼</span>
-                            </button>
-                            <div class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52 mt-2" id="templatesDropdown">
-                                <button class="btn btn-ghost w-full justify-start" data-action="showApplyTemplateModal">
-                                    <span class="mr-2">📥</span>
-                                    <span>Apply Template</span>
+                        
+                        <!-- Right Section: Actions -->
+                        <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+                            <!-- Primary Actions -->
+                            <div class="flex gap-2 mr-2">
+                                <button class="btn btn-primary btn-sm shadow-lg" data-action="addRow">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                                    Add Row
                                 </button>
-                                <button class="btn btn-ghost w-full justify-start" data-action="showSaveAsTemplateModal">
-                                    <span class="mr-2">💾</span>
-                                    <span>Save as Template</span>
-                                </button>
+                                <div class="dropdown dropdown-bottom dropdown-end">
+                                    <button class="btn btn-ghost btn-sm" tabindex="0">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down"><path d="m6 9 6 6 6-6"/></svg>
+                                    </button>
+                                    <div class="dropdown-content menu p-2 shadow-xl bg-base-100 rounded-box w-40 mt-1">
+                                        <button class="btn btn-ghost btn-sm justify-start" data-action="addGroup">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-folder-plus"><path d="M12 10v6"/><path d="M9 13h6"/><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+                                            Add Group
+                                        </button>
+                                        <button class="btn btn-ghost btn-sm justify-start" data-action="addColumn">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-columns-2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M12 3v18"/></svg>
+                                            Add Column
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="dropdown dropdown-bottom">
-                            <button class="btn btn-secondary flex items-center gap-1" data-action="toggleBoardExportMenu" id="boardExportBtn">
-                                📤 Export Board
-                                <span>▼</span>
-                            </button>
-                            <div class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52 mt-2" id="boardExportDropdown">
-                                <button class="btn btn-ghost w-full justify-start" data-action="exportToPDF">
-                                    <span class="mr-2">📄</span>
-                                    <span>Export as PDF</span>
-                                </button>
-                                <button class="btn btn-ghost w-full justify-start" data-action="exportToPNG">
-                                    <span class="mr-2">🖼️</span>
-                                    <span>Export as PNG</span>
-                                </button>
-                                <button class="btn btn-ghost w-full justify-start" data-action="exportToExcel">
-                                    <span class="mr-2">📊</span>
-                                    <span>Export as Excel</span>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="dropdown dropdown-bottom">
-                            <button class="btn btn-secondary" data-action="toggleMoreMenu" id="moreBtn">
-                                ⋯
-                            </button>
-                            <div class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-40 mt-2" id="moreDropdown">
-                                <button class="btn btn-ghost w-full justify-start" data-action="toggleSettings">
-                                    <span class="mr-2">🔧</span>
-                                    <span>Board Settings</span>
-                                </button>
+                            
+                            <!-- Secondary Actions -->
+                            <div class="flex gap-1">
+                                <div class="dropdown dropdown-bottom dropdown-end">
+                                    <button class="btn btn-ghost btn-sm" data-action="toggleTemplatesMenu" id="templatesBtn">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-layout-template"><rect width="18" height="7" x="3" y="3" rx="1"/><rect width="9" height="7" x="3" y="14" rx="1"/><rect width="5" height="7" x="15" y="14" rx="1"/></svg>
+                                        <span class="hidden sm:inline">Templates</span>
+                                    </button>
+                                    <div class="dropdown-content z-[1] menu p-2 shadow-xl bg-base-100 rounded-box w-52 mt-1" id="templatesDropdown">
+                                        <button class="btn btn-ghost btn-sm justify-start" data-action="showApplyTemplateModal">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                                            Apply Template
+                                        </button>
+                                        <button class="btn btn-ghost btn-sm justify-start" data-action="showSaveAsTemplateModal">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-save"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></svg>
+                                            Save as Template
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="dropdown dropdown-bottom dropdown-end">
+                                    <button class="btn btn-ghost btn-sm" tabindex="0">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-more-vertical"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                                    </button>
+                                    <div class="dropdown-content menu p-2 shadow-xl bg-base-100 rounded-box w-52 mt-1">
+                                        <li class="menu-title">
+                                            <span>Export Options</span>
+                                        </li>
+                                        <button class="btn btn-ghost btn-sm justify-start" data-action="exportToPDF">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-text"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+                                            Export as PDF
+                                        </button>
+                                        <button class="btn btn-ghost btn-sm justify-start" data-action="exportToPNG">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-image"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                                            Export as PNG
+                                        </button>
+                                        <button class="btn btn-ghost btn-sm justify-start" data-action="exportToExcel">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-table"><path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>
+                                            Export as Excel
+                                        </button>
+                                        <li class="divider my-1"></li>
+                                        <button class="btn btn-ghost btn-sm justify-start" data-action="toggleSettings">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings-2"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
+                                            Board Settings
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="settings-panel card bg-base-200 shadow-lg p-4 mb-4 hidden" id="settingsPanel">
-                    <div class="settings-content">
-                        <div class="form-control mb-2">
-                            <label class="label cursor-pointer">
-                                <input type="checkbox" id="showCheckboxes" class="checkbox" onchange="toggleCheckboxes()">
-                                <span class="label-text ml-2">Show Checkboxes</span>
-                            </label>
-                        </div>
-                        <div class="form-control mb-2">
-                            <label class="label cursor-pointer">
-                                <input type="checkbox" id="showSubtaskProgress" class="checkbox" onchange="toggleSubtaskProgress()">
-                                <span class="label-text ml-2">Show Subtask Progress</span>
-                            </label>
-                        </div>
+                <!-- Compact Settings Panel -->
+                <div class="settings-panel bg-base-200 rounded-lg p-3 mb-3 hidden" id="settingsPanel">
+                    <div class="flex flex-wrap items-center gap-4">
+                        <label class="label cursor-pointer gap-2 flex-1">
+                            <input type="checkbox" id="showCheckboxes" class="checkbox checkbox-sm" onchange="toggleCheckboxes()">
+                            <span class="label-text">Show Checkboxes</span>
+                        </label>
+                        <label class="label cursor-pointer gap-2 flex-1">
+                            <input type="checkbox" id="showSubtaskProgress" class="checkbox checkbox-sm" onchange="toggleSubtaskProgress()">
+                            <span class="label-text">Show Subtask Progress</span>
+                        </label>
+                        <button class="btn btn-ghost btn-xs" data-action="toggleSettings">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                        </button>
                     </div>
-                    <button class="btn btn-secondary mt-2" data-action="toggleSettings">Close</button>
                 </div>
                 
                 <div class="board-header" id="boardHeader">
