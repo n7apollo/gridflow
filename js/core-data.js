@@ -9,6 +9,15 @@ import { entityService } from './entity-service.js';
 import { boardService } from './board-service.js';
 import { metaService } from './meta-service.js';
 
+// Entity type constants (to avoid circular dependency with entity-core.js)
+const ENTITY_TYPES = {
+    TASK: 'task',
+    NOTE: 'note',
+    CHECKLIST: 'checklist',
+    PROJECT: 'project',
+    PERSON: 'person'
+};
+
 // Central application state
 export let appData = {};
 export let boardData = {};
@@ -210,10 +219,10 @@ export async function loadData(retryCount = 0) {
             nextTemplateId: Math.max(...templates.map(t => parseInt(t.id.split('_')[1]) || 0), 0) + 1,
             nextTemplateLibraryId: 1,
             nextWeeklyItemId: 1,
-            nextTaskId: Math.max(...entities.filter(e => e.type === 'task').map(e => parseInt(e.id.split('_')[1]) || 0), 0) + 1,
-            nextNoteId: Math.max(...entities.filter(e => e.type === 'note').map(e => parseInt(e.id.split('_')[1]) || 0), 0) + 1,
-            nextChecklistId: Math.max(...entities.filter(e => e.type === 'checklist').map(e => parseInt(e.id.split('_')[1]) || 0), 0) + 1,
-            nextProjectId: Math.max(...entities.filter(e => e.type === 'project').map(e => parseInt(e.id.split('_')[1]) || 0), 0) + 1,
+            nextTaskId: Math.max(...entities.filter(e => e.type === ENTITY_TYPES.TASK).map(e => parseInt(e.id.split('_')[1]) || 0), 0) + 1,
+            nextNoteId: Math.max(...entities.filter(e => e.type === ENTITY_TYPES.NOTE).map(e => parseInt(e.id.split('_')[1]) || 0), 0) + 1,
+            nextChecklistId: Math.max(...entities.filter(e => e.type === ENTITY_TYPES.CHECKLIST).map(e => parseInt(e.id.split('_')[1]) || 0), 0) + 1,
+            nextProjectId: Math.max(...entities.filter(e => e.type === ENTITY_TYPES.PROJECT).map(e => parseInt(e.id.split('_')[1]) || 0), 0) + 1,
             nextPersonId: 1,
             nextCollectionId: Math.max(...collections.map(c => parseInt(c.id.split('_')[1]) || 0), 0) + 1,
             nextTagId: Math.max(...tags.map(t => parseInt(t.id.split('_')[1]) || 0), 0) + 1

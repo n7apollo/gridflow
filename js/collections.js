@@ -6,6 +6,7 @@
 
 import { findTagByName, getEntityTags } from './tagging-system.js';
 import { metaService } from './meta-service.js';
+import { ENTITY_TYPES } from './entity-core.js';
 
 /**
  * Create a new smart collection with specified filters
@@ -111,7 +112,7 @@ export async function initializeSampleCollections() {
             "High Priority Items",
             "All high priority tasks, notes, and checklists across all projects",
             {
-                entityTypes: ['task', 'note', 'checklist'],
+                entityTypes: [ENTITY_TYPES.TASK, ENTITY_TYPES.NOTE, ENTITY_TYPES.CHECKLIST],
                 priorities: ['high', 'urgent'],
                 tags: [],
                 dateRange: null
@@ -125,7 +126,7 @@ export async function initializeSampleCollections() {
             "Work Items",
             "All work-related items tagged with 'work'",
             {
-                entityTypes: ['task', 'note', 'checklist'],
+                entityTypes: [ENTITY_TYPES.TASK, ENTITY_TYPES.NOTE, ENTITY_TYPES.CHECKLIST],
                 priorities: [],
                 tags: workTag ? [workTag.id] : [],
                 dateRange: null
@@ -142,7 +143,7 @@ export async function initializeSampleCollections() {
             "This Week's Items",
             "All items created this week",
             {
-                entityTypes: ['task', 'note', 'checklist'],
+                entityTypes: [ENTITY_TYPES.TASK, ENTITY_TYPES.NOTE, ENTITY_TYPES.CHECKLIST],
                 priorities: [],
                 tags: [],
                 dateRange: {

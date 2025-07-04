@@ -2,6 +2,8 @@
  * GridFlow Views Component
  * Contains the main application views (board, tasks, weekly)
  */
+
+import { ENTITY_TYPES } from '../js/entity-core.js';
 class GridFlowViews extends HTMLElement {
     constructor() {
         super();
@@ -559,10 +561,10 @@ class GridFlowViews extends HTMLElement {
                                     <div class="timeline-actions flex gap-2">
                                         <select id="timelineTypeFilter" class="select select-sm select-bordered">
                                             <option value="">All Types</option>
-                                            <option value="task">Tasks</option>
-                                            <option value="note">Notes</option>
-                                            <option value="checklist">Checklists</option>
-                                            <option value="project">Projects</option>
+                                            <option value="${ENTITY_TYPES.TASK}">Tasks</option>
+                                            <option value="${ENTITY_TYPES.NOTE}">Notes</option>
+                                            <option value="${ENTITY_TYPES.CHECKLIST}">Checklists</option>
+                                            <option value="${ENTITY_TYPES.PROJECT}">Projects</option>
                                         </select>
                                         <button class="btn btn-sm btn-primary" onclick="addNoteForPerson()">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
@@ -922,10 +924,10 @@ class GridFlowViews extends HTMLElement {
                             <div class="entities-filters flex gap-2">
                                 <select id="taggedEntitiesTypeFilter" class="select select-sm select-bordered">
                                     <option value="">All Types</option>
-                                    <option value="task">Tasks</option>
-                                    <option value="note">Notes</option>
-                                    <option value="checklist">Checklists</option>
-                                    <option value="project">Projects</option>
+                                    <option value="${ENTITY_TYPES.TASK}">Tasks</option>
+                                    <option value="${ENTITY_TYPES.NOTE}">Notes</option>
+                                    <option value="${ENTITY_TYPES.CHECKLIST}">Checklists</option>
+                                    <option value="${ENTITY_TYPES.PROJECT}">Projects</option>
                                 </select>
                             </div>
                         </div>

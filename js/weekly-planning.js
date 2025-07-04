@@ -524,7 +524,7 @@ export function saveWeeklyGoal() {
  * @param {string} day - Day to add item to
  * @param {string} type - Type of item ('note' or 'checklist')
  */
-export function addWeeklyNote(day = 'monday', type = 'note') {
+export function addWeeklyNote(day = 'monday', type = ENTITY_TYPES.NOTE) {
     // Open the weeklyItemModal and prefill the form
     const modal = document.getElementById('weeklyItemModal');
     if (!modal) {

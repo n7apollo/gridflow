@@ -2,6 +2,8 @@
  * GridFlow Modals Component
  * Contains all application modals
  */
+
+import { ENTITY_TYPES } from '../js/entity-core.js';
 class GridFlowModals extends HTMLElement {
     constructor() {
         super();
@@ -658,9 +660,9 @@ class GridFlowModals extends HTMLElement {
                         <div class="form-control">
                             <label class="label" for="weeklyItemType">Type:</label>
                             <select id="weeklyItemType" name="weeklyItemType" class="select select-bordered w-full">
-                                <option value="note">Note</option>
-                                <option value="task">Task</option>
-                                <option value="checklist">Checklist</option>
+                                <option value="${ENTITY_TYPES.NOTE}">Note</option>
+                                <option value="${ENTITY_TYPES.TASK}">Task</option>
+                                <option value="${ENTITY_TYPES.CHECKLIST}">Checklist</option>
                             </select>
                         </div>
                         <div class="form-control">
