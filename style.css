@@ -231,3 +231,74 @@
 .task-checkbox:checked {
     transform: scale(1.1);
 }
+
+/* =====================
+   People View Enhancements
+   ===================== */
+
+/* People search input */
+.people-search-input {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.people-search-input:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+/* People list row hover effects */
+.people-container .list-row:hover {
+    background-color: oklch(var(--b2) / 0.7);
+}
+
+.people-container .list-row:hover .person-actions {
+    opacity: 1;
+}
+
+/* Person avatar hover effect */
+.people-container .avatar:hover {
+    transform: scale(1.05);
+    transition: transform 0.2s ease;
+}
+
+/* Person detail view transitions */
+.person-detail-view {
+    animation: slideInRight 0.3s ease-out;
+}
+
+.people-list-view {
+    animation: slideInLeft 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideInLeft {
+    from {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Mobile enhancements for people view */
+@media (max-width: 768px) {
+    .people-container .person-actions {
+        opacity: 1;
+    }
+    
+    .people-container .list-row .hidden.sm\\:block {
+        display: none !important;
+    }
+}

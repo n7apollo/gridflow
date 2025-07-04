@@ -360,101 +360,188 @@ class GridFlowViews extends HTMLElement {
             </div>
 
             <!-- People Management Interface -->
-            <div class="people-container card bg-base-100 shadow-lg p-4 mt-4 hidden" id="peopleContainer">
-                <div class="people-header mb-4">
-                    <div class="people-controls flex flex-wrap gap-2 items-end">
-                        <div class="form-control">
-                            <label class="label" for="peopleSearch">Search People:</label>
-                            <input type="text" id="peopleSearch" placeholder="Search by name, email, or company..." 
-                                   class="input input-bordered w-64" data-action="searchPeople">
+            <div class="people-container min-h-screen" id="peopleContainer">
+                <!-- People List View -->
+                <div class="people-list-view" id="peopleListView">
+                    <div class="task-container min-h-screen p-4">
+                        <!-- People Header with Search and Actions -->
+                        <div class="people-header bg-gradient-to-r from-primary/10 to-secondary/10 rounded-2xl p-6 mb-6">
+                            <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6">
+                                <div class="flex items-center gap-3">
+                                    <div class="p-3 bg-primary/20 rounded-xl">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users text-primary"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                                    </div>
+                                    <div>
+                                        <h2 class="text-2xl font-bold text-base-content">People Management</h2>
+                                        <p class="text-sm text-base-content/70">Track relationships and interactions with your contacts</p>
+                                    </div>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button class="btn btn-primary shadow-lg" onclick="showCreatePersonModal()">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user-plus"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>
+                                        Add Person
+                                    </button>
+                                    <div class="dropdown dropdown-end">
+                                        <button class="btn btn-ghost" tabindex="0">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-more-vertical"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                                        </button>
+                                        <div class="dropdown-content menu p-2 shadow-xl bg-base-100 rounded-box w-52 mt-1">
+                                            <button class="btn btn-ghost btn-sm justify-start" onclick="exportPeople()">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                                                Export People
+                                            </button>
+                                            <button class="btn btn-ghost btn-sm justify-start" onclick="importPeople()">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-upload"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                                                Import People
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Search and Quick Filters -->
+                            <div class="search-section">
+                                <label class="input input-bordered flex items-center gap-2 mb-4">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                                    <input type="text" id="peopleSearch" class="grow people-search-input" placeholder="Search people by name, email, or company..." />
+                                    <kbd class="kbd kbd-sm">⌘</kbd>
+                                    <kbd class="kbd kbd-sm">K</kbd>
+                                </label>
+
+                                <!-- Quick Filters -->
+                            <ul class="menu menu-horizontal bg-base-200 rounded-box p-2 gap-1 shadow-sm">
+                                <li><a class="quick-filter-menu" data-filter="all">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                                    All People
+                                </a></li>
+                                <li><a class="quick-filter-menu" data-filter="coworker">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-briefcase"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                                    Coworkers
+                                </a></li>
+                                <li><a class="quick-filter-menu" data-filter="friend">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                                    Friends
+                                </a></li>
+                                <li><a class="quick-filter-menu" data-filter="family">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-home"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+                                    Family
+                                </a></li>
+                                <li><a class="quick-filter-menu" data-filter="overdue">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clock"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
+                                    Follow-up Needed
+                                </a></li>
+                            </ul>
+                            </div>
                         </div>
-                        <div class="form-control">
-                            <label class="label" for="relationshipFilter">Relationship:</label>
-                            <select id="relationshipFilter" data-action="filterPeopleByRelationship" class="select select-bordered min-w-[8rem]">
-                                <option value="">All Relationships</option>
-                                <option value="coworker">Coworkers</option>
-                                <option value="friend">Friends</option>
-                                <option value="family">Family</option>
-                                <option value="partner">Partner</option>
-                                <option value="contact">Contacts</option>
-                            </select>
+
+                        <!-- People Stats -->
+                        <div class="flex justify-between items-center mb-4">
+                            <div class="people-stats">
+                                <span class="text-base-content/70">
+                                    Showing <span id="totalPeopleCount">0</span> people
+                                </span>
+                            </div>
                         </div>
-                        <div class="form-control">
-                            <label class="label" for="followUpFilter">Follow-ups:</label>
-                            <select id="followUpFilter" data-action="filterPeopleByFollowUp" class="select select-bordered min-w-[8rem]">
-                                <option value="">All People</option>
-                                <option value="overdue">Overdue</option>
-                                <option value="soon">Due Soon</option>
-                            </select>
-                        </div>
-                        <button class="btn btn-primary" data-action="showCreatePersonModal">
-                            <i data-lucide="user-plus"></i> Add Person
-                        </button>
+
+                        <!-- People List -->
+                        <ul class="list bg-base-100 rounded-box shadow-md" id="peopleList">
+                            <!-- People list items will be populated here -->
+                        </ul>
                     </div>
                 </div>
 
-                <!-- People Grid -->
-                <div class="people-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4" id="peopleGrid">
-                    <!-- People cards will be populated here -->
-                </div>
-
-                <!-- Person Detail Panel (Initially Hidden) -->
-                <div class="person-detail-panel card bg-base-200 p-4 mt-4 hidden" id="personDetailPanel">
-                    <div class="person-detail-header flex items-center justify-between mb-4">
-                        <h3 class="text-xl font-bold" id="personDetailName">Person Name</h3>
-                        <div class="person-detail-actions flex gap-2">
-                            <button class="btn btn-sm btn-secondary" data-action="editPerson" id="editPersonBtn">
-                                <i data-lucide="edit"></i> Edit
+                <!-- Person Detail View -->
+                <div class="person-detail-view hidden" id="personDetailView">
+                    <div class="task-container min-h-screen p-4">
+                        <!-- Header with Back Button -->
+                        <div class="detail-header flex items-center gap-4 mb-6">
+                            <button class="btn btn-ghost btn-circle" onclick="showPeopleList()">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-left"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
                             </button>
-                            <button class="btn btn-sm btn-error" data-action="deletePerson" id="deletePersonBtn">
-                                <i data-lucide="trash-2"></i> Delete
-                            </button>
-                            <button class="btn btn-sm btn-neutral" data-action="closePeopleDetail">
-                                <i data-lucide="x"></i> Close
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Person Info -->
-                    <div class="person-info grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <div class="person-basic-info">
-                            <h4 class="font-semibold mb-2">Contact Information</h4>
-                            <div class="space-y-1 text-sm">
-                                <div id="personEmail"></div>
-                                <div id="personPhone"></div>
-                                <div id="personCompany"></div>
-                                <div id="personRole"></div>
+                            <div class="flex-1">
+                                <h1 class="text-2xl font-bold" id="personDetailName">Person Name</h1>
+                                <div class="text-base-content/70" id="personDetailSubtitle">Subtitle</div>
                             </div>
-                        </div>
-                        <div class="person-relationship-info">
-                            <h4 class="font-semibold mb-2">Relationship</h4>
-                            <div class="space-y-1 text-sm">
-                                <div id="personRelationshipType"></div>
-                                <div id="personInteractionFrequency"></div>
-                                <div id="personLastInteraction"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Person Timeline -->
-                    <div class="person-timeline">
-                        <div class="timeline-header flex items-center justify-between mb-2">
-                            <h4 class="font-semibold">Timeline</h4>
-                            <div class="timeline-filters flex gap-2">
-                                <select id="timelineTypeFilter" class="select select-sm select-bordered">
-                                    <option value="">All Types</option>
-                                    <option value="task">Tasks</option>
-                                    <option value="note">Notes</option>
-                                    <option value="checklist">Checklists</option>
-                                    <option value="project">Projects</option>
-                                </select>
-                                <button class="btn btn-sm btn-primary" data-action="addNoteForPerson">
-                                    <i data-lucide="plus"></i> Add Note
+                            <div class="person-detail-actions flex gap-2">
+                                <button class="btn btn-secondary" onclick="editPerson()">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-edit"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 1 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                    Edit
+                                </button>
+                                <button class="btn btn-error" onclick="deletePerson()">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-2 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                                    Delete
                                 </button>
                             </div>
                         </div>
-                        <div class="timeline-content space-y-2 max-h-96 overflow-y-auto" id="personTimeline">
-                            <!-- Timeline items will be populated here -->
+
+                        <!-- Person Info Cards -->
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                            <!-- Contact Information -->
+                            <div class="card bg-base-100 shadow-md">
+                                <div class="card-body">
+                                    <h3 class="card-title text-lg">Contact Information</h3>
+                                    <div class="space-y-3">
+                                        <div id="personEmail"></div>
+                                        <div id="personPhone"></div>
+                                        <div id="personCompany"></div>
+                                        <div id="personRole"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Relationship Information -->
+                            <div class="card bg-base-100 shadow-md">
+                                <div class="card-body">
+                                    <h3 class="card-title text-lg">Relationship</h3>
+                                    <div class="space-y-3">
+                                        <div id="personRelationshipType"></div>
+                                        <div id="personInteractionFrequency"></div>
+                                        <div id="personLastInteraction"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Quick Stats -->
+                            <div class="card bg-base-100 shadow-md">
+                                <div class="card-body">
+                                    <h3 class="card-title text-lg">Activity</h3>
+                                    <div class="space-y-3">
+                                        <div class="stat">
+                                            <div class="stat-title">Total Interactions</div>
+                                            <div class="stat-value text-lg" id="totalInteractions">0</div>
+                                        </div>
+                                        <div class="stat">
+                                            <div class="stat-title">Last Contact</div>
+                                            <div class="stat-value text-lg" id="lastContactStat">Never</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Timeline Section -->
+                        <div class="card bg-base-100 shadow-md">
+                            <div class="card-body">
+                                <div class="timeline-header flex items-center justify-between mb-4">
+                                    <h3 class="card-title text-lg">Timeline</h3>
+                                    <div class="timeline-actions flex gap-2">
+                                        <select id="timelineTypeFilter" class="select select-sm select-bordered">
+                                            <option value="">All Types</option>
+                                            <option value="task">Tasks</option>
+                                            <option value="note">Notes</option>
+                                            <option value="checklist">Checklists</option>
+                                            <option value="project">Projects</option>
+                                        </select>
+                                        <button class="btn btn-sm btn-primary" onclick="addNoteForPerson()">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                                            Add Note
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="timeline-content max-h-96 overflow-y-auto" id="personTimeline">
+                                    <!-- Timeline items will be populated here -->
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
