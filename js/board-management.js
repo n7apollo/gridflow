@@ -362,44 +362,45 @@ export function generateUniqueBoardId(prefix = 'board') {
  * Populate board dropdown with recent and all boards
  */
 export function populateBoardDropdown() {
-    const appData = getAppData();
+    // Try to get appData from the module or from window
+    let appData = getAppData();
+    
+    // If appData is empty, try to get it from window
+    if (!appData || !appData.boards || Object.keys(appData.boards).length === 0) {
+        appData = window.appData;
+    }
     
     // Check if appData and boards exist
-    if (!appData || !appData.boards) {
+    if (!appData || !appData.boards || Object.keys(appData.boards).length === 0) {
         console.warn('populateBoardDropdown: appData or boards not available');
+        const boardList = document.getElementById('boardList');
+        if (boardList) {
+            boardList.innerHTML = '<div class="p-4 text-center text-base-content/60">Loading boards...</div>';
+        }
         return;
     }
     
-    const recentBoards = getRecentBoards();
-    
-    // Populate recent boards
-    const recentBoardsList = document.getElementById('recentBoardsList');
-    if (recentBoardsList) {
-        recentBoardsList.innerHTML = '';
-        
-        recentBoards.slice(0, 5).forEach(boardId => {
-            if (appData.boards[boardId]) {
-                const boardElement = createBoardItem(boardId, appData.boards[boardId]);
-                recentBoardsList.appendChild(boardElement);
-            }
-        });
-        
-        if (recentBoards.length === 0) {
-            recentBoardsList.innerHTML = '<div class="no-recent-boards">No recent boards</div>';
-        }
+    // Get the board list element
+    const boardList = document.getElementById('boardList');
+    if (!boardList) {
+        console.warn('populateBoardDropdown: boardList element not found');
+        return;
     }
     
-    // Populate all boards
-    const allBoardsList = document.getElementById('allBoardsList');
-    if (allBoardsList) {
-        allBoardsList.innerHTML = '';
-        
-        const boardEntries = Object.entries(appData.boards);
-        boardEntries.forEach(([boardId, board]) => {
-            const boardElement = createBoardItem(boardId, board);
-            allBoardsList.appendChild(boardElement);
-        });
+    boardList.innerHTML = '';
+    
+    const boardEntries = Object.entries(appData.boards);
+    
+    if (boardEntries.length === 0) {
+        boardList.innerHTML = '<div class="p-4 text-center text-base-content/60">No boards found</div>';
+        return;
     }
+    
+    // Add all boards to the list
+    boardEntries.forEach(([boardId, board]) => {
+        const boardElement = createBoardItem(boardId, board);
+        boardList.appendChild(boardElement);
+    });
 }
 
 /**
@@ -417,7 +418,8 @@ export function createBoardItem(boardId, board) {
         return item;
     }
     
-    item.className = `board-dropdown-item ${boardId === (appData && appData.currentBoardId) ? 'current' : ''}`;
+    const isCurrent = boardId === appData.currentBoardId;
+    item.className = `board-item p-2 hover:bg-base-200 rounded cursor-pointer ${isCurrent ? 'bg-base-200' : ''}`;
     
     const rowCount = board.rows ? board.rows.length : 0;
     const cardCount = board.rows ? board.rows.reduce((total, row) => {
@@ -425,18 +427,21 @@ export function createBoardItem(boardId, board) {
     }, 0) : 0;
     
     item.innerHTML = `
-        <div class="board-item-info">
-            <div class="board-item-name">${board.name}</div>
-            <div class="board-item-stats">${rowCount} rows • ${cardCount} cards</div>
+        <div class="flex items-center justify-between">
+            <div>
+                <div class="font-medium">${board.name}</div>
+                <div class="text-xs text-base-content/60">${rowCount} rows • ${cardCount} cards</div>
+            </div>
+            ${isCurrent ? '<span class="badge badge-primary badge-sm">Current</span>' : ''}
         </div>
-        ${boardId === appData.currentBoardId ? '<span class="current-indicator">Current</span>' : ''}
     `;
     
-    if (boardId !== appData.currentBoardId) {
-        item.style.cursor = 'pointer';
+    if (!isCurrent) {
         item.addEventListener('click', () => {
             switchBoard(boardId);
-            closeBoardDropdown();
+            if (window.closeBoardDropdown) {
+                window.closeBoardDropdown();
+            }
         });
     }
     
@@ -538,6 +543,12 @@ window.closeBoardDropdown = closeBoardDropdown;
 window.populateBoardDropdown = populateBoardDropdown;
 window.filterBoards = filterBoards;
 window.updateCurrentBoardDisplay = updateCurrentBoardDisplay;
+
+// Listen for data loaded event to ensure board dropdown works after data is ready
+window.addEventListener('gridflow-data-loaded', () => {
+    console.log('Board Management: Data loaded event received');
+    updateCurrentBoardDisplay();
+});
 
 // Export module for access by other modules
 window.boardManagement = {

@@ -548,155 +548,339 @@ class GridFlowViews extends HTMLElement {
             </div>
 
             <!-- Collections Management Interface -->
-            <div class="collections-container card bg-base-100 shadow-lg p-4 mt-4 hidden" id="collectionsContainer">
-                <div class="collections-header mb-4">
-                    <div class="collections-controls flex flex-wrap gap-2 items-end">
-                        <div class="form-control">
-                            <label class="label" for="collectionsSearch">Search Collections:</label>
-                            <input type="text" id="collectionsSearch" placeholder="Search by name or description..." 
-                                   class="input input-bordered w-64" data-action="searchCollections">
+            <div class="collections-container min-h-screen" id="collectionsContainer">
+                <!-- Collections List View -->
+                <div class="collections-list-view" id="collectionsListView">
+                    <div class="task-container min-h-screen p-4">
+                        <!-- Collections Header with Search and Actions -->
+                        <div class="collections-header bg-gradient-to-r from-primary/10 to-secondary/10 rounded-2xl p-6 mb-6">
+                            <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6">
+                                <div class="flex items-center gap-3">
+                                    <div class="p-3 bg-primary/20 rounded-xl">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-folder-open text-primary"><path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v2"/></svg>
+                                    </div>
+                                    <div>
+                                        <h2 class="text-2xl font-bold text-base-content">Collections</h2>
+                                        <p class="text-sm text-base-content/70">Organize and save your searches and entity groups</p>
+                                    </div>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button class="btn btn-primary shadow-lg" onclick="showCreateCollectionModal()">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-folder-plus"><path d="M12 10v6"/><path d="M9 13h6"/><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+                                        Create Collection
+                                    </button>
+                                    <div class="dropdown dropdown-end">
+                                        <button class="btn btn-ghost" tabindex="0">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-more-vertical"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                                        </button>
+                                        <div class="dropdown-content menu p-2 shadow-xl bg-base-100 rounded-box w-52 mt-1">
+                                            <button class="btn btn-ghost btn-sm justify-start" onclick="exportCollections()">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                                                Export Collections
+                                            </button>
+                                            <button class="btn btn-ghost btn-sm justify-start" onclick="importCollections()">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-upload"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                                                Import Collections
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Search and Filters -->
+                            <div class="search-section">
+                                <label class="input input-bordered flex items-center gap-2 mb-4">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                                    <input type="text" id="collectionsSearch" class="grow collections-search-input" placeholder="Search collections by name or description..." />
+                                    <kbd class="kbd kbd-sm">⌘</kbd>
+                                    <kbd class="kbd kbd-sm">K</kbd>
+                                </label>
+
+                                <!-- Quick Filters -->
+                                <ul class="menu menu-horizontal bg-base-200 rounded-box p-2 gap-1 shadow-sm">
+                                    <li><a class="quick-filter-menu" data-filter="all">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-folder"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+                                        All Collections
+                                    </a></li>
+                                    <li><a class="quick-filter-menu" data-filter="saved_search">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                                        Saved Searches
+                                    </a></li>
+                                    <li><a class="quick-filter-menu" data-filter="manual">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-hand"><path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"/><path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>
+                                        Manual
+                                    </a></li>
+                                    <li><a class="quick-filter-menu" data-filter="smart">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sparkles"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
+                                        Smart
+                                    </a></li>
+                                </ul>
+                            </div>
                         </div>
-                        <div class="form-control">
-                            <label class="label" for="collectionTypeFilter">Type:</label>
-                            <select id="collectionTypeFilter" data-action="filterCollectionsByType" class="select select-bordered min-w-[8rem]">
-                                <option value="">All Types</option>
-                                <option value="saved_search">Saved Search</option>
-                                <option value="manual">Manual</option>
-                                <option value="smart">Smart</option>
-                            </select>
+
+                        <!-- Collections Stats -->
+                        <div class="flex justify-between items-center mb-4">
+                            <div class="collections-stats">
+                                <span class="text-base-content/70">
+                                    Showing <span id="totalCollectionsCount">0</span> collections
+                                </span>
+                            </div>
                         </div>
-                        <div class="form-control">
-                            <label class="label" for="collectionCategoryFilter">Category:</label>
-                            <select id="collectionCategoryFilter" data-action="filterCollectionsByCategory" class="select select-bordered min-w-[8rem]">
-                                <option value="">All Categories</option>
-                                <option value="productivity">Productivity</option>
-                                <option value="work">Work</option>
-                                <option value="personal">Personal</option>
-                                <option value="time">Time</option>
-                            </select>
-                        </div>
-                        <button class="btn btn-primary" data-action="showCreateCollectionModal">
-                            <i data-lucide="folder-plus"></i> Create Collection
-                        </button>
+
+                        <!-- Collections List -->
+                        <ul class="list bg-base-100 rounded-box shadow-md" id="collectionsList">
+                            <!-- Collections list items will be populated here -->
+                        </ul>
                     </div>
                 </div>
 
-                <!-- Collections Grid -->
-                <div class="collections-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4" id="collectionsGrid">
-                    <!-- Collection cards will be populated here -->
-                </div>
-
-                <!-- Collection Detail Panel (Initially Hidden) -->
-                <div class="collection-detail-panel card bg-base-200 p-4 mt-4 hidden" id="collectionDetailPanel">
-                    <div class="collection-detail-header flex items-center justify-between mb-4">
-                        <h3 class="text-xl font-bold" id="collectionDetailName">Collection Name</h3>
-                        <div class="collection-detail-actions flex gap-2">
-                            <button class="btn btn-sm btn-secondary" data-action="editCollection" id="editCollectionBtn">
-                                <i data-lucide="edit"></i> Edit
+                <!-- Collection Detail View -->
+                <div class="collection-detail-view hidden" id="collectionDetailView">
+                    <div class="task-container min-h-screen p-4">
+                        <!-- Header with Back Button -->
+                        <div class="detail-header flex items-center gap-4 mb-6">
+                            <button class="btn btn-ghost btn-circle" onclick="showCollectionsList()">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-left"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
                             </button>
-                            <button class="btn btn-sm btn-error" data-action="deleteCollection" id="deleteCollectionBtn">
-                                <i data-lucide="trash-2"></i> Delete
-                            </button>
-                            <button class="btn btn-sm btn-neutral" data-action="closeCollectionDetail">
-                                <i data-lucide="x"></i> Close
-                            </button>
+                            <div class="flex-1">
+                                <h1 class="text-2xl font-bold" id="collectionDetailName">Collection Name</h1>
+                                <div class="text-base-content/70" id="collectionDetailSubtitle">Subtitle</div>
+                            </div>
+                            <div class="collection-detail-actions flex gap-2">
+                                <button class="btn btn-secondary" onclick="editCollection()">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-edit"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 1 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                    Edit
+                                </button>
+                                <button class="btn btn-error" onclick="deleteCollection()">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-2 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                                    Delete
+                                </button>
+                            </div>
                         </div>
-                    </div>
 
-                    <!-- Collection Info -->
-                    <div class="collection-info mb-4">
-                        <div class="collection-description text-sm mb-2" id="collectionDescription"></div>
-                        <div class="collection-metadata flex gap-4 text-sm text-gray-500">
-                            <span id="collectionType"></span>
-                            <span id="collectionCategory"></span>
-                            <span id="collectionItemCount"></span>
-                            <span id="collectionLastUpdated"></span>
-                        </div>
-                    </div>
+                        <!-- Collection Info Cards -->
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                            <!-- Collection Details -->
+                            <div class="card bg-base-100 shadow-md col-span-2">
+                                <div class="card-body">
+                                    <h3 class="card-title text-lg">Details</h3>
+                                    <div class="space-y-3">
+                                        <div id="collectionDescription"></div>
+                                        <div class="flex gap-4 text-sm">
+                                            <span id="collectionType"></span>
+                                            <span id="collectionCategory"></span>
+                                            <span id="collectionLastUpdated"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
-                    <!-- Collection Items -->
-                    <div class="collection-items">
-                        <div class="items-header flex items-center justify-between mb-2">
-                            <h4 class="font-semibold">Items</h4>
-                            <button class="btn btn-sm btn-primary" data-action="refreshCollectionItems">
-                                <i data-lucide="refresh-cw"></i> Refresh
-                            </button>
+                            <!-- Stats -->
+                            <div class="card bg-base-100 shadow-md">
+                                <div class="card-body">
+                                    <h3 class="card-title text-lg">Stats</h3>
+                                    <div class="space-y-3">
+                                        <div class="stat">
+                                            <div class="stat-title">Items</div>
+                                            <div class="stat-value text-lg" id="collectionItemCount">0</div>
+                                        </div>
+                                        <button class="btn btn-sm btn-primary w-full" onclick="refreshCollectionItems()">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-refresh-cw"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+                                            Refresh
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="items-content space-y-2 max-h-96 overflow-y-auto" id="collectionItems">
-                            <!-- Collection items will be populated here -->
+
+                        <!-- Collection Items -->
+                        <div class="card bg-base-100 shadow-md">
+                            <div class="card-body">
+                                <h3 class="card-title text-lg mb-4">Items</h3>
+                                <div class="items-content max-h-96 overflow-y-auto" id="collectionItems">
+                                    <!-- Collection items will be populated here -->
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Tags Management Interface -->
-            <div class="tags-container card bg-base-100 shadow-lg p-4 mt-4 hidden" id="tagsContainer">
-                <div class="tags-header mb-4">
-                    <div class="tags-controls flex flex-wrap gap-2 items-end">
-                        <div class="form-control">
-                            <label class="label" for="tagsSearch">Search Tags:</label>
-                            <input type="text" id="tagsSearch" placeholder="Search by name or description..." 
-                                   class="input input-bordered w-64" data-action="searchTags">
+            <div class="tags-container min-h-screen" id="tagsContainer">
+                <!-- Tags List View -->
+                <div class="tags-list-view" id="tagsListView">
+                    <div class="task-container min-h-screen p-4">
+                        <!-- Tags Header with Search and Actions -->
+                        <div class="tags-header bg-gradient-to-r from-primary/10 to-secondary/10 rounded-2xl p-6 mb-6">
+                            <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6">
+                                <div class="flex items-center gap-3">
+                                    <div class="p-3 bg-primary/20 rounded-xl">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-tags text-primary"><path d="M9 5H2v7l6.29 6.29c.94.94 2.48.94 3.42 0l3.58-3.58c.94-.94.94-2.48 0-3.42L9 5Z"/><path d="M6 9.01V9"/><path d="m15 5 6.3 6.3a2.4 2.4 0 0 1 0 3.4L17 19"/></svg>
+                                    </div>
+                                    <div>
+                                        <h2 class="text-2xl font-bold text-base-content">Tags</h2>
+                                        <p class="text-sm text-base-content/70">Organize and categorize your entities with tags</p>
+                                    </div>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button class="btn btn-primary shadow-lg" onclick="showCreateTagModal()">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-tag-plus"><path d="M12 9v6"/><path d="M9 12h6"/><path d="M21.42 10.922a1 1 0 0 0-.019-1.394L12.83 1.077a1 1 0 0 0-1.414 0L3.025 9.466A4 4 0 0 0 2 12.378V19a2 2 0 0 0 2 2h6.621a4 4 0 0 0 2.912-1.025L21.42 12.09a1 1 0 0 0 0-1.167Z"/></svg>
+                                        Create Tag
+                                    </button>
+                                    <div class="dropdown dropdown-end">
+                                        <button class="btn btn-ghost" tabindex="0">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-more-vertical"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                                        </button>
+                                        <div class="dropdown-content menu p-2 shadow-xl bg-base-100 rounded-box w-52 mt-1">
+                                            <button class="btn btn-ghost btn-sm justify-start" onclick="exportTags()">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                                                Export Tags
+                                            </button>
+                                            <button class="btn btn-ghost btn-sm justify-start" onclick="importTags()">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-upload"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                                                Import Tags
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Search and Filters -->
+                            <div class="search-section">
+                                <label class="input input-bordered flex items-center gap-2 mb-4">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                                    <input type="text" id="tagsSearch" class="grow tags-search-input" placeholder="Search tags by name..." />
+                                    <kbd class="kbd kbd-sm">⌘</kbd>
+                                    <kbd class="kbd kbd-sm">K</kbd>
+                                </label>
+
+                                <!-- Quick Filters -->
+                                <ul class="menu menu-horizontal bg-base-200 rounded-box p-2 gap-1 shadow-sm">
+                                    <li><a class="quick-filter-menu" data-filter="all">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-tags"><path d="M9 5H2v7l6.29 6.29c.94.94 2.48.94 3.42 0l3.58-3.58c.94-.94.94-2.48 0-3.42L9 5Z"/><path d="M6 9.01V9"/><path d="m15 5 6.3 6.3a2.4 2.4 0 0 1 0 3.4L17 19"/></svg>
+                                        All Tags
+                                    </a></li>
+                                    <li><a class="quick-filter-menu" data-filter="work">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-briefcase"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                                        Work
+                                    </a></li>
+                                    <li><a class="quick-filter-menu" data-filter="personal">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                        Personal
+                                    </a></li>
+                                    <li><a class="quick-filter-menu" data-filter="priority">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-alert-circle"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+                                        Priority
+                                    </a></li>
+                                    <li><a class="quick-filter-menu" data-filter="popular">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trending-up"><polyline points="22,7 13.5,15.5 8.5,10.5 2,17"/><polyline points="16,7 22,7 22,13"/></svg>
+                                        Most Used
+                                    </a></li>
+                                </ul>
+                            </div>
                         </div>
-                        <div class="form-control">
-                            <label class="label" for="tagCategoryFilter">Category:</label>
-                            <select id="tagCategoryFilter" data-action="filterTagsByCategory" class="select select-bordered min-w-[8rem]">
-                                <option value="">All Categories</option>
-                                <option value="work">Work</option>
-                                <option value="personal">Personal</option>
-                                <option value="priority">Priority</option>
-                                <option value="general">General</option>
-                                <option value="action">Action</option>
-                            </select>
+
+                        <!-- Tags Stats -->
+                        <div class="flex justify-between items-center mb-4">
+                            <div class="tags-stats">
+                                <span class="text-base-content/70">
+                                    Showing <span id="totalTagsCount">0</span> tags
+                                </span>
+                            </div>
                         </div>
-                        <div class="form-control">
-                            <label class="label" for="tagSortBy">Sort by:</label>
-                            <select id="tagSortBy" data-action="sortTags" class="select select-bordered min-w-[8rem]">
-                                <option value="usage">Usage</option>
-                                <option value="name">Name</option>
-                                <option value="created">Created</option>
-                                <option value="updated">Updated</option>
-                            </select>
-                        </div>
-                        <button class="btn btn-primary" data-action="showCreateTagModal">
-                            <i data-lucide="tag"></i> Create Tag
-                        </button>
+
+                        <!-- Tags List -->
+                        <ul class="list bg-base-100 rounded-box shadow-md" id="tagsList">
+                            <!-- Tags list items will be populated here -->
+                        </ul>
                     </div>
                 </div>
 
-                <!-- Tags Grid -->
-                <div class="tags-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4" id="tagsGrid">
-                    <!-- Tag cards will be populated here -->
-                </div>
-
-                <!-- Tag Detail Panel (Initially Hidden) -->
-                <div class="tag-detail-panel card bg-base-200 p-4 mt-4 hidden" id="tagDetailPanel">
-                    <div class="tag-detail-header flex items-center justify-between mb-4">
-                        <div class="flex items-center gap-2">
-                            <div class="tag-color-indicator w-4 h-4 rounded-full" id="tagDetailColorIndicator"></div>
-                            <h3 class="text-xl font-bold" id="tagDetailName">Tag Name</h3>
+                <!-- Tag Detail View -->
+                <div class="tag-detail-view hidden" id="tagDetailView">
+                    <div class="task-container min-h-screen p-4">
+                        <!-- Header with Back Button -->
+                        <div class="detail-header flex items-center gap-4 mb-6">
+                            <button class="btn btn-ghost btn-circle" onclick="showTagsList()">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-left"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+                            </button>
+                            <div class="flex-1 flex items-center gap-3">
+                                <div class="tag-color-indicator w-6 h-6 rounded-full" id="tagDetailColorIndicator"></div>
+                                <div>
+                                    <h1 class="text-2xl font-bold" id="tagDetailName">Tag Name</h1>
+                                    <div class="text-base-content/70" id="tagDetailSubtitle">Category</div>
+                                </div>
+                            </div>
+                            <div class="tag-detail-actions flex gap-2">
+                                <button class="btn btn-secondary" onclick="editTag()">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-edit"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 1 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                    Edit
+                                </button>
+                                <button class="btn btn-error" onclick="deleteTag()">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-2 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                                    Delete
+                                </button>
+                            </div>
                         </div>
-                        <div class="tag-detail-actions flex gap-2">
-                            <button class="btn btn-sm btn-secondary" data-action="editTag" id="editTagBtn">
-                                <i data-lucide="edit"></i> Edit
-                            </button>
-                            <button class="btn btn-sm btn-error" data-action="deleteTag" id="deleteTagBtn">
-                                <i data-lucide="trash-2"></i> Delete
-                            </button>
-                            <button class="btn btn-sm btn-neutral" data-action="closeTagDetail">
-                                <i data-lucide="x"></i> Close
-                            </button>
+
+                        <!-- Tag Info Cards -->
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                            <!-- Tag Details -->
+                            <div class="card bg-base-100 shadow-md">
+                                <div class="card-body">
+                                    <h3 class="card-title text-lg">Details</h3>
+                                    <div class="space-y-3">
+                                        <div id="tagDescription"></div>
+                                        <div class="divider"></div>
+                                        <div class="text-sm space-y-2">
+                                            <div id="tagCategory"></div>
+                                            <div id="tagCreatedAt"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Usage Stats -->
+                            <div class="card bg-base-100 shadow-md">
+                                <div class="card-body">
+                                    <h3 class="card-title text-lg">Usage</h3>
+                                    <div class="space-y-3">
+                                        <div class="stat">
+                                            <div class="stat-title">Total Uses</div>
+                                            <div class="stat-value text-lg" id="tagUsageCount">0</div>
+                                        </div>
+                                        <div class="stat">
+                                            <div class="stat-title">Last Used</div>
+                                            <div class="stat-value text-sm" id="tagLastUsed">Never</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Related Tags -->
+                            <div class="card bg-base-100 shadow-md">
+                                <div class="card-body">
+                                    <h3 class="card-title text-lg">Related Tags</h3>
+                                    <div class="space-y-2" id="relatedTags">
+                                        <!-- Related tags will be populated here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tagged Items -->
+                        <div class="card bg-base-100 shadow-md">
+                            <div class="card-body">
+                                <h3 class="card-title text-lg mb-4">Tagged Items</h3>
+                                <div class="items-content max-h-96 overflow-y-auto" id="taggedItems">
+                                    <!-- Tagged items will be populated here -->
+                                </div>
+                            </div>
                         </div>
                     </div>
-
-                    <!-- Tag Info -->
-                    <div class="tag-info mb-4">
-                        <div class="tag-description text-sm mb-2" id="tagDescription"></div>
-                        <div class="tag-metadata flex gap-4 text-sm text-gray-500">
-                            <span id="tagCategory"></span>
-                            <span id="tagUsageCount"></span>
-                            <span id="tagCreatedAt"></span>
-                        </div>
+                </div>
+            </div>
                     </div>
 
                     <!-- Tagged Entities -->

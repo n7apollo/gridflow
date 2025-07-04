@@ -20,26 +20,36 @@ export async function initializeTagsView() {
 }
 
 /**
- * Render tags grid
+ * Render tags list (updated for new layout)
  */
-export async function renderTagsGrid() {
+export async function renderTagsList() {
     try {
         const tags = await metaService.getAllTags();
-        const tagsGrid = document.getElementById('tagsGrid');
+        const tagsList = document.getElementById('tagsList');
+        const totalTagsCount = document.getElementById('totalTagsCount');
         
-        if (!tagsGrid) return;
+        if (!tagsList) return;
+        
+        // Update count
+        if (totalTagsCount) {
+            totalTagsCount.textContent = tags.length;
+        }
         
         if (tags.length === 0) {
-            tagsGrid.innerHTML = `
-                <div class="col-span-full text-center p-8">
-                    <div class="text-gray-500 mb-4">
-                        <i data-lucide="tag" class="w-16 h-16 mx-auto mb-2"></i>
-                        <p>No tags found</p>
+            tagsList.innerHTML = `
+                <li class="list-row">
+                    <div class="text-center py-8">
+                        <div class="text-base-content/60">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-tag mx-auto mb-4"><path d="M12 2H2v10l9.293 9.293a1 1 0 0 0 1.414 0l8.586-8.586a1 1 0 0 0 0-1.414z"/><circle cx="7" cy="7" r="1"/></svg>
+                            <p class="text-lg mb-2">No tags found</p>
+                            <p class="text-sm mb-4">Create your first tag to organize and categorize content</p>
+                            <button class="btn btn-primary" onclick="showCreateTagModal()">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                                Add Tag
+                            </button>
+                        </div>
                     </div>
-                    <button class="btn btn-primary" data-action="showCreateTagModal">
-                        <i data-lucide="plus"></i> Create Your First Tag
-                    </button>
-                </div>
+                </li>
             `;
             return;
         }
@@ -47,33 +57,7 @@ export async function renderTagsGrid() {
         // Sort tags by usage count (descending)
         tags.sort((a, b) => (b.usageCount || 0) - (a.usageCount || 0));
         
-        tagsGrid.innerHTML = tags.map(tag => `
-            <div class="tag-card card bg-base-100 border border-base-300 hover:border-primary transition-colors cursor-pointer" 
-                 data-tag-id="${tag.id}" onclick="showTagDetail('${tag.id}')">
-                <div class="card-body p-4">
-                    <div class="flex items-start justify-between mb-2">
-                        <div class="flex items-center gap-2">
-                            <div class="w-3 h-3 rounded-full" style="background-color: ${tag.color}"></div>
-                            <h3 class="card-title text-sm">${tag.name}</h3>
-                        </div>
-                        <div class="dropdown dropdown-end">
-                            <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation()">
-                                <i data-lucide="more-horizontal"></i>
-                            </button>
-                            <div class="dropdown-content menu shadow bg-base-100 rounded-box w-48">
-                                <li><a onclick="editTag('${tag.id}')"><i data-lucide="edit"></i> Edit</a></li>
-                                <li><a onclick="deleteTag('${tag.id}')" class="text-error"><i data-lucide="trash-2"></i> Delete</a></li>
-                            </div>
-                        </div>
-                    </div>
-                    <p class="text-xs text-gray-500 mb-3">${tag.description || 'No description'}</p>
-                    <div class="flex items-center justify-between text-xs">
-                        <span class="badge badge-outline badge-xs">${tag.category || 'general'}</span>
-                        <span class="text-gray-400">${tag.usageCount || 0} uses</span>
-                    </div>
-                </div>
-            </div>
-        `).join('');
+        tagsList.innerHTML = tags.map(tag => renderTagListItem(tag)).join('');
         
         // Reinitialize Lucide icons
         if (window.lucide) {
@@ -81,41 +65,155 @@ export async function renderTagsGrid() {
         }
         
     } catch (error) {
-        console.error('Failed to render tags grid:', error);
+        console.error('Failed to render tags list:', error);
     }
 }
 
 /**
- * Show tag detail panel
+ * Render tags grid (backward compatibility)
+ */
+export async function renderTagsGrid() {
+    return await renderTagsList();
+}
+
+/**
+ * Render a single tag list item
+ * @param {Object} tag - Tag object
+ * @returns {string} HTML for tag list item
+ */
+function renderTagListItem(tag) {
+    const usageCount = tag.usageCount || 0;
+    const createdDate = new Date(tag.createdAt);
+    const daysSince = Math.floor((Date.now() - createdDate) / (1000 * 60 * 60 * 24));
+    
+    return `
+        <li class="list-row" onclick="showTagDetail('${tag.id}')">
+            <div class="flex items-center gap-4 p-4 hover:bg-base-200 transition-colors cursor-pointer">
+                <!-- Color Indicator -->
+                <div class="avatar placeholder">
+                    <div class="rounded-full w-12 h-12 flex items-center justify-center" style="background-color: ${tag.color}20; border: 2px solid ${tag.color}">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${tag.color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-tag"><path d="M12 2H2v10l9.293 9.293a1 1 0 0 0 1.414 0l8.586-8.586a1 1 0 0 0 0-1.414z"/><circle cx="7" cy="7" r="1"/></svg>
+                    </div>
+                </div>
+                
+                <!-- Main Content -->
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 mb-1">
+                        <h3 class="font-semibold text-base truncate">${tag.name}</h3>
+                        <span class="badge badge-outline badge-sm">${tag.category || 'general'}</span>
+                        ${usageCount > 0 ? `
+                            <span class="badge badge-info badge-sm">${usageCount} uses</span>
+                        ` : ''}
+                    </div>
+                    <div class="text-sm text-base-content/70 mb-1">
+                        ${tag.description || 'No description provided'}
+                    </div>
+                    <div class="text-xs text-base-content/60">
+                        Created: ${daysSince === 0 ? 'Today' : 
+                                 daysSince === 1 ? '1 day ago' : 
+                                 `${daysSince} days ago`}
+                    </div>
+                </div>
+                
+                <!-- Usage Stats -->
+                <div class="hidden sm:block text-right text-sm text-base-content/60">
+                    <div class="font-medium">${usageCount}</div>
+                    <div class="text-xs">uses</div>
+                </div>
+                
+                <!-- Action Arrow -->
+                <div class="tag-actions opacity-0 transition-opacity group-hover:opacity-100">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-right"><path d="m9 18 6-6-6-6"/></svg>
+                </div>
+            </div>
+        </li>
+    `;
+}
+
+/**
+ * Show tag detail view
  */
 export async function showTagDetail(tagId) {
     try {
         const tag = await metaService.getTag(tagId);
         if (!tag) return;
         
-        const detailPanel = document.getElementById('tagDetailPanel');
-        const detailName = document.getElementById('tagDetailName');
-        const detailDescription = document.getElementById('tagDescription');
-        const detailCategory = document.getElementById('tagCategory');
-        const detailUsageCount = document.getElementById('tagUsageCount');
-        const detailCreatedAt = document.getElementById('tagCreatedAt');
-        const detailColorIndicator = document.getElementById('tagDetailColorIndicator');
-        const entitiesContainer = document.getElementById('taggedEntities');
+        // Hide list view and show detail view
+        const listView = document.getElementById('tagsListView');
+        const detailView = document.getElementById('tagDetailView');
         
-        if (!detailPanel) return;
+        if (!listView || !detailView) return;
         
-        // Update detail panel content
-        detailName.textContent = tag.name;
-        detailDescription.textContent = tag.description || 'No description';
-        detailCategory.textContent = `Category: ${tag.category || 'general'}`;
-        detailUsageCount.textContent = `${tag.usageCount || 0} uses`;
-        detailCreatedAt.textContent = `Created: ${new Date(tag.createdAt).toLocaleDateString()}`;
-        detailColorIndicator.style.backgroundColor = tag.color;
+        listView.classList.add('hidden');
+        detailView.classList.remove('hidden');
+        
+        // Update tag info
+        const nameElement = document.getElementById('tagDetailName');
+        const subtitleElement = document.getElementById('tagDetailSubtitle');
+        
+        if (nameElement) nameElement.textContent = tag.name;
+        if (subtitleElement) {
+            subtitleElement.textContent = tag.description || `${tag.category || 'general'} tag`;
+        }
+        
+        // Update tag details
+        const categoryElement = document.getElementById('tagCategory');
+        const usageCountElement = document.getElementById('tagUsageCount');
+        const createdAtElement = document.getElementById('tagCreatedAt');
+        const colorElement = document.getElementById('tagDetailColor');
+        
+        if (categoryElement) {
+            categoryElement.innerHTML = tag.category ? 
+                `<strong>Category:</strong> <span class="badge badge-outline">${tag.category}</span>` : 
+                '<span class="text-base-content/50">No category</span>';
+        }
+        if (usageCountElement) {
+            usageCountElement.innerHTML = `<strong>Usage:</strong> ${tag.usageCount || 0} items`;
+        }
+        
+        const createdDate = new Date(tag.createdAt);
+        const daysSince = Math.floor((Date.now() - createdDate) / (1000 * 60 * 60 * 24));
+        if (createdAtElement) {
+            createdAtElement.innerHTML = 
+                `<strong>Created:</strong> ${daysSince === 0 ? 'Today' : daysSince === 1 ? '1 day ago' : `${daysSince} days ago`}`;
+        }
+        if (colorElement) {
+            colorElement.innerHTML = `<strong>Color:</strong> <span class="inline-block w-4 h-4 rounded-full" style="background-color: ${tag.color}"></span> ${tag.color}`;
+        }
+        
+        // Update stats
+        const totalUsageElement = document.getElementById('totalUsage');
+        const createdStatElement = document.getElementById('createdStat');
+        
+        if (totalUsageElement) {
+            totalUsageElement.textContent = tag.usageCount || 0;
+        }
+        if (createdStatElement) {
+            createdStatElement.textContent = daysSince === 0 ? 'Today' : 
+                                           daysSince === 1 ? '1 day ago' : 
+                                           `${daysSince} days ago`;
+        }
         
         // Store current tag ID for actions
-        detailPanel.dataset.tagId = tagId;
+        detailView.dataset.tagId = tagId;
         
         // Load and display tagged entities
+        await renderTaggedEntities(tagId);
+        
+    } catch (error) {
+        console.error('Failed to show tag detail:', error);
+    }
+}
+
+/**
+ * Render tagged entities
+ * @param {string} tagId - Tag ID
+ */
+async function renderTaggedEntities(tagId) {
+    const entitiesContainer = document.getElementById('taggedEntities');
+    if (!entitiesContainer) return;
+    
+    try {
         const entityRefs = await getEntitiesWithTag(tagId);
         const entities = [];
         
@@ -126,77 +224,124 @@ export async function showTagDetail(tagId) {
             }
         }
         
-        entitiesContainer.innerHTML = entities.map(item => `
-            <div class="tagged-entity card bg-base-200 p-3">
-                <div class="flex items-start justify-between">
-                    <div class="flex-1">
-                        <div class="flex items-center gap-2 mb-1">
-                            <span class="badge badge-xs">${item.type}</span>
-                            <h4 class="font-medium text-sm">${item.entity.title}</h4>
-                        </div>
-                        <p class="text-xs text-gray-500">${item.entity.content || ''}</p>
-                        <div class="flex items-center gap-2 mt-2 text-xs text-gray-400">
-                            ${item.entity.priority ? `<span class="badge badge-xs badge-${item.entity.priority}">${item.entity.priority}</span>` : ''}
-                            ${item.entity.completed ? '<span class="badge badge-xs badge-success">completed</span>' : ''}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `).join('');
-        
         if (entities.length === 0) {
             entitiesContainer.innerHTML = `
-                <div class="text-center text-gray-500 py-4">
+                <div class="text-center py-4 text-base-content/60">
                     <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2"></i>
-                    <p>No items tagged with this tag</p>
+                    <p>No items tagged with this tag yet</p>
+                    <p class="text-xs">Items with this tag will appear here</p>
                 </div>
             `;
+        } else {
+            entitiesContainer.innerHTML = entities.map(item => renderTaggedEntity(item)).join('');
         }
         
-        // Show detail panel
-        detailPanel.classList.remove('hidden');
-        
-        // Reinitialize Lucide icons
+        // Re-render Lucide icons
         if (window.lucide) {
             window.lucide.createIcons();
         }
-        
     } catch (error) {
-        console.error('Failed to show tag detail:', error);
+        console.error('Failed to render tagged entities:', error);
+        entitiesContainer.innerHTML = `
+            <div class="alert alert-error">
+                <span>Failed to load tagged items</span>
+            </div>
+        `;
     }
+}
+
+/**
+ * Render a tagged entity
+ * @param {Object} item - Tagged entity item
+ * @returns {string} HTML for tagged entity
+ */
+function renderTaggedEntity(item) {
+    const typeColor = getEntityTypeColor(item.type);
+    const date = new Date(item.entity.updatedAt || item.entity.createdAt);
+    const dateStr = date.toLocaleDateString();
+    
+    return `
+        <div class="tagged-entity border-l-2 border-${typeColor} pl-4 pb-4 hover:bg-base-200 rounded-r cursor-pointer"
+             onclick="openEntity('${item.entity.id}')">
+            <div class="flex items-start gap-3">
+                <div class="flex-shrink-0 w-8 h-8 bg-${typeColor} text-white rounded-full flex items-center justify-center text-sm">
+                    ${getEntityTypeIcon(item.type)}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between mb-1">
+                        <h4 class="font-medium text-sm truncate">${item.entity.title}</h4>
+                        <span class="text-xs text-base-content/60">${dateStr}</span>
+                    </div>
+                    ${item.entity.content ? `<p class="text-sm text-base-content/80 line-clamp-2">${item.entity.content}</p>` : ''}
+                    <div class="flex items-center gap-2 mt-1">
+                        <span class="badge badge-${typeColor} badge-xs">${item.type}</span>
+                        ${item.entity.completed ? '<span class="badge badge-success badge-xs">✓ Completed</span>' : ''}
+                        ${item.entity.priority ? `<span class="badge badge-${item.entity.priority} badge-xs">${item.entity.priority}</span>` : ''}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
 }
 
 /**
  * Setup event listeners for tags view
  */
 function setupTagsEventListeners() {
-    const tagsSearch = document.getElementById('tagsSearch');
-    const tagCategoryFilter = document.getElementById('tagCategoryFilter');
-    const tagSortBy = document.getElementById('tagSortBy');
-    
-    if (tagsSearch) {
-        tagsSearch.addEventListener('input', debounce(handleTagsSearch, 300));
+    // Search input
+    const searchInput = document.getElementById('tagsSearch');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            handleTagsSearch(e.target.value);
+        });
+        
+        // Keyboard shortcut for search
+        document.addEventListener('keydown', (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                searchInput.focus();
+            }
+        });
     }
     
-    if (tagCategoryFilter) {
-        tagCategoryFilter.addEventListener('change', handleTagsFilter);
-    }
+    // Quick filter menu
+    const filterButtons = document.querySelectorAll('.tags-filter-menu');
+    filterButtons.forEach(button => {
+        button.addEventListener('click', (e) => {
+            e.preventDefault();
+            
+            // Remove active class from all buttons
+            filterButtons.forEach(btn => btn.classList.remove('active'));
+            
+            // Add active class to clicked button
+            button.classList.add('active');
+            
+            const filter = button.getAttribute('data-filter');
+            handleTagsFilter(filter);
+        });
+    });
     
-    if (tagSortBy) {
-        tagSortBy.addEventListener('change', handleTagsSort);
+    // Set default active filter
+    const allFilter = document.querySelector('.tags-filter-menu[data-filter="all"]');
+    if (allFilter) {
+        allFilter.classList.add('active');
     }
 }
 
 /**
  * Handle tags search
  */
-async function handleTagsSearch() {
-    const searchTerm = document.getElementById('tagsSearch').value.toLowerCase();
+async function handleTagsSearch(searchTerm = '') {
     const tags = await metaService.getAllTags();
     
+    if (!searchTerm) {
+        renderFilteredTags(tags);
+        return;
+    }
+    
     const filtered = tags.filter(tag => 
-        tag.name.toLowerCase().includes(searchTerm) ||
-        (tag.description && tag.description.toLowerCase().includes(searchTerm))
+        tag.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (tag.description && tag.description.toLowerCase().includes(searchTerm.toLowerCase()))
     );
     
     renderFilteredTags(filtered);
@@ -205,22 +350,19 @@ async function handleTagsSearch() {
 /**
  * Handle tags filtering
  */
-async function handleTagsFilter() {
-    const categoryFilter = document.getElementById('tagCategoryFilter').value;
-    const searchTerm = document.getElementById('tagsSearch').value.toLowerCase();
-    
+async function handleTagsFilter(filter = 'all') {
     let tags = await metaService.getAllTags();
     
-    // Apply filters
-    if (categoryFilter) {
-        tags = tags.filter(tag => tag.category === categoryFilter);
-    }
-    
-    if (searchTerm) {
-        tags = tags.filter(tag => 
-            tag.name.toLowerCase().includes(searchTerm) ||
-            (tag.description && tag.description.toLowerCase().includes(searchTerm))
-        );
+    // Apply filter
+    if (filter !== 'all') {
+        if (['priority', 'status', 'project', 'context'].includes(filter)) {
+            tags = tags.filter(tag => tag.category === filter);
+        } else if (filter === 'popular') {
+            tags = tags.filter(tag => (tag.usageCount || 0) > 5);
+        } else if (filter === 'recent') {
+            const weekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+            tags = tags.filter(tag => new Date(tag.createdAt) > weekAgo);
+        }
     }
     
     renderFilteredTags(tags);
@@ -271,49 +413,34 @@ async function handleTagsSort() {
  * Render filtered tags
  */
 function renderFilteredTags(tags) {
-    const tagsGrid = document.getElementById('tagsGrid');
+    const tagsList = document.getElementById('tagsList');
+    const totalTagsCount = document.getElementById('totalTagsCount');
     
-    if (!tagsGrid) return;
+    if (!tagsList) return;
+    
+    // Update count
+    if (totalTagsCount) {
+        totalTagsCount.textContent = tags.length;
+    }
     
     if (tags.length === 0) {
-        tagsGrid.innerHTML = `
-            <div class="col-span-full text-center p-8">
-                <div class="text-gray-500">
-                    <i data-lucide="search" class="w-12 h-12 mx-auto mb-2"></i>
-                    <p>No tags match your filters</p>
+        tagsList.innerHTML = `
+            <li class="list-row">
+                <div class="text-center py-8">
+                    <div class="text-base-content/60">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search mx-auto mb-2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                        <p>No tags match your filters</p>
+                    </div>
                 </div>
-            </div>
+            </li>
         `;
         return;
     }
     
-    tagsGrid.innerHTML = tags.map(tag => `
-        <div class="tag-card card bg-base-100 border border-base-300 hover:border-primary transition-colors cursor-pointer" 
-             data-tag-id="${tag.id}" onclick="showTagDetail('${tag.id}')">
-            <div class="card-body p-4">
-                <div class="flex items-start justify-between mb-2">
-                    <div class="flex items-center gap-2">
-                        <div class="w-3 h-3 rounded-full" style="background-color: ${tag.color}"></div>
-                        <h3 class="card-title text-sm">${tag.name}</h3>
-                    </div>
-                    <div class="dropdown dropdown-end">
-                        <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation()">
-                            <i data-lucide="more-horizontal"></i>
-                        </button>
-                        <div class="dropdown-content menu shadow bg-base-100 rounded-box w-48">
-                            <li><a onclick="editTag('${tag.id}')"><i data-lucide="edit"></i> Edit</a></li>
-                            <li><a onclick="deleteTag('${tag.id}')" class="text-error"><i data-lucide="trash-2"></i> Delete</a></li>
-                        </div>
-                    </div>
-                </div>
-                <p class="text-xs text-gray-500 mb-3">${tag.description || 'No description'}</p>
-                <div class="flex items-center justify-between text-xs">
-                    <span class="badge badge-outline badge-xs">${tag.category || 'general'}</span>
-                    <span class="text-gray-400">${tag.usageCount || 0} uses</span>
-                </div>
-            </div>
-        </div>
-    `).join('');
+    // Sort tags by usage count (descending)
+    tags.sort((a, b) => (b.usageCount || 0) - (a.usageCount || 0));
+    
+    tagsList.innerHTML = tags.map(tag => renderTagListItem(tag)).join('');
     
     // Reinitialize Lucide icons
     if (window.lucide) {
@@ -322,13 +449,23 @@ function renderFilteredTags(tags) {
 }
 
 /**
- * Close tag detail panel
+ * Show tags list view (go back from detail)
+ */
+function showTagsList() {
+    const listView = document.getElementById('tagsListView');
+    const detailView = document.getElementById('tagDetailView');
+    
+    if (listView && detailView) {
+        detailView.classList.add('hidden');
+        listView.classList.remove('hidden');
+    }
+}
+
+/**
+ * Close tag detail panel (backward compatibility)
  */
 export function closeTagDetail() {
-    const detailPanel = document.getElementById('tagDetailPanel');
-    if (detailPanel) {
-        detailPanel.classList.add('hidden');
-    }
+    showTagsList();
 }
 
 /**
@@ -363,9 +500,139 @@ function debounce(func, wait) {
     };
 }
 
+// ==============================================
+// UTILITY FUNCTIONS
+// ==============================================
+
+function getEntityTypeColor(type) {
+    const colors = {
+        task: 'primary',
+        note: 'info',
+        checklist: 'success',
+        project: 'warning'
+    };
+    return colors[type] || 'neutral';
+}
+
+function getEntityTypeIcon(type) {
+    const icons = {
+        task: '✓',
+        note: '📝',
+        checklist: '☑',
+        project: '📊'
+    };
+    return icons[type] || '📄';
+}
+
+// ==============================================
+// GLOBAL FUNCTIONS
+// ==============================================
+
+/**
+ * Open entity in appropriate context
+ * @param {string} entityId - Entity ID
+ */
+window.openEntity = function(entityId) {
+    console.log('Opening entity:', entityId);
+    // TODO: Implement entity opening logic
+};
+
+/**
+ * Export tags data
+ */
+window.exportTags = async function() {
+    try {
+        const allTags = await metaService.getAllTags();
+        const exportData = {
+            version: '1.0',
+            exportDate: new Date().toISOString(),
+            tags: allTags
+        };
+        
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `gridflow-tags-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        if (window.showStatusMessage) {
+            window.showStatusMessage(`Exported ${allTags.length} tags`, 'success');
+        }
+    } catch (error) {
+        console.error('Failed to export tags:', error);
+        if (window.showStatusMessage) {
+            window.showStatusMessage('Failed to export tags', 'error');
+        }
+    }
+};
+
+/**
+ * Import tags data
+ */
+window.importTags = async function() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    
+    input.onchange = async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        try {
+            const text = await file.text();
+            const data = JSON.parse(text);
+            
+            if (!data.tags || !Array.isArray(data.tags)) {
+                throw new Error('Invalid tags data format');
+            }
+            
+            let imported = 0;
+            for (const tagData of data.tags) {
+                try {
+                    // Remove ID to create new tag
+                    const { id, ...tagWithoutId } = tagData;
+                    await metaService.createTag(tagWithoutId);
+                    imported++;
+                } catch (error) {
+                    console.error('Failed to import tag:', tagData.name, error);
+                }
+            }
+            
+            if (window.showStatusMessage) {
+                window.showStatusMessage(`Imported ${imported} of ${data.tags.length} tags`, 'success');
+            }
+            
+            // Refresh the tags list
+            await renderTagsList();
+            
+        } catch (error) {
+            console.error('Failed to import tags:', error);
+            if (window.showStatusMessage) {
+                window.showStatusMessage('Failed to import tags', 'error');
+            }
+        }
+    };
+    
+    input.click();
+};
+
+/**
+ * Show tags list
+ */
+window.showTagsList = showTagsList;
+
+/**
+ * Show tag detail
+ */
+window.showTagDetail = showTagDetail;
+
 // Make functions available globally
 window.initializeTagsView = initializeTagsView;
 window.renderTagsGrid = renderTagsGrid;
-window.showTagDetail = showTagDetail;
+window.renderTagsList = renderTagsList;
 window.closeTagDetail = closeTagDetail;
 window.deleteTagFromView = deleteTagFromView;

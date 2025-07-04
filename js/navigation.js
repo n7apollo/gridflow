@@ -144,8 +144,10 @@ export function initializeSidebar() {
  * Toggle board dropdown
  */
 export function toggleBoardDropdown() {
+    const button = document.getElementById('currentBoardBtn');
+    const dropdownContainer = button ? button.closest('.dropdown') : null;
     const dropdown = document.getElementById('boardDropdown');
-    if (!dropdown) return; // Early return if element doesn't exist
+    if (!dropdown || !dropdownContainer) return;
     
     // Check if app data is available
     const appData = window.appData;
@@ -157,19 +159,32 @@ export function toggleBoardDropdown() {
         return;
     }
     
-    const isOpen = !dropdown.classList.contains('hidden');
+    // For DaisyUI dropdowns, we use the dropdown-open class
+    const isOpen = dropdownContainer.classList.contains('dropdown-open');
     
     if (isOpen) {
         closeBoardDropdown();
     } else {
-        if (window.populateBoardDropdown) window.populateBoardDropdown();
-        dropdown.classList.remove('hidden');
+        // Populate dropdown with board list
+        if (window.populateBoardDropdown) {
+            window.populateBoardDropdown();
+        } else {
+            // Fallback to populate boards directly
+            populateBoardList();
+        }
         
-        // Focus search input
+        // Open the dropdown using DaisyUI classes
+        dropdownContainer.classList.add('dropdown-open');
+        
+        // Focus search input and add event listener
         const searchInput = document.getElementById('boardSearchInput');
         if (searchInput) {
             searchInput.focus();
             searchInput.value = '';
+            
+            // Remove existing event listener and add new one
+            searchInput.removeEventListener('input', filterBoards);
+            searchInput.addEventListener('input', filterBoards);
         }
         
         // Close dropdown when clicking outside
@@ -183,9 +198,10 @@ export function toggleBoardDropdown() {
  * Close board dropdown
  */
 export function closeBoardDropdown() {
-    const dropdown = document.getElementById('boardDropdown');
-    if (dropdown) {
-        dropdown.classList.add('hidden');
+    const button = document.getElementById('currentBoardBtn');
+    const dropdownContainer = button ? button.closest('.dropdown') : null;
+    if (dropdownContainer) {
+        dropdownContainer.classList.remove('dropdown-open');
     }
     document.removeEventListener('click', handleBoardDropdownOutsideClick);
 }
@@ -195,12 +211,57 @@ export function closeBoardDropdown() {
  * @param {Event} event - Click event
  */
 function handleBoardDropdownOutsideClick(event) {
-    const dropdown = document.getElementById('boardDropdown');
     const button = document.getElementById('currentBoardBtn');
+    const dropdownContainer = button ? button.closest('.dropdown') : null;
     
-    if (dropdown && button && !dropdown.contains(event.target) && !button.contains(event.target)) {
+    if (dropdownContainer && !dropdownContainer.contains(event.target)) {
         closeBoardDropdown();
     }
+}
+
+/**
+ * Populate board list in dropdown (fallback function)
+ */
+function populateBoardList() {
+    const appData = window.appData;
+    if (!appData || !appData.boards) return;
+    
+    const boardList = document.getElementById('boardList');
+    if (!boardList) return;
+    
+    boardList.innerHTML = '';
+    
+    const boardEntries = Object.entries(appData.boards);
+    boardEntries.forEach(([boardId, board]) => {
+        const item = document.createElement('div');
+        item.className = `board-item p-2 hover:bg-base-200 rounded cursor-pointer ${boardId === appData.currentBoardId ? 'bg-base-200' : ''}`;
+        
+        const rowCount = board.rows ? board.rows.length : 0;
+        const cardCount = board.rows ? board.rows.reduce((total, row) => {
+            return total + Object.values(row.cards || {}).reduce((rowTotal, cards) => rowTotal + cards.length, 0);
+        }, 0) : 0;
+        
+        item.innerHTML = `
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="font-medium">${board.name}</div>
+                    <div class="text-xs text-base-content/60">${rowCount} rows • ${cardCount} cards</div>
+                </div>
+                ${boardId === appData.currentBoardId ? '<span class="badge badge-primary badge-sm">Current</span>' : ''}
+            </div>
+        `;
+        
+        if (boardId !== appData.currentBoardId) {
+            item.addEventListener('click', () => {
+                if (window.switchBoard) {
+                    window.switchBoard(boardId);
+                    closeBoardDropdown();
+                }
+            });
+        }
+        
+        boardList.appendChild(item);
+    });
 }
 
 /**
@@ -208,17 +269,17 @@ function handleBoardDropdownOutsideClick(event) {
  */
 export function filterBoards() {
     const searchInput = document.getElementById('boardSearchInput');
-    if (!searchInput) return; // Early return if element doesn't exist
+    if (!searchInput) return;
     
     const searchTerm = searchInput.value.toLowerCase();
-    const boardItems = document.querySelectorAll('.board-item');
+    const boardItems = document.querySelectorAll('#boardList .board-item');
     
     boardItems.forEach(item => {
         const boardName = item.textContent.toLowerCase();
         if (boardName.includes(searchTerm)) {
-            item.classList.remove('hidden');
+            item.style.display = '';
         } else {
-            item.classList.add('hidden');
+            item.style.display = 'none';
         }
     });
 }
