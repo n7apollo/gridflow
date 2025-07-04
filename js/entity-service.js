@@ -272,13 +272,50 @@ export class EntityService {
         .and(rel => rel.relationshipType === 'collection')
         .first();
       
-      // Only consider it orphaned if it has NO context at all
+      // FIXED: Only consider it orphaned if it has NO context at all AND was likely meant for a board
+      // Entities in weekly plans or collections should NOT be considered orphaned for board recovery
       if (!hasPosition && !inWeeklyPlan && !inCollection) {
         orphaned.push(entity);
       }
     }
     
+    console.log(`Found ${orphaned.length} truly orphaned entities (not in boards, weekly plans, or collections)`);
     return orphaned;
+  }
+
+  /**
+   * Clean up weekly items that were incorrectly placed on boards
+   * @param {string} boardId - Board ID to clean
+   * @returns {Promise<Object>} Cleanup results
+   */
+  async cleanupWeeklyItemsFromBoard(boardId) {
+    try {
+      console.log(`🧹 Cleaning up weekly items incorrectly placed on board ${boardId}...`);
+      
+      // Get all entities that are both in weekly plans and have board positions
+      const weeklyItems = await this.db.weeklyItems.toArray();
+      const weeklyEntityIds = weeklyItems.map(item => item.entityId);
+      
+      let cleanedCount = 0;
+      
+      for (const entityId of weeklyEntityIds) {
+        // Check if this weekly entity has a board position
+        const position = await this.getPosition(entityId, boardId, 'board');
+        if (position) {
+          // Remove the board position (keep it in weekly plans only)
+          await this.removePosition(entityId, boardId, 'board');
+          cleanedCount++;
+          console.log(`🧹 Removed weekly item ${entityId} from board position`);
+        }
+      }
+      
+      console.log(`✅ Cleaned ${cleanedCount} weekly items from board ${boardId}`);
+      return { success: true, cleanedCount };
+      
+    } catch (error) {
+      console.error('❌ Failed to clean weekly items from board:', error);
+      return { success: false, cleanedCount: 0, error: error.message };
+    }
   }
 
   async recoverOrphanedEntities(boardId) {

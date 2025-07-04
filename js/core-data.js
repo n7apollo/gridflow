@@ -495,6 +495,46 @@ export async function debugIndexedDB() {
 }
 
 /**
+ * Clean up weekly items that were incorrectly placed on boards
+ * @param {string} boardId - Board ID to clean (optional, defaults to current board)
+ * @returns {Promise<Object>} Cleanup results
+ */
+export async function cleanupWeeklyItemsFromBoard(boardId = null) {
+    try {
+        const targetBoardId = boardId || appData.currentBoardId || 'default';
+        console.log(`🧹 Starting cleanup of weekly items from board ${targetBoardId}...`);
+        
+        const result = await entityService.cleanupWeeklyItemsFromBoard(targetBoardId);
+        
+        if (result.success && result.cleanedCount > 0) {
+            // Update the in-memory board data
+            const board = await boardService.getById(targetBoardId);
+            appData.boards[targetBoardId] = board;
+            if (targetBoardId === appData.currentBoardId) {
+                setBoardData(board);
+            }
+            
+            console.log(`✅ Successfully cleaned ${result.cleanedCount} weekly items from board`);
+            
+            // Trigger a board re-render to show the changes
+            if (window.renderBoard) {
+                window.renderBoard();
+            }
+        }
+        
+        return result;
+        
+    } catch (error) {
+        console.error('❌ Failed to clean weekly items from board:', error);
+        return {
+            success: false,
+            cleanedCount: 0,
+            error: error.message
+        };
+    }
+}
+
+/**
  * Recover orphaned entities and place them in the first row, first column
  * @param {string} boardId - Board ID to recover entities for
  * @returns {Promise<Object>} Recovery results
@@ -543,3 +583,4 @@ window.switchBoard = switchBoard;
 window.getNextId = getNextId;
 window.incrementNextId = incrementNextId;
 window.recoverOrphanedEntities = recoverOrphanedEntities;
+window.cleanupWeeklyItemsFromBoard = cleanupWeeklyItemsFromBoard;

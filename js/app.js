@@ -193,20 +193,22 @@ async function verifyDataIntegrity() {
             console.warn('⚠️ No current board ID set in metadata');
         }
         
-        // Check for orphaned entities using new entity service
+        // Check for orphaned entities using new entity service (informational only)
         if (currentBoardId) {
             const orphanedEntities = await entityService.getOrphanedEntities(currentBoardId);
             
             if (orphanedEntities.length > 0) {
-                console.log(`ℹ️ Found ${orphanedEntities.length} orphaned entities (not positioned on current board)`);
+                console.log(`ℹ️ Found ${orphanedEntities.length} orphaned entities (not positioned on current board or in weekly plans/collections)`);
+                console.log('💡 Orphaned entities are NOT automatically recovered to prevent adding weekly items to boards');
                 
-                // Automatically recover orphaned entities
-                const recoveryResult = await entityService.recoverOrphanedEntities(currentBoardId);
-                if (recoveryResult.success) {
-                    console.log(`🔧 Recovered ${recoveryResult.recoveredCount} entities to ${recoveryResult.placementLocation.rowName} → ${recoveryResult.placementLocation.columnName}`);
-                } else {
-                    console.warn(`⚠️ Entity recovery failed`);
-                }
+                // DISABLED: Automatic recovery was adding weekly items to boards
+                // Only run recovery manually when needed
+                // const recoveryResult = await entityService.recoverOrphanedEntities(currentBoardId);
+                // if (recoveryResult.success) {
+                //     console.log(`🔧 Recovered ${recoveryResult.recoveredCount} entities to ${recoveryResult.placementLocation.rowName} → ${recoveryResult.placementLocation.columnName}`);
+                // } else {
+                //     console.warn(`⚠️ Entity recovery failed`);
+                // }
             }
         }
         
