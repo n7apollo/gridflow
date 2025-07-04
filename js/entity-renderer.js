@@ -44,6 +44,9 @@ export async function renderEntity(entityId, contextType, contextData = {}) {
         case CONTEXT_TYPES.TAG:
             return renderEntityAsTagItem(entity, contextData);
             
+        case CONTEXT_TYPES.PEOPLE:
+            return renderEntityAsPeopleItem(entity, contextData);
+            
         default:
             console.warn('Unknown context type for rendering:', contextType);
             return null;
@@ -401,6 +404,76 @@ function renderEntityAsTagItem(entity, contextData = {}) {
                 <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-32 text-sm">
                     <li><a onclick="event.stopPropagation(); entityRenderer.editEntity('${entity.id}')">Edit</a></li>
                     <li><a onclick="event.stopPropagation(); removeFromTag('${entity.id}', '${contextData.tagName}')">Remove Tag</a></li>
+                </ul>
+            </div>
+        </div>
+    `;
+    
+    itemElement.innerHTML = itemContent;
+    
+    // Render Lucide icons
+    if (window.lucide) {
+        window.lucide.createIcons({ attrs: { class: 'lucide' } });
+    }
+    
+    return itemElement;
+}
+
+/**
+ * Render entity as a people item (for person timeline view)
+ * @param {Object} entity - Entity object
+ * @param {Object} contextData - People context data
+ * @returns {HTMLElement} People item element
+ */
+function renderEntityAsPeopleItem(entity, contextData = {}) {
+    const itemElement = document.createElement('div');
+    itemElement.className = `people-entity border-l-2 border-${getEntityTypeColor(entity.type)} pl-4 pb-4 mb-4 hover:bg-base-200 rounded-r cursor-pointer`;
+    itemElement.dataset.entityId = entity.id;
+    itemElement.onclick = () => openEntity(entity.id);
+    
+    // Add context data attributes
+    if (contextData.personId) itemElement.dataset.personId = contextData.personId;
+    
+    // Format date for timeline
+    const date = new Date(entity.updatedAt || entity.createdAt);
+    const isToday = date.toDateString() === new Date().toDateString();
+    const isYesterday = date.toDateString() === new Date(Date.now() - 86400000).toDateString();
+    
+    let dateStr;
+    if (isToday) {
+        dateStr = `Today, ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+    } else if (isYesterday) {
+        dateStr = `Yesterday, ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+    } else {
+        dateStr = date.toLocaleDateString() + ', ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    }
+    
+    const itemContent = `
+        <div class="flex items-start gap-3">
+            <div class="flex-shrink-0 w-8 h-8 bg-${getEntityTypeColor(entity.type)} text-white rounded-full flex items-center justify-center text-sm">
+                ${getEntityTypeIcon(entity.type, true)}
+            </div>
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between mb-1">
+                    <h4 class="font-medium text-sm truncate">${entity.title || 'Untitled'}</h4>
+                    <span class="text-xs text-base-content/50">${dateStr}</span>
+                </div>
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="badge badge-outline badge-xs">${entity.type}</span>
+                    ${entity.completed ? '<span class="badge badge-success badge-xs">✓ Completed</span>' : ''}
+                    ${entity.priority && entity.priority !== 'medium' ? `<span class="badge badge-outline badge-xs">${entity.priority}</span>` : ''}
+                </div>
+                ${entity.content ? `<p class="text-xs text-base-content/70 line-clamp-2 mb-2">${entity.content}</p>` : ''}
+                ${entity.dueDate ? `<div class="text-xs text-base-content/50">Due: ${formatDate(entity.dueDate)}</div>` : ''}
+            </div>
+            <div class="dropdown dropdown-end">
+                <label tabindex="0" class="btn btn-ghost btn-xs btn-circle">
+                    <i data-lucide="more-horizontal" class="w-3 h-3"></i>
+                </label>
+                <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-40 text-sm">
+                    <li><a onclick="event.stopPropagation(); entityRenderer.editEntity('${entity.id}')">Edit</a></li>
+                    <li><a onclick="event.stopPropagation(); unlinkFromPerson('${entity.id}', '${contextData.personId}')">Unlink from Person</a></li>
+                    <li><a onclick="event.stopPropagation(); openEntityInContext('${entity.id}')">View in Context</a></li>
                 </ul>
             </div>
         </div>
@@ -860,6 +933,7 @@ function getContextFromElement(element) {
     if (element.closest('.task-container')) return CONTEXT_TYPES.TASK_LIST;
     if (element.closest('.collection-container')) return CONTEXT_TYPES.COLLECTION;
     if (element.closest('.tag-container')) return CONTEXT_TYPES.TAG;
+    if (element.closest('.people-container')) return CONTEXT_TYPES.PEOPLE;
     return CONTEXT_TYPES.BOARD; // default
 }
 
@@ -879,6 +953,7 @@ function getContextDataFromElement(element) {
     if (element.dataset.collectionId) contextData.collectionId = element.dataset.collectionId;
     if (element.dataset.tagId) contextData.tagId = element.dataset.tagId;
     if (element.dataset.tagName) contextData.tagName = element.dataset.tagName;
+    if (element.dataset.personId) contextData.personId = element.dataset.personId;
     
     // Try to determine from parent containers
     const boardContainer = element.closest('[data-board-id]');
@@ -985,6 +1060,9 @@ function populateEntityDetailModal(entity) {
     if (entity.type === ENTITY_TYPES.CHECKLIST) {
         populateChecklistItems(entity);
     }
+    
+    // Populate linked people
+    populateLinkedPeople(entity);
 }
 
 /**
@@ -1232,6 +1310,168 @@ function populateChecklistItems(entity) {
 }
 
 /**
+ * Populate linked people section
+ * @param {Object} entity - Entity object
+ */
+async function populateLinkedPeople(entity) {
+    const linkedPeopleContainer = document.getElementById('linkedPeople');
+    const personSelector = document.getElementById('personSelector');
+    
+    if (!linkedPeopleContainer) return;
+    
+    try {
+        // Clear existing content
+        linkedPeopleContainer.innerHTML = '';
+        
+        // Populate linked people
+        if (entity.people && entity.people.length > 0) {
+            for (const personId of entity.people) {
+                const person = await window.peopleService?.getPersonById(personId);
+                if (person) {
+                    const personElement = createLinkedPersonElement(person, entity.id);
+                    linkedPeopleContainer.appendChild(personElement);
+                }
+            }
+        } else {
+            linkedPeopleContainer.innerHTML = '<p class="text-xs text-base-content/60">No people linked</p>';
+        }
+        
+        // Populate person selector dropdown
+        if (personSelector) {
+            await populatePersonSelector(personSelector, entity.people || []);
+        }
+        
+        // Setup event listeners for people linking
+        setupPeopleLinkingListeners(entity);
+        
+    } catch (error) {
+        console.error('Failed to populate linked people:', error);
+        linkedPeopleContainer.innerHTML = '<p class="text-xs text-error">Failed to load linked people</p>';
+    }
+}
+
+/**
+ * Create linked person element
+ * @param {Object} person - Person object
+ * @param {string} entityId - Entity ID
+ * @returns {HTMLElement} Person element
+ */
+function createLinkedPersonElement(person, entityId) {
+    const personElement = document.createElement('div');
+    personElement.className = 'flex items-center justify-between p-2 bg-base-200 rounded';
+    
+    personElement.innerHTML = `
+        <div class="flex items-center gap-2">
+            <div class="avatar placeholder">
+                <div class="bg-primary text-primary-content rounded-full w-6 h-6">
+                    <span class="text-xs">${(person.name || person.title || 'P').charAt(0).toUpperCase()}</span>
+                </div>
+            </div>
+            <span class="text-sm font-medium">${person.name || person.title || 'Unnamed'}</span>
+        </div>
+        <button class="btn btn-xs btn-ghost btn-circle" onclick="unlinkPersonFromEntity('${entityId}', '${person.id}')">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+    `;
+    
+    return personElement;
+}
+
+/**
+ * Populate person selector dropdown
+ * @param {HTMLElement} selector - Select element
+ * @param {Array} excludeIds - Person IDs to exclude (already linked)
+ */
+async function populatePersonSelector(selector, excludeIds = []) {
+    try {
+        // Clear existing options except the first one
+        selector.innerHTML = '<option value="">Select a person...</option>';
+        
+        // Get all people
+        const people = await window.peopleService?.getAllPeople() || [];
+        
+        // Filter out already linked people
+        const availablePeople = people.filter(person => !excludeIds.includes(person.id));
+        
+        // Add options for available people
+        availablePeople.forEach(person => {
+            const option = document.createElement('option');
+            option.value = person.id;
+            option.textContent = person.name || person.title || 'Unnamed';
+            selector.appendChild(option);
+        });
+        
+        // If no people available, show message
+        if (availablePeople.length === 0) {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'No people available to link';
+            option.disabled = true;
+            selector.appendChild(option);
+        }
+        
+    } catch (error) {
+        console.error('Failed to populate person selector:', error);
+        selector.innerHTML = '<option value="">Error loading people</option>';
+    }
+}
+
+/**
+ * Setup event listeners for people linking functionality
+ * @param {Object} entity - Current entity
+ */
+function setupPeopleLinkingListeners(entity) {
+    const addPersonBtn = document.getElementById('addPersonLinkBtn');
+    const addPersonDropdown = document.getElementById('addPersonDropdown');
+    const confirmAddBtn = document.getElementById('confirmAddPerson');
+    const cancelAddBtn = document.getElementById('cancelAddPerson');
+    const personSelector = document.getElementById('personSelector');
+    
+    if (!addPersonBtn || !addPersonDropdown) return;
+    
+    // Show/hide dropdown
+    addPersonBtn.onclick = () => {
+        addPersonDropdown.classList.toggle('hidden');
+        if (!addPersonDropdown.classList.contains('hidden')) {
+            personSelector.focus();
+        }
+    };
+    
+    // Cancel adding person
+    if (cancelAddBtn) {
+        cancelAddBtn.onclick = () => {
+            addPersonDropdown.classList.add('hidden');
+            personSelector.value = '';
+        };
+    }
+    
+    // Confirm adding person
+    if (confirmAddBtn) {
+        confirmAddBtn.onclick = async () => {
+            const selectedPersonId = personSelector.value;
+            if (selectedPersonId) {
+                await linkPersonToEntity(entity.id, selectedPersonId);
+                addPersonDropdown.classList.add('hidden');
+                personSelector.value = '';
+            }
+        };
+    }
+    
+    // Handle Enter key in selector
+    if (personSelector) {
+        personSelector.onkeydown = (e) => {
+            if (e.key === 'Enter' && personSelector.value) {
+                confirmAddBtn.click();
+            } else if (e.key === 'Escape') {
+                cancelAddBtn.click();
+            }
+        };
+    }
+}
+
+/**
  * Duplicate current entity
  */
 function duplicateCurrentEntity() {
@@ -1262,6 +1502,68 @@ function addChecklistItemToEntity() {
     showStatusMessage('Add checklist item functionality coming soon', 'info');
 }
 
+/**
+ * Unlink entity from person
+ * @param {string} entityId - Entity ID
+ * @param {string} personId - Person ID
+ */
+async function unlinkFromPerson(entityId, personId) {
+    try {
+        const { removeEntityFromContext, CONTEXT_TYPES } = await import('./entity-core.js');
+        const success = await removeEntityFromContext(entityId, CONTEXT_TYPES.PEOPLE, { personId });
+        
+        if (success) {
+            showStatusMessage('Unlinked from person', 'success');
+            
+            // Remove the DOM element
+            const peopleItem = document.querySelector(`[data-entity-id="${entityId}"][data-person-id="${personId}"]`);
+            if (peopleItem) {
+                peopleItem.style.opacity = '0.5';
+                peopleItem.style.transition = 'opacity 0.3s ease';
+                setTimeout(() => {
+                    if (peopleItem.parentNode) {
+                        peopleItem.parentNode.removeChild(peopleItem);
+                    }
+                }, 300);
+            }
+            
+            // Refresh people view if available
+            if (window.peopleView && typeof window.peopleView.refreshPersonDetail === 'function') {
+                window.peopleView.refreshPersonDetail(personId);
+            }
+        } else {
+            showStatusMessage('Failed to unlink from person', 'error');
+        }
+    } catch (error) {
+        console.error('Failed to unlink from person:', error);
+        showStatusMessage('Failed to unlink from person', 'error');
+    }
+}
+
+/**
+ * Open entity in its original context (board/weekly/etc)
+ * @param {string} entityId - Entity ID
+ */
+async function openEntityInContext(entityId) {
+    try {
+        const { getEntity } = await import('./entity-core.js');
+        const entity = await getEntity(entityId);
+        
+        if (!entity) {
+            showStatusMessage('Entity not found', 'error');
+            return;
+        }
+        
+        // For now, just show the entity detail modal
+        // TODO: Add logic to navigate to the entity's primary context
+        await showEntityDetail(entityId);
+        
+    } catch (error) {
+        console.error('Failed to open entity in context:', error);
+        showStatusMessage('Failed to open entity', 'error');
+    }
+}
+
 // Make functions available globally
 if (typeof window !== 'undefined') {
     window.entityRenderer = {
@@ -1273,5 +1575,65 @@ if (typeof window !== 'undefined') {
         closeEntityDetailModal,
         getEntityTypeIcon
     };
+    
+    // Make people context functions globally available
+    window.unlinkFromPerson = unlinkFromPerson;
+    window.openEntityInContext = openEntityInContext;
+    window.linkPersonToEntity = linkPersonToEntity;
+    window.unlinkPersonFromEntity = unlinkPersonFromEntity;
+}
+
+/**
+ * Link a person to an entity (called from UI)
+ * @param {string} entityId - Entity ID
+ * @param {string} personId - Person ID
+ */
+async function linkPersonToEntity(entityId, personId) {
+    try {
+        const { addEntityToContext, CONTEXT_TYPES } = await import('./entity-core.js');
+        const success = await addEntityToContext(entityId, CONTEXT_TYPES.PEOPLE, { personId });
+        
+        if (success) {
+            showStatusMessage('Person linked successfully', 'success');
+            
+            // Refresh the linked people section
+            const entity = await getEntity(entityId);
+            if (entity) {
+                await populateLinkedPeople(entity);
+            }
+        } else {
+            showStatusMessage('Failed to link person', 'error');
+        }
+    } catch (error) {
+        console.error('Failed to link person to entity:', error);
+        showStatusMessage('Failed to link person', 'error');
+    }
+}
+
+/**
+ * Unlink a person from an entity (called from UI)
+ * @param {string} entityId - Entity ID
+ * @param {string} personId - Person ID
+ */
+async function unlinkPersonFromEntity(entityId, personId) {
+    try {
+        const { removeEntityFromContext, CONTEXT_TYPES } = await import('./entity-core.js');
+        const success = await removeEntityFromContext(entityId, CONTEXT_TYPES.PEOPLE, { personId });
+        
+        if (success) {
+            showStatusMessage('Person unlinked successfully', 'success');
+            
+            // Refresh the linked people section
+            const entity = await getEntity(entityId);
+            if (entity) {
+                await populateLinkedPeople(entity);
+            }
+        } else {
+            showStatusMessage('Failed to unlink person', 'error');
+        }
+    } catch (error) {
+        console.error('Failed to unlink person from entity:', error);
+        showStatusMessage('Failed to unlink person', 'error');
+    }
 }
 

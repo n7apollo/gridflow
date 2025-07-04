@@ -4,8 +4,8 @@
  */
 
 import peopleService from './people-service.js';
-import { ENTITY_TYPES } from './entity-core.js';
-import { getEntityTypeIcon } from './entity-renderer.js';
+import { ENTITY_TYPES, CONTEXT_TYPES, getEntitiesInContext } from './entity-core.js';
+import { getEntityTypeIcon, renderEntity } from './entity-renderer.js';
 
 let currentPersonId = null;
 let currentFilters = {
@@ -241,7 +241,7 @@ async function showPersonDetail(personId) {
 }
 
 /**
- * Render person timeline
+ * Render person timeline using unified entity renderer
  * @param {string} personId - Person ID
  */
 async function renderPersonTimeline(personId) {
@@ -249,18 +249,33 @@ async function renderPersonTimeline(personId) {
     if (!timelineContainer) return;
 
     try {
-        const timeline = await peopleService.getPersonTimeline(personId);
+        // Ensure timeline container has people-container class for context detection
+        timelineContainer.classList.add('people-container');
         
-        if (timeline.length === 0) {
+        // Use the unified entity system to get entities linked to this person
+        const linkedEntities = await getEntitiesInContext(CONTEXT_TYPES.PEOPLE, { personId });
+        
+        // Clear container
+        timelineContainer.innerHTML = '';
+        
+        if (linkedEntities.length === 0) {
             timelineContainer.innerHTML = `
                 <div class="text-center py-4 text-base-content/60">
                     <i data-lucide="file-text" class="w-8 h-8 mx-auto mb-2"></i>
-                    <p>No interactions yet</p>
-                    <p class="text-xs">Create a note or task to start tracking interactions</p>
+                    <p>No linked items yet</p>
+                    <p class="text-xs">Link tasks, notes, checklists, or projects to this person to see them here</p>
                 </div>
             `;
         } else {
-            timelineContainer.innerHTML = timeline.map(item => renderTimelineItem(item)).join('');
+            // Render each entity using the unified entity renderer in people context
+            for (const entity of linkedEntities) {
+                const contextData = { personId };
+                const entityElement = await renderEntity(entity.id, CONTEXT_TYPES.PEOPLE, contextData);
+                
+                if (entityElement) {
+                    timelineContainer.appendChild(entityElement);
+                }
+            }
         }
 
         // Re-render Lucide icons
@@ -275,44 +290,6 @@ async function renderPersonTimeline(personId) {
             </div>
         `;
     }
-}
-
-/**
- * Render a timeline item
- * @param {Object} item - Timeline item (entity with relationship context)
- * @returns {string} HTML for timeline item
- */
-function renderTimelineItem(item) {
-    const date = new Date(item.updatedAt || item.createdAt);
-    const dateStr = date.toLocaleDateString();
-    const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    
-    const icon = getEntityTypeIcon(item.type, true);
-    const typeColor = getEntityTypeColor(item.type);
-
-    return `
-        <div class="timeline-item border-l-2 border-${typeColor} pl-4 pb-4 hover:bg-base-200 rounded-r cursor-pointer"
-             onclick="openEntity('${item.id}')">
-            <div class="flex items-start gap-3">
-                <div class="flex-shrink-0 w-8 h-8 bg-${typeColor} text-white rounded-full flex items-center justify-center text-sm">
-                    ${icon}
-                </div>
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center justify-between mb-1">
-                        <h4 class="font-medium text-sm truncate">${item.title}</h4>
-                        <span class="text-xs text-base-content/60">${dateStr} ${timeStr}</span>
-                    </div>
-                    ${item.content ? `<p class="text-sm text-base-content/80 line-clamp-2">${item.content}</p>` : ''}
-                    <div class="flex items-center gap-2 mt-1">
-                        <span class="badge badge-${typeColor} badge-xs">${item.type}</span>
-                        ${item.completed ? '<span class="badge badge-success badge-xs">✓ Completed</span>' : ''}
-                        ${item.relationshipType && item.relationshipType !== 'mentions' ? 
-                            `<span class="badge badge-outline badge-xs">${item.relationshipType}</span>` : ''}
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
 }
 
 /**

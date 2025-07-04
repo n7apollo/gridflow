@@ -31,7 +31,8 @@ export const CONTEXT_TYPES = {
     WEEKLY: 'weekly',
     TASK_LIST: 'task_list',
     COLLECTION: 'collection',
-    TAG: 'tag'
+    TAG: 'tag',
+    PEOPLE: 'people'
 };
 
 /**
@@ -333,6 +334,9 @@ export async function addEntityToContext(entityId, contextType, contextData) {
             case CONTEXT_TYPES.TAG:
                 return await addEntityToTag(entityId, contextData.tagName || contextData.tagId);
                 
+            case CONTEXT_TYPES.PEOPLE:
+                return await addEntityToPerson(entityId, contextData.personId);
+                
             default:
                 console.warn('Unknown context type:', contextType);
                 return false;
@@ -368,6 +372,9 @@ export async function removeEntityFromContext(entityId, contextType, contextData
                 
             case CONTEXT_TYPES.TAG:
                 return await removeEntityFromTag(entityId, contextData.tagName || contextData.tagId);
+                
+            case CONTEXT_TYPES.PEOPLE:
+                return await removeEntityFromPerson(entityId, contextData.personId);
                 
             default:
                 console.warn('Unknown context type:', contextType);
@@ -647,6 +654,74 @@ async function removeEntityFromTag(entityId, tagName) {
 }
 
 /**
+ * Add entity to people context (bidirectional linking)
+ * @param {string} entityId - Entity ID
+ * @param {string} personId - Person ID
+ * @returns {Promise<boolean>} Success
+ */
+async function addEntityToPerson(entityId, personId) {
+    try {
+        // Use entity service's existing linkToPerson method if available
+        if (entityService.linkToPerson) {
+            await entityService.linkToPerson(entityId, personId);
+        } else {
+            // Fallback: Add person to entity's people array
+            const entity = await getEntity(entityId);
+            if (!entity) {
+                console.warn('Entity not found for person linking:', entityId);
+                return false;
+            }
+            
+            // Add person to entity's people array if not already present
+            if (!entity.people) entity.people = [];
+            if (!entity.people.includes(personId)) {
+                entity.people.push(personId);
+                await updateEntity(entityId, { people: entity.people });
+            }
+        }
+        
+        console.log('Linked entity to person:', entityId, personId);
+        return true;
+        
+    } catch (error) {
+        console.error('Failed to link entity to person:', error);
+        return false;
+    }
+}
+
+/**
+ * Remove entity from people context (bidirectional unlinking)
+ * @param {string} entityId - Entity ID
+ * @param {string} personId - Person ID
+ * @returns {Promise<boolean>} Success
+ */
+async function removeEntityFromPerson(entityId, personId) {
+    try {
+        // Use entity service's existing unlinkFromPerson method if available
+        if (entityService.unlinkFromPerson) {
+            await entityService.unlinkFromPerson(entityId, personId);
+        } else {
+            // Fallback: Remove person from entity's people array
+            const entity = await getEntity(entityId);
+            if (!entity || !entity.people) {
+                return true; // Already not linked
+            }
+            
+            // Remove person from entity's people array
+            entity.people = entity.people.filter(id => id !== personId);
+            await updateEntity(entityId, { people: entity.people });
+        }
+        
+        console.log('Unlinked entity from person:', entityId, personId);
+        return true;
+        
+    } catch (error) {
+        console.error('Failed to unlink entity from person:', error);
+        return false;
+    }
+}
+
+/**
  * Remove entity from weekly context
  * @param {string} entityId - Entity ID
  * @param {string} weekKey - Week key
@@ -768,6 +843,16 @@ export async function getEntitiesInContext(contextType, contextData) {
                 return await entityService.getByTags ? 
                     await entityService.getByTags([tagName]) :
                     await db.entities.where('tags').equals(tagName).toArray();
+            }
+            
+            case CONTEXT_TYPES.PEOPLE: {
+                // Get entities linked to a specific person (reverse chronological order)
+                const entities = await entityService.getByPerson ? 
+                    await entityService.getByPerson(contextData.personId) :
+                    await db.entities.where('people').equals(contextData.personId).toArray();
+                    
+                // Sort by updated date (newest first) for timeline view
+                return entities.sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
             }
             
             default:

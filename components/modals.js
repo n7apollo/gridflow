@@ -343,6 +343,36 @@ class GridFlowModals extends HTMLElement {
                                 </div>
                             </div>
 
+                            <!-- Linked People Card -->
+                            <div class="card bg-base-100 shadow-sm border border-base-300">
+                                <div class="card-body">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <h4 class="card-title text-base">Linked People</h4>
+                                        <button class="btn btn-xs btn-primary" id="addPersonLinkBtn">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                            </svg>
+                                            Link
+                                        </button>
+                                    </div>
+                                    <div class="space-y-2" id="linkedPeople">
+                                        <!-- Linked people will be populated here -->
+                                    </div>
+                                    
+                                    <!-- Add Person Dropdown (initially hidden) -->
+                                    <div class="hidden mt-3" id="addPersonDropdown">
+                                        <select class="select select-bordered select-sm w-full" id="personSelector">
+                                            <option value="">Select a person...</option>
+                                            <!-- People options will be populated here -->
+                                        </select>
+                                        <div class="flex gap-2 mt-2">
+                                            <button class="btn btn-xs btn-primary" id="confirmAddPerson">Add</button>
+                                            <button class="btn btn-xs btn-ghost" id="cancelAddPerson">Cancel</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Metadata Card -->
                             <div class="card bg-base-100 shadow-sm border border-base-300">
                                 <div class="card-body">
