@@ -11,34 +11,69 @@ import { showStatusMessage } from './utilities.js';
  * Show the add subtask form
  */
 export function showAddSubtaskForm() {
-    const form = document.getElementById('addSubtaskForm');
-    const input = document.getElementById('newSubtaskInput');
-    const button = document.getElementById('addSubtaskBtn');
+    // Get the current entity being edited
+    const currentEntity = window.currentEditingEntity;
+    if (!currentEntity) {
+        console.warn('No current entity found for showAddSubtaskForm');
+        return;
+    }
     
-    form.style.display = 'block';
-    button.style.display = 'none';
-    input.value = '';
-    input.focus();
+    const entityId = currentEntity.id;
+    const form = document.getElementById(`addSubtaskForm-${entityId}`);
+    const input = document.getElementById(`newSubtaskTitle-${entityId}`);
+    const button = document.querySelector('[data-action="addSubtask"]');
+    
+    if (form && input && button) {
+        form.style.display = 'block';
+        button.style.display = 'none';
+        input.value = '';
+        input.focus();
+    } else {
+        console.warn('Add subtask elements not found:', {
+            entityId,
+            formExists: !!form,
+            inputExists: !!input,
+            buttonExists: !!button
+        });
+    }
 }
 
 /**
  * Hide the add subtask form
  */
 export function hideAddSubtaskForm() {
-    const form = document.getElementById('addSubtaskForm');
-    const button = document.getElementById('addSubtaskBtn');
+    // Get the current entity being edited
+    const currentEntity = window.currentEditingEntity;
+    if (!currentEntity) {
+        console.warn('No current entity found for hideAddSubtaskForm');
+        return;
+    }
+    
+    const entityId = currentEntity.id;
+    const form = document.getElementById(`addSubtaskForm-${entityId}`);
+    const button = document.querySelector('[data-action="addSubtask"]');
     
     if (form) form.style.display = 'none';
-    if (button) button.style.display = 'inline-block';
+    if (button) button.style.display = 'inline-flex';
 }
 
 /**
  * Save a new subtask to the current detail card
  */
-export function saveNewSubtask() {
-    if (!window.currentDetailCard) return;
+export async function saveNewSubtask() {
+    const currentEntity = window.currentEditingEntity;
+    if (!currentEntity) {
+        console.warn('No current entity found for saveNewSubtask');
+        return;
+    }
     
-    const input = document.getElementById('newSubtaskInput');
+    const entityId = currentEntity.id;
+    const input = document.getElementById(`newSubtaskTitle-${entityId}`);
+    if (!input) {
+        console.warn('Subtask input not found:', `newSubtaskTitle-${entityId}`);
+        return;
+    }
+    
     const text = input.value.trim();
     
     if (!text) {
@@ -46,38 +81,60 @@ export function saveNewSubtask() {
         return;
     }
     
-    // Create new task entity
-    const taskId = `task_${window.appData.nextTaskId++}`;
-    window.appData.entities.tasks[taskId] = {
-        id: taskId,
-        text: text,
-        completed: false,
-        dueDate: null,
-        priority: 'medium',
-        parentType: 'card',
-        parentId: window.currentDetailCard.card.id.toString(),
-        tags: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-    };
-    
-    // Add task to card's taskIds
-    if (!window.currentDetailCard.card.taskIds) {
-        window.currentDetailCard.card.taskIds = [];
+    try {
+        // Import necessary functions from entity-core
+        const { createEntity, ENTITY_TYPES } = await import('./entity-core.js');
+        
+        // Create new task entity using proper entity system
+        const subtaskData = {
+            title: text,
+            content: '',
+            completed: false,
+            dueDate: null,
+            priority: 'medium',
+            tags: []
+        };
+        
+        const subtaskId = createEntity(ENTITY_TYPES.TASK, subtaskData);
+        
+        if (subtaskId) {
+            // Add subtask to current entity's subtasks
+            if (!currentEntity.subtasks) {
+                currentEntity.subtasks = [];
+            }
+            currentEntity.subtasks.push(subtaskId);
+            
+            // Update the entity
+            const { updateEntity } = await import('./entity-core.js');
+            updateEntity(currentEntity.id, { subtasks: currentEntity.subtasks });
+            
+            console.log('✅ Subtask created successfully:', subtaskId);
+            
+            // Clear form and hide it
+            input.value = '';
+            hideAddSubtaskForm();
+            
+            // Refresh the subtasks display
+            if (window.populateSubtasks) {
+                window.populateSubtasks(currentEntity.id);
+            }
+            
+            // Show success message
+            if (window.showStatusMessage) {
+                window.showStatusMessage('Subtask added successfully', 'success');
+            }
+        } else {
+            console.error('Failed to create subtask');
+            if (window.showStatusMessage) {
+                window.showStatusMessage('Failed to create subtask', 'error');
+            }
+        }
+    } catch (error) {
+        console.error('Error saving subtask:', error);
+        if (window.showStatusMessage) {
+            window.showStatusMessage('Error saving subtask', 'error');
+        }
     }
-    window.currentDetailCard.card.taskIds.push(taskId);
-    
-    // Update relationship mapping
-    const cardId = window.currentDetailCard.card.id.toString();
-    if (!window.appData.relationships.entityTasks[cardId]) {
-        window.appData.relationships.entityTasks[cardId] = [];
-    }
-    window.appData.relationships.entityTasks[cardId].push(taskId);
-    
-    saveData();
-    hideAddSubtaskForm();
-    if (window.renderSubtasks) window.renderSubtasks();
-    if (window.renderBoard) window.renderBoard(); // Update progress on cards
 }
 
 /**
@@ -203,7 +260,7 @@ export function toggleSubtask(taskId) {
 // Make functions available globally for backward compatibility
 window.showAddSubtaskForm = showAddSubtaskForm;
 window.hideAddSubtaskForm = hideAddSubtaskForm;
-window.saveNewSubtask = saveNewSubtask;
+// Note: saveNewSubtask is handled by entity-renderer.js for the new entity system
 window.startEditSubtask = startEditSubtask;
 window.saveEditSubtask = saveEditSubtask;
 window.cancelEditSubtask = cancelEditSubtask;

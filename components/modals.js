@@ -288,6 +288,13 @@ class GridFlowModals extends HTMLElement {
                                             Add Subtask
                                         </button>
                                     </div>
+                                    
+                                    <!-- Add Subtask Form Container (always present, initially hidden) -->
+                                    <div class="mt-4" id="addSubtaskFormContainer" style="display: none;">
+                                        <!-- Form will be inserted here -->
+                                    </div>
+                                    
+                                    <!-- Subtasks List Container -->
                                     <div class="mt-4" id="subtasksList">
                                         <!-- Subtasks will be populated here -->
                                     </div>

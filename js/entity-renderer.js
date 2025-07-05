@@ -816,6 +816,15 @@ export async function showEntityDetail(entityId) {
     // Store current entity for modal operations
     currentEditingEntity = entity;
     
+    // Clear any existing subtasks content first to prevent stale data
+    const subtasksList = document.getElementById('subtasksList');
+    const addSubtaskFormContainer = document.getElementById('addSubtaskFormContainer');
+    if (subtasksList) subtasksList.innerHTML = '';
+    if (addSubtaskFormContainer) {
+        addSubtaskFormContainer.innerHTML = '';
+        addSubtaskFormContainer.style.display = 'none';
+    }
+    
     // Populate modal with entity data
     populateEntityDetailModal(entity);
     
@@ -941,35 +950,6 @@ export function toggleCompletion(entityId) {
     }
 }
 
-/**
- * Remove entity from weekly planning
- */
-export function removeFromWeekly(entityId, weekKey) {
-    const success = removeEntityFromContext(entityId, CONTEXT_TYPES.WEEKLY, { weekKey });
-    
-    if (success) {
-        showStatusMessage('Removed from weekly plan', 'success');
-        
-        // Remove the DOM element
-        const weeklyItem = document.querySelector(`[data-entity-id="${entityId}"][data-week-key="${weekKey}"]`);
-        if (weeklyItem) {
-            weeklyItem.style.opacity = '0.5';
-            weeklyItem.style.transition = 'opacity 0.3s ease';
-            setTimeout(() => {
-                if (weeklyItem.parentNode) {
-                    weeklyItem.parentNode.removeChild(weeklyItem);
-                }
-            }, 300);
-        }
-        
-        // Update weekly progress
-        if (typeof window.weeklyPlanning?.updateWeekProgress === 'function') {
-            window.weeklyPlanning.updateWeekProgress();
-        }
-    } else {
-        showStatusMessage('Failed to remove from weekly plan', 'error');
-    }
-}
 
 /**
  * Refresh all displays of an entity
@@ -1352,7 +1332,7 @@ async function populateSubtasks(entity) {
         if (subtasksSection) subtasksSection.style.display = 'block';
     }
     
-    // Clear existing content
+    // Clear existing content in subtasks list (forms are now in separate container)
     subtasksList.innerHTML = '';
     
     try {
@@ -1401,10 +1381,6 @@ async function populateSubtasks(entity) {
         }
         
         subtasksList.appendChild(subtasksContainer);
-        
-        // Add new subtask form
-        const addSubtaskForm = createAddSubtaskForm(entity.id);
-        subtasksList.appendChild(addSubtaskForm);
         
     } catch (error) {
         console.error('Failed to populate subtasks:', error);
@@ -1507,33 +1483,34 @@ async function createSubtaskElement(subtask, parentEntityId) {
 function createAddSubtaskForm(parentEntityId) {
     const formElement = document.createElement('div');
     formElement.className = 'mt-4 p-3 bg-base-200 rounded-lg';
-    formElement.id = 'addSubtaskForm';
+    formElement.id = `addSubtaskForm-${parentEntityId}`;
+    formElement.style.display = 'none'; // Initially hidden
     
     formElement.innerHTML = `
         <div class="space-y-3">
             <div class="form-control">
-                <input type="text" id="newSubtaskTitle" class="input input-bordered input-sm w-full" 
+                <input type="text" id="newSubtaskTitle-${parentEntityId}" class="input input-bordered input-sm w-full" 
                        placeholder="Enter subtask title..." maxlength="200"
-                       onkeydown="if(event.key === 'Enter') saveNewSubtask('${parentEntityId}'); else if(event.key === 'Escape') cancelAddSubtask();">
+                       onkeydown="if(event.key === 'Enter') saveNewSubtask('${parentEntityId}'); else if(event.key === 'Escape') cancelAddSubtask('${parentEntityId}');">
             </div>
             <div class="form-control">
-                <textarea id="newSubtaskContent" class="textarea textarea-bordered textarea-sm w-full h-16 resize-none" 
+                <textarea id="newSubtaskContent-${parentEntityId}" class="textarea textarea-bordered textarea-sm w-full h-16 resize-none" 
                           placeholder="Add description (optional)..." maxlength="500"></textarea>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div class="form-control">
-                    <select id="newSubtaskPriority" class="select select-bordered select-sm">
+                    <select id="newSubtaskPriority-${parentEntityId}" class="select select-bordered select-sm">
                         <option value="low">🟢 Low Priority</option>
                         <option value="medium" selected>🟡 Medium Priority</option>
                         <option value="high">🔴 High Priority</option>
                     </select>
                 </div>
                 <div class="form-control">
-                    <input type="date" id="newSubtaskDueDate" class="input input-bordered input-sm">
+                    <input type="date" id="newSubtaskDueDate-${parentEntityId}" class="input input-bordered input-sm">
                 </div>
             </div>
             <div class="flex justify-end gap-2">
-                <button class="btn btn-ghost btn-sm" onclick="cancelAddSubtask()">Cancel</button>
+                <button class="btn btn-ghost btn-sm" onclick="cancelAddSubtask('${parentEntityId}')">Cancel</button>
                 <button class="btn btn-primary btn-sm" onclick="saveNewSubtask('${parentEntityId}')">
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
@@ -1860,19 +1837,42 @@ function deleteCurrentEntity() {
  * Show add subtask form
  */
 function addSubtaskToEntity() {
-    const addSubtaskForm = document.getElementById('addSubtaskForm');
+    // Get the current entity ID from currentEditingEntity
+    if (!currentEditingEntity) {
+        console.error('No current editing entity found');
+        return;
+    }
+    
+    const entityId = currentEditingEntity.id;
+    const formContainer = document.getElementById('addSubtaskFormContainer');
     const addSubtaskBtn = document.querySelector('[data-action="addSubtask"]');
     
-    if (addSubtaskForm && addSubtaskBtn) {
-        addSubtaskForm.style.display = 'block';
-        addSubtaskBtn.style.display = 'none';
-        
-        // Focus on title input
-        const titleInput = document.getElementById('newSubtaskTitle');
-        if (titleInput) {
-            titleInput.focus();
-        }
+    if (!formContainer) {
+        console.error('Add subtask form container not found');
+        return;
     }
+    
+    // Clear any existing form
+    formContainer.innerHTML = '';
+    
+    // Create the form and insert it into the dedicated container
+    const formElement = createAddSubtaskForm(entityId);
+    formContainer.appendChild(formElement);
+    
+    // Show the container and hide the button
+    formContainer.style.display = 'block';
+    if (addSubtaskBtn) addSubtaskBtn.style.display = 'none';
+    
+    // Show the form itself
+    formElement.style.display = 'block';
+    
+    // Focus on title input
+    const titleInput = document.getElementById(`newSubtaskTitle-${entityId}`);
+    if (titleInput) {
+        titleInput.focus();
+    }
+    
+    console.log('✅ Subtask form displayed successfully in dedicated container');
 }
 
 function addChecklistItemToEntity() {
@@ -1948,7 +1948,6 @@ if (typeof window !== 'undefined') {
         editEntity,
         showEntityDetail,
         toggleCompletion,
-        removeFromWeekly,
         closeEntityDetailModal,
         getEntityTypeIcon
     };
@@ -2125,10 +2124,10 @@ async function toggleSubtaskCompletion(subtaskId, parentEntityId) {
  */
 async function saveNewSubtask(parentEntityId) {
     try {
-        const titleInput = document.getElementById('newSubtaskTitle');
-        const contentInput = document.getElementById('newSubtaskContent');
-        const prioritySelect = document.getElementById('newSubtaskPriority');
-        const dueDateInput = document.getElementById('newSubtaskDueDate');
+        const titleInput = document.getElementById(`newSubtaskTitle-${parentEntityId}`);
+        const contentInput = document.getElementById(`newSubtaskContent-${parentEntityId}`);
+        const prioritySelect = document.getElementById(`newSubtaskPriority-${parentEntityId}`);
+        const dueDateInput = document.getElementById(`newSubtaskDueDate-${parentEntityId}`);
         
         if (!titleInput || !titleInput.value.trim()) {
             showStatusMessage('Please enter a subtask title', 'warning');
@@ -2156,7 +2155,7 @@ async function saveNewSubtask(parentEntityId) {
             if (dueDateInput) dueDateInput.value = '';
             
             // Hide form
-            cancelAddSubtask();
+            cancelAddSubtask(parentEntityId);
             
             // Refresh the subtasks display
             const parentEntity = await getEntity(parentEntityId);
@@ -2176,23 +2175,28 @@ async function saveNewSubtask(parentEntityId) {
 /**
  * Cancel adding a new subtask
  */
-function cancelAddSubtask() {
-    const addSubtaskForm = document.getElementById('addSubtaskForm');
+function cancelAddSubtask(parentEntityId) {
+    // If no parentEntityId provided, get from currentEditingEntity
+    if (!parentEntityId && currentEditingEntity) {
+        parentEntityId = currentEditingEntity.id;
+    }
+    
+    if (!parentEntityId) {
+        console.error('No parent entity ID available for cancelAddSubtask');
+        return;
+    }
+    
+    const formContainer = document.getElementById('addSubtaskFormContainer');
     const addSubtaskBtn = document.querySelector('[data-action="addSubtask"]');
     
-    if (addSubtaskForm) addSubtaskForm.style.display = 'none';
+    // Hide the form container and show the button
+    if (formContainer) formContainer.style.display = 'none';
     if (addSubtaskBtn) addSubtaskBtn.style.display = 'inline-flex';
     
-    // Clear form
-    const titleInput = document.getElementById('newSubtaskTitle');
-    const contentInput = document.getElementById('newSubtaskContent');
-    const prioritySelect = document.getElementById('newSubtaskPriority');
-    const dueDateInput = document.getElementById('newSubtaskDueDate');
+    // Clear the form container
+    if (formContainer) formContainer.innerHTML = '';
     
-    if (titleInput) titleInput.value = '';
-    if (contentInput) contentInput.value = '';
-    if (prioritySelect) prioritySelect.value = 'medium';
-    if (dueDateInput) dueDateInput.value = '';
+    console.log('✅ Subtask form cancelled and container cleared');
 }
 
 /**
@@ -2448,6 +2452,7 @@ if (typeof window !== 'undefined') {
     
     // Subtask management functions
     window.addSubtaskToEntity = addSubtaskToEntity;
+    window.addSubtask = addSubtaskToEntity; // Alias for the button data-action
     window.toggleSubtaskCompletion = toggleSubtaskCompletion;
     window.saveNewSubtask = saveNewSubtask;
     window.cancelAddSubtask = cancelAddSubtask;
