@@ -158,15 +158,33 @@ function renderEntityAsWeeklyItem(entity, contextData) {
         case ENTITY_TYPES.TASK:
             const priorityColor = entity.priority === 'high' ? 'badge-error' : 
                                 entity.priority === 'low' ? 'badge-info' : 'badge-neutral';
+            
+            // Check if this is a subtask
+            const isSubtask = entity.parentEntityId;
+            
             itemContent = `
                 <div class="flex items-start gap-3">
+                    ${isSubtask ? `
+                        <!-- Subtask indicator -->
+                        <div class="flex-shrink-0 mt-1">
+                            <i data-lucide="corner-down-right" class="w-3 h-3 text-base-content/40"></i>
+                        </div>
+                    ` : ''}
                     <input type="checkbox" class="checkbox checkbox-sm mt-1" ${entity.completed ? 'checked' : ''} 
                            onchange="entityRenderer.toggleCompletion('${entity.id}')">
                     <div class="flex-1 min-w-0">
+                        ${isSubtask ? `
+                            <!-- Parent task context for subtasks -->
+                            <div class="subtask-parent-context text-xs text-base-content/50 mb-1" id="parent-context-${entity.id}">
+                                <i data-lucide="link" class="w-3 h-3 inline mr-1"></i>
+                                <span>Loading parent...</span>
+                            </div>
+                        ` : ''}
                         <div class="font-medium text-sm mb-1 ${entity.completed ? 'line-through text-base-content/60' : ''}">${entity.title}</div>
                         <div class="flex flex-wrap gap-2 mb-2">
                             ${entity.priority !== 'medium' ? `<div class="badge ${priorityColor} badge-xs">${entity.priority}</div>` : ''}
                             ${entity.dueDate ? `<div class="badge badge-outline badge-xs">Due: ${formatDate(entity.dueDate)}</div>` : ''}
+                            ${isSubtask ? '<div class="badge badge-ghost badge-xs">subtask</div>' : ''}
                         </div>
                         ${entity.content ? `<div class="text-xs text-base-content/70 ${entity.completed ? 'line-through' : ''}">${entity.content}</div>` : ''}
                     </div>
@@ -176,6 +194,7 @@ function renderEntityAsWeeklyItem(entity, contextData) {
                         </label>
                         <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-32 text-sm">
                             <li><a onclick="entityRenderer.editEntity('${entity.id}')">Edit</a></li>
+                            ${!isSubtask ? `<li><a onclick="entityRenderer.addSubtaskToWeekly('${entity.id}', '${contextData.weekKey}', '${contextData.day}')">Add Subtask</a></li>` : ''}
                             <li><a onclick="entityRenderer.removeFromWeekly('${entity.id}', '${contextData.weekKey}')">Remove</a></li>
                         </ul>
                     </div>
@@ -264,12 +283,50 @@ function renderEntityAsWeeklyItem(entity, contextData) {
     
     itemElement.innerHTML = itemContent;
     
+    // Load parent context asynchronously for subtasks
+    if (entity.type === ENTITY_TYPES.TASK && entity.parentEntityId) {
+        loadParentContextAsync(entity.parentEntityId, entity.id);
+    }
+    
     // Render Lucide icons
     if (window.lucide) {
         window.lucide.createIcons({ attrs: { class: 'lucide' } });
     }
     
     return itemElement;
+}
+
+/**
+ * Load parent context asynchronously for subtasks
+ * @param {string} parentEntityId - Parent entity ID
+ * @param {string} subtaskEntityId - Subtask entity ID
+ */
+async function loadParentContextAsync(parentEntityId, subtaskEntityId) {
+    try {
+        const parentEntity = await getEntity(parentEntityId);
+        const contextElement = document.getElementById(`parent-context-${subtaskEntityId}`);
+        
+        if (parentEntity && contextElement) {
+            contextElement.innerHTML = `
+                <i data-lucide="link" class="w-3 h-3 inline mr-1"></i>
+                <span>Subtask of: <strong>${parentEntity.title}</strong></span>
+            `;
+            
+            // Re-render icons
+            if (window.lucide) {
+                window.lucide.createIcons({ attrs: { class: 'lucide' } });
+            }
+        }
+    } catch (error) {
+        console.error('Failed to load parent context:', error);
+        const contextElement = document.getElementById(`parent-context-${subtaskEntityId}`);
+        if (contextElement) {
+            contextElement.innerHTML = `
+                <i data-lucide="alert-circle" class="w-3 h-3 inline mr-1"></i>
+                <span class="text-error">Failed to load parent</span>
+            `;
+        }
+    }
 }
 
 /**
@@ -2214,6 +2271,155 @@ async function deleteSubtask(subtaskId, parentEntityId) {
     }
 }
 
+/**
+ * Add a subtask to a weekly plan
+ * @param {string} parentEntityId - Parent task entity ID
+ * @param {string} weekKey - Week key
+ * @param {string} day - Day of the week
+ */
+async function addSubtaskToWeekly(parentEntityId, weekKey, day) {
+    try {
+        // Import the entity core and weekly planning modules
+        const { addSubtask } = await import('./entity-core.js');
+        const { getCurrentWeekKey, addEntityToWeeklyPlan } = await import('./weekly-planning.js');
+        
+        // Create a modal for subtask details
+        const modal = document.createElement('div');
+        modal.className = 'modal modal-open';
+        modal.innerHTML = `
+            <div class="modal-box">
+                <h3 class="font-bold text-lg">Add Subtask to Weekly Plan</h3>
+                <form id="weeklySubtaskForm" class="space-y-4 mt-4">
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Subtask Title *</span>
+                        </label>
+                        <input type="text" id="subtaskTitle" class="input input-bordered" placeholder="Enter subtask title" required>
+                    </div>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Description</span>
+                        </label>
+                        <textarea id="subtaskDescription" class="textarea textarea-bordered" placeholder="Optional description"></textarea>
+                    </div>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Priority</span>
+                        </label>
+                        <select id="subtaskPriority" class="select select-bordered">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Due Date</span>
+                        </label>
+                        <input type="date" id="subtaskDueDate" class="input input-bordered">
+                    </div>
+                    <div class="modal-action">
+                        <button type="button" class="btn btn-ghost" onclick="closeWeeklySubtaskModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Add to Weekly Plan</button>
+                    </div>
+                </form>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Focus the title input
+        const titleInput = modal.querySelector('#subtaskTitle');
+        if (titleInput) titleInput.focus();
+        
+        // Handle form submission
+        const form = modal.querySelector('#weeklySubtaskForm');
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            try {
+                const title = modal.querySelector('#subtaskTitle').value.trim();
+                const description = modal.querySelector('#subtaskDescription').value.trim();
+                const priority = modal.querySelector('#subtaskPriority').value;
+                const dueDate = modal.querySelector('#subtaskDueDate').value || null;
+                
+                if (!title) {
+                    showStatusMessage('Please enter a subtask title', 'error');
+                    return;
+                }
+                
+                // Create the subtask entity
+                const subtaskEntity = await addSubtask(parentEntityId, {
+                    title,
+                    content: description,
+                    priority,
+                    dueDate
+                });
+                
+                // Add to weekly plan
+                await addEntityToWeeklyPlan(subtaskEntity.id, weekKey, day);
+                
+                // Close modal and refresh weekly view
+                closeWeeklySubtaskModal();
+                showStatusMessage('Subtask added to weekly plan successfully', 'success');
+                
+                // Refresh weekly planning view
+                if (window.renderWeeklyPlan) {
+                    window.renderWeeklyPlan();
+                }
+                
+            } catch (error) {
+                console.error('Failed to add subtask to weekly plan:', error);
+                showStatusMessage('Failed to add subtask', 'error');
+            }
+        });
+        
+        // Handle Escape key
+        modal.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeWeeklySubtaskModal();
+            }
+        });
+        
+        // Make close function available globally
+        window.closeWeeklySubtaskModal = () => {
+            modal.remove();
+            delete window.closeWeeklySubtaskModal;
+        };
+        
+    } catch (error) {
+        console.error('Failed to create weekly subtask modal:', error);
+        showStatusMessage('Failed to open subtask creation form', 'error');
+    }
+}
+
+/**
+ * Remove an entity from weekly plan
+ * @param {string} entityId - Entity ID to remove
+ * @param {string} weekKey - Week key
+ */
+async function removeFromWeekly(entityId, weekKey) {
+    try {
+        // Import the weekly planning module
+        const { removeEntityFromWeeklyPlan } = await import('./weekly-planning.js');
+        
+        // Confirm removal
+        if (confirm('Remove this item from the weekly plan?')) {
+            await removeEntityFromWeeklyPlan(entityId, weekKey);
+            showStatusMessage('Item removed from weekly plan', 'success');
+            
+            // Refresh weekly planning view
+            if (window.renderWeeklyPlan) {
+                window.renderWeeklyPlan();
+            }
+        }
+        
+    } catch (error) {
+        console.error('Failed to remove from weekly plan:', error);
+        showStatusMessage('Failed to remove item', 'error');
+    }
+}
+
 // Make functions available globally
 if (typeof window !== 'undefined') {
     window.entityRenderer = {
@@ -2229,7 +2435,9 @@ if (typeof window !== 'undefined') {
         cancelAddSubtask,
         editSubtask,
         moveSubtaskToTopLevel,
-        deleteSubtask
+        deleteSubtask,
+        addSubtaskToWeekly,
+        removeFromWeekly
     };
     
     // Individual global functions for backward compatibility
@@ -2246,5 +2454,7 @@ if (typeof window !== 'undefined') {
     window.editSubtask = editSubtask;
     window.moveSubtaskToTopLevel = moveSubtaskToTopLevel;
     window.deleteSubtask = deleteSubtask;
+    window.addSubtaskToWeekly = addSubtaskToWeekly;
+    window.removeFromWeekly = removeFromWeekly;
 }
 

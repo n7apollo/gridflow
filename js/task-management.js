@@ -6,7 +6,7 @@
 import { getAppData, getBoardData, setAppData, setBoardData, saveData } from './core-data.js';
 import { showStatusMessage } from './utilities.js';
 import { db } from './db.js';
-import { ENTITY_TYPES } from './entity-core.js';
+import { ENTITY_TYPES, getEntity, getSubtasks, toggleEntityCompletion, calculateTaskProgress } from './entity-core.js';
 
 // Current editing state
 let currentEditingTask = null;
@@ -582,13 +582,25 @@ export function createTaskElement(task) {
                         ${priority.icon}
                     </div>
                     
-                    <!-- Subtask Count -->
+                    <!-- Subtask Count and Progress -->
                     ${hasSubtasks ? `
-                        <div class="badge badge-outline badge-xs">
+                        <div class="badge badge-outline badge-xs" id="subtask-progress-${task.id}" data-subtask-count="${subtaskCount}">
                             ${subtaskCount} subtask${subtaskCount !== 1 ? 's' : ''}
                         </div>
                     ` : ''}
                 </div>
+                
+                <!-- Progress Bar for Tasks with Subtasks -->
+                ${hasSubtasks ? `
+                    <div class="progress-container mt-2" id="progress-container-${task.id}">
+                        <div class="flex items-center gap-2">
+                            <div class="progress progress-primary w-full h-2">
+                                <div class="progress-bar bg-primary h-full rounded transition-all duration-300" style="width: 0%" id="progress-bar-${task.id}"></div>
+                            </div>
+                            <span class="text-xs text-base-content/60 font-medium" id="progress-text-${task.id}">0%</span>
+                        </div>
+                    </div>
+                ` : ''}
                 
                 <!-- Metadata Row -->
                 <div class="flex items-center gap-1 mt-1">
@@ -646,12 +658,7 @@ export function createTaskElement(task) {
                 <div class="ml-6 mt-2 p-3 bg-base-200/50 rounded-box">
                     <div class="text-xs text-base-content/60 mb-2 font-medium">Subtasks (${subtaskCount}):</div>
                     <div class="space-y-1" id="subtask-list-${task.id}">
-                        ${task.taskIds.map(subtaskId => `
-                            <div class="flex items-center gap-2 text-sm p-1 rounded hover:bg-base-300/50">
-                                <div class="w-2 h-2 rounded-full bg-base-content/30"></div>
-                                <span class="text-base-content/70">Subtask ${subtaskId}</span>
-                            </div>
-                        `).join('')}
+                        <!-- Subtasks will be populated asynchronously -->
                     </div>
                 </div>
             </div>
@@ -665,6 +672,11 @@ export function createTaskElement(task) {
             console.log('Task clicked:', task.id);
         }
     });
+    
+    // Populate subtasks asynchronously if this task has subtasks
+    if (hasSubtasks) {
+        populateSubtasksAsync(task.id);
+    }
     
     return taskElement;
 }
@@ -1199,6 +1211,110 @@ export function setupTaskManagementEvents() {
 }
 
 /**
+ * Populate subtasks asynchronously for a task
+ * @param {string} taskEntityId - Task entity ID
+ */
+async function populateSubtasksAsync(taskEntityId) {
+    try {
+        const subtasks = await getSubtasks(taskEntityId);
+        const subtaskListContainer = document.getElementById(`subtask-list-${taskEntityId}`);
+        
+        if (!subtaskListContainer || !subtasks || subtasks.length === 0) {
+            return;
+        }
+        
+        // Clear existing content
+        subtaskListContainer.innerHTML = '';
+        
+        // Render each subtask
+        for (const subtask of subtasks) {
+            const subtaskElement = createSubtaskElementForTaskList(subtask, taskEntityId);
+            subtaskListContainer.appendChild(subtaskElement);
+        }
+        
+        // Calculate and update progress
+        await updateTaskProgress(taskEntityId, subtasks);
+        
+    } catch (error) {
+        console.error('Failed to populate subtasks for task:', taskEntityId, error);
+    }
+}
+
+/**
+ * Create a subtask element for display in the task list
+ * @param {Object} subtask - Subtask entity
+ * @param {string} parentTaskId - Parent task ID
+ * @returns {HTMLElement} Subtask element
+ */
+function createSubtaskElementForTaskList(subtask, parentTaskId) {
+    const subtaskElement = document.createElement('div');
+    subtaskElement.className = `flex items-center gap-2 text-sm p-2 rounded hover:bg-base-300/50 transition-colors group ${
+        subtask.completed ? 'opacity-60' : ''
+    }`;
+    subtaskElement.dataset.subtaskId = subtask.id;
+    
+    subtaskElement.innerHTML = `
+        <!-- Checkbox -->
+        <input type="checkbox" 
+               class="checkbox checkbox-xs" 
+               ${subtask.completed ? 'checked' : ''}
+               onchange="window.taskManagement.toggleSubtaskCompletion('${subtask.id}', '${parentTaskId}')"
+               onclick="event.stopPropagation()">
+        
+        <!-- Connection line -->
+        <div class="w-4 h-px bg-base-content/20 flex-shrink-0"></div>
+        
+        <!-- Subtask content -->
+        <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+                <!-- Title -->
+                <span class="font-medium text-sm ${
+                    subtask.completed ? 'line-through text-base-content/50' : 'text-base-content'
+                }">
+                    ${subtask.title || 'Untitled Subtask'}
+                </span>
+                
+                <!-- Priority badge -->
+                ${subtask.priority && subtask.priority !== 'medium' ? `
+                    <span class="badge badge-xs ${
+                        subtask.priority === 'high' ? 'badge-error' : 
+                        subtask.priority === 'low' ? 'badge-ghost' : 'badge-warning'
+                    }">
+                        ${subtask.priority}
+                    </span>
+                ` : ''}
+                
+                <!-- Due date -->
+                ${subtask.dueDate ? `
+                    <span class="badge badge-xs badge-outline text-xs">
+                        <i data-lucide="calendar" class="w-2 h-2 mr-1"></i>
+                        ${new Date(subtask.dueDate).toLocaleDateString()}
+                    </span>
+                ` : ''}
+            </div>
+            
+            <!-- Description -->
+            ${subtask.content ? `
+                <div class="text-xs text-base-content/60 mt-1 line-clamp-1">
+                    ${subtask.content}
+                </div>
+            ` : ''}
+        </div>
+        
+        <!-- Actions -->
+        <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button class="btn btn-ghost btn-xs" 
+                    onclick="event.stopPropagation(); window.taskManagement.editSubtaskFromList('${subtask.id}', '${parentTaskId}')"
+                    title="Edit subtask">
+                <i data-lucide="edit-2" class="w-3 h-3"></i>
+            </button>
+        </div>
+    `;
+    
+    return subtaskElement;
+}
+
+/**
  * Toggle subtasks visibility for a task
  * @param {string} taskId - Task ID
  */
@@ -1212,10 +1328,108 @@ export function toggleSubtasks(taskId) {
         if (isHidden) {
             subtasksContainer.classList.remove('hidden');
             toggleButton.style.transform = 'rotate(90deg)';
+            // Populate subtasks when expanding (in case they weren't loaded yet)
+            populateSubtasksAsync(taskId);
         } else {
             subtasksContainer.classList.add('hidden');
             toggleButton.style.transform = 'rotate(0deg)';
         }
+    }
+}
+
+/**
+ * Update task progress indicators
+ * @param {string} taskEntityId - Task entity ID
+ * @param {Array} subtasks - Array of subtask entities (optional, will fetch if not provided)
+ */
+async function updateTaskProgress(taskEntityId, subtasks = null) {
+    try {
+        // Get subtasks if not provided
+        if (!subtasks) {
+            subtasks = await getSubtasks(taskEntityId);
+        }
+        
+        if (!subtasks || subtasks.length === 0) {
+            return; // No subtasks, no progress to show
+        }
+        
+        // Calculate progress
+        const completedCount = subtasks.filter(subtask => subtask.completed).length;
+        const totalCount = subtasks.length;
+        const progressPercent = Math.round((completedCount / totalCount) * 100);
+        
+        // Update progress badge
+        const progressBadge = document.getElementById(`subtask-progress-${taskEntityId}`);
+        if (progressBadge) {
+            const isCompleted = progressPercent === 100;
+            progressBadge.className = `badge badge-xs ${
+                isCompleted ? 'badge-success' : 'badge-outline'
+            }`;
+            progressBadge.innerHTML = `
+                ${completedCount}/${totalCount} subtasks ${isCompleted ? '✓' : ''}
+            `;
+        }
+        
+        // Update progress bar
+        const progressBar = document.getElementById(`progress-bar-${taskEntityId}`);
+        const progressText = document.getElementById(`progress-text-${taskEntityId}`);
+        
+        if (progressBar && progressText) {
+            progressBar.style.width = `${progressPercent}%`;
+            progressText.textContent = `${progressPercent}%`;
+            
+            // Update colors based on progress
+            progressBar.className = `progress-bar h-full rounded transition-all duration-300 ${
+                progressPercent === 100 ? 'bg-success' : 
+                progressPercent >= 50 ? 'bg-primary' : 'bg-warning'
+            }`;
+        }
+        
+    } catch (error) {
+        console.error('Failed to update task progress:', error);
+    }
+}
+
+/**
+ * Toggle subtask completion from the task list
+ * @param {string} subtaskId - Subtask entity ID
+ * @param {string} parentTaskId - Parent task entity ID
+ */
+export async function toggleSubtaskCompletion(subtaskId, parentTaskId) {
+    try {
+        await toggleEntityCompletion(subtaskId);
+        
+        // Refresh the subtask display  
+        await populateSubtasksAsync(parentTaskId);
+        
+        // Update progress indicators
+        await updateTaskProgress(parentTaskId);
+        
+        // Update the parent task display to reflect progress changes
+        renderTaskList();
+        
+        showStatusMessage('Subtask updated successfully', 'success');
+        
+    } catch (error) {
+        console.error('Failed to toggle subtask completion:', error);
+        showStatusMessage('Failed to update subtask', 'error');
+    }
+}
+
+/**
+ * Edit a subtask from the task list
+ * @param {string} subtaskId - Subtask entity ID
+ * @param {string} parentTaskId - Parent task entity ID
+ */
+export async function editSubtaskFromList(subtaskId, parentTaskId) {
+    try {
+        // Import the entity renderer to open the entity detail modal
+        const { showEntityDetailModal } = await import('./entity-renderer.js');
+        await showEntityDetailModal(subtaskId);
+        
+    } catch (error) {
+        console.error('Failed to edit subtask:', error);
+        showStatusMessage('Failed to open subtask editor', 'error');
     }
 }
 
@@ -1256,6 +1470,8 @@ window.clearTaskFilters = clearTaskFilters;
 window.setupTaskManagementEvents = setupTaskManagementEvents;
 window.initializeTaskManagement = initializeTaskManagement;
 window.toggleSubtasks = toggleSubtasks;
+window.toggleSubtaskCompletion = toggleSubtaskCompletion;
+window.editSubtaskFromList = editSubtaskFromList;
 
 // Export module for access by other modules
 window.taskManagement = {
@@ -1280,5 +1496,7 @@ window.taskManagement = {
     clearTaskFilters,
     setupTaskManagementEvents,
     initializeTaskManagement,
-    toggleSubtasks
+    toggleSubtasks,
+    toggleSubtaskCompletion,
+    editSubtaskFromList
 };
