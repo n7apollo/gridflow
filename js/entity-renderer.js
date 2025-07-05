@@ -526,10 +526,18 @@ function renderTaskCardContent(entity) {
         metadata.push(`<span class="badge ${dueDateClass} badge-sm">📅 ${formatDate(entity.dueDate)}</span>`);
     }
     
+    // Show subtask progress using the new subtask system
     if (entity.subtasks && entity.subtasks.length > 0) {
-        const completedSubtasks = entity.subtasks.filter(st => st.completed).length;
-        const progress = Math.round((completedSubtasks / entity.subtasks.length) * 100);
-        metadata.push(`<span class="badge badge-outline badge-sm">📋 ${completedSubtasks}/${entity.subtasks.length} (${progress}%)</span>`);
+        // For now, use the simple subtasks array count
+        // TODO: This could be enhanced to use calculateTaskProgress for more accurate async calculation
+        const completedSubtasks = entity.subtasks.filter(subtaskId => {
+            // This is a simplified check - in a real implementation you'd want to
+            // fetch the actual subtask entities to check their completion status
+            return false; // Placeholder
+        }).length;
+        
+        const progress = entity.subtasks.length > 0 ? Math.round((completedSubtasks / entity.subtasks.length) * 100) : 0;
+        metadata.push(`<span class="badge badge-outline badge-sm">📋 ${entity.subtasks.length} subtasks</span>`);
     }
     
     if (metadata.length > 0) {
@@ -1268,18 +1276,221 @@ function populateEntityTags(entity) {
 }
 
 /**
- * Populate subtasks
+ * Populate subtasks using the new subtask infrastructure
  * @param {Object} entity - Entity object
  */
-function populateSubtasks(entity) {
+async function populateSubtasks(entity) {
     const subtasksList = document.getElementById('subtasksList');
+    const subtasksSection = document.getElementById('subtasksSection');
     if (!subtasksList) return;
     
+    // Import subtask functions
+    const { getSubtasks, canHaveSubtasks, calculateTaskProgress } = await import('./entity-core.js');
+    
+    // Hide subtasks section for entities that can't have subtasks
+    if (!canHaveSubtasks(entity)) {
+        if (subtasksSection) subtasksSection.style.display = 'none';
+        return;
+    } else {
+        if (subtasksSection) subtasksSection.style.display = 'block';
+    }
+    
+    // Clear existing content
     subtasksList.innerHTML = '';
     
-    // This would integrate with the relationships system
-    // For now, show placeholder
-    subtasksList.innerHTML = '<p class="empty-state">No subtasks yet</p>';
+    try {
+        const subtasks = await getSubtasks(entity.id);
+        
+        if (subtasks.length === 0) {
+            subtasksList.innerHTML = `
+                <div class="text-center py-8 text-base-content/60">
+                    <svg class="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                    </svg>
+                    <p class="text-sm">No subtasks yet</p>
+                    <p class="text-xs mt-1">Break this ${entity.type} down into smaller tasks</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Show progress bar if there are subtasks
+        const completedCount = subtasks.filter(st => st.completed).length;
+        const progress = Math.round((completedCount / subtasks.length) * 100);
+        
+        // Create progress header
+        const progressHeader = document.createElement('div');
+        progressHeader.className = 'mb-4 p-3 bg-base-200 rounded-lg';
+        progressHeader.innerHTML = `
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-medium">Progress</span>
+                <span class="text-sm font-medium">${completedCount}/${subtasks.length} completed</span>
+            </div>
+            <div class="w-full bg-base-300 rounded-full h-2.5">
+                <div class="bg-primary h-2.5 rounded-full transition-all duration-300" style="width: ${progress}%"></div>
+            </div>
+            <div class="text-xs text-base-content/60 mt-1">${progress}% complete</div>
+        `;
+        subtasksList.appendChild(progressHeader);
+        
+        // Create subtasks list container
+        const subtasksContainer = document.createElement('div');
+        subtasksContainer.className = 'space-y-3';
+        
+        // Render each subtask
+        for (const subtask of subtasks) {
+            const subtaskElement = await createSubtaskElement(subtask, entity.id);
+            subtasksContainer.appendChild(subtaskElement);
+        }
+        
+        subtasksList.appendChild(subtasksContainer);
+        
+        // Add new subtask form
+        const addSubtaskForm = createAddSubtaskForm(entity.id);
+        subtasksList.appendChild(addSubtaskForm);
+        
+    } catch (error) {
+        console.error('Failed to populate subtasks:', error);
+        subtasksList.innerHTML = `
+            <div class="alert alert-error">
+                <span>Failed to load subtasks</span>
+            </div>
+        `;
+    }
+}
+
+/**
+ * Create a subtask element for display in the subtasks list
+ * @param {Object} subtask - Subtask entity object
+ * @param {string} parentEntityId - Parent entity ID
+ * @returns {Promise<HTMLElement>} Subtask element
+ */
+async function createSubtaskElement(subtask, parentEntityId) {
+    const subtaskElement = document.createElement('div');
+    subtaskElement.className = 'flex items-start gap-3 p-3 bg-base-100 border border-base-300 rounded-lg hover:bg-base-50 transition-colors';
+    subtaskElement.dataset.subtaskId = subtask.id;
+    
+    // Due date indicator
+    let dueDateIndicator = '';
+    if (subtask.dueDate) {
+        const dueDate = new Date(subtask.dueDate);
+        const isOverdue = dueDate < new Date() && !subtask.completed;
+        const isToday = dueDate.toDateString() === new Date().toDateString();
+        
+        let dueDateClass = 'badge-outline';
+        if (isOverdue) dueDateClass = 'badge-error';
+        else if (isToday) dueDateClass = 'badge-warning';
+        
+        dueDateIndicator = `<span class="badge ${dueDateClass} badge-xs">${formatDate(subtask.dueDate)}</span>`;
+    }
+    
+    // Priority indicator
+    let priorityIndicator = '';
+    if (subtask.priority && subtask.priority !== 'medium') {
+        const priorityClasses = {
+            'high': 'badge-error',
+            'low': 'badge-success'
+        };
+        priorityIndicator = `<span class="badge ${priorityClasses[subtask.priority]} badge-xs">${subtask.priority}</span>`;
+    }
+    
+    subtaskElement.innerHTML = `
+        <div class="flex-shrink-0 mt-1">
+            <input type="checkbox" class="checkbox checkbox-sm" ${subtask.completed ? 'checked' : ''} 
+                   onchange="toggleSubtaskCompletion('${subtask.id}', '${parentEntityId}')">
+        </div>
+        <div class="flex-1 min-w-0">
+            <div class="flex items-start justify-between">
+                <div class="flex-1">
+                    <h4 class="font-medium text-sm ${subtask.completed ? 'line-through text-base-content/60' : ''}" 
+                        id="subtask-title-${subtask.id}">${subtask.title || 'Untitled Subtask'}</h4>
+                    ${subtask.content ? `<p class="text-xs text-base-content/70 mt-1 ${subtask.completed ? 'line-through' : ''}">${subtask.content}</p>` : ''}
+                    <div class="flex flex-wrap gap-1 mt-2">
+                        ${priorityIndicator}
+                        ${dueDateIndicator}
+                        ${subtask.completed ? '<span class="badge badge-success badge-xs">✓ Complete</span>' : ''}
+                    </div>
+                </div>
+                <div class="dropdown dropdown-end">
+                    <label tabindex="0" class="btn btn-ghost btn-xs btn-circle">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
+                        </svg>
+                    </label>
+                    <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-40 text-sm">
+                        <li><a onclick="editSubtask('${subtask.id}', '${parentEntityId}')">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                            </svg>
+                            Edit</a></li>
+                        <li><a onclick="moveSubtaskToTopLevel('${subtask.id}', '${parentEntityId}')">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+                            </svg>
+                            Make Independent</a></li>
+                        <li><a onclick="deleteSubtask('${subtask.id}', '${parentEntityId}')" class="text-error">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                            Delete</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    return subtaskElement;
+}
+
+/**
+ * Create the add subtask form
+ * @param {string} parentEntityId - Parent entity ID
+ * @returns {HTMLElement} Add subtask form element
+ */
+function createAddSubtaskForm(parentEntityId) {
+    const formElement = document.createElement('div');
+    formElement.className = 'mt-4 p-3 bg-base-200 rounded-lg';
+    formElement.id = 'addSubtaskForm';
+    
+    formElement.innerHTML = `
+        <div class="space-y-3">
+            <div class="form-control">
+                <input type="text" id="newSubtaskTitle" class="input input-bordered input-sm w-full" 
+                       placeholder="Enter subtask title..." maxlength="200"
+                       onkeydown="if(event.key === 'Enter') saveNewSubtask('${parentEntityId}'); else if(event.key === 'Escape') cancelAddSubtask();">
+            </div>
+            <div class="form-control">
+                <textarea id="newSubtaskContent" class="textarea textarea-bordered textarea-sm w-full h-16 resize-none" 
+                          placeholder="Add description (optional)..." maxlength="500"></textarea>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div class="form-control">
+                    <select id="newSubtaskPriority" class="select select-bordered select-sm">
+                        <option value="low">🟢 Low Priority</option>
+                        <option value="medium" selected>🟡 Medium Priority</option>
+                        <option value="high">🔴 High Priority</option>
+                    </select>
+                </div>
+                <div class="form-control">
+                    <input type="date" id="newSubtaskDueDate" class="input input-bordered input-sm">
+                </div>
+            </div>
+            <div class="flex justify-end gap-2">
+                <button class="btn btn-ghost btn-sm" onclick="cancelAddSubtask()">Cancel</button>
+                <button class="btn btn-primary btn-sm" onclick="saveNewSubtask('${parentEntityId}')">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    Add Subtask
+                </button>
+            </div>
+        </div>
+    `;
+    
+    // Initially hide the form
+    formElement.style.display = 'none';
+    
+    return formElement;
 }
 
 /**
@@ -1588,9 +1799,23 @@ function deleteCurrentEntity() {
     }
 }
 
-// Placeholder functions for missing functionality
+/**
+ * Show add subtask form
+ */
 function addSubtaskToEntity() {
-    showStatusMessage('Subtask functionality coming soon', 'info');
+    const addSubtaskForm = document.getElementById('addSubtaskForm');
+    const addSubtaskBtn = document.querySelector('[data-action="addSubtask"]');
+    
+    if (addSubtaskForm && addSubtaskBtn) {
+        addSubtaskForm.style.display = 'block';
+        addSubtaskBtn.style.display = 'none';
+        
+        // Focus on title input
+        const titleInput = document.getElementById('newSubtaskTitle');
+        if (titleInput) {
+            titleInput.focus();
+        }
+    }
 }
 
 function addChecklistItemToEntity() {
@@ -1805,6 +2030,190 @@ async function confirmPeopleLinking() {
     }
 }
 
+/**
+ * Global subtask management functions
+ */
+
+/**
+ * Toggle completion status of a subtask
+ * @param {string} subtaskId - Subtask entity ID
+ * @param {string} parentEntityId - Parent entity ID
+ */
+async function toggleSubtaskCompletion(subtaskId, parentEntityId) {
+    try {
+        const { toggleEntityCompletion, getEntity } = await import('./entity-core.js');
+        
+        const subtask = await toggleEntityCompletion(subtaskId);
+        if (subtask) {
+            showStatusMessage(`Subtask ${subtask.completed ? 'completed' : 'marked incomplete'}`, 'success');
+            
+            // Refresh the subtasks display
+            const parentEntity = await getEntity(parentEntityId);
+            if (parentEntity && currentEditingEntity?.id === parentEntityId) {
+                await populateSubtasks(parentEntity);
+            }
+            
+            // Update any board displays showing progress
+            refreshEntityDisplays(parentEntityId);
+        }
+    } catch (error) {
+        console.error('Failed to toggle subtask completion:', error);
+        showStatusMessage('Failed to update subtask', 'error');
+    }
+}
+
+/**
+ * Save a new subtask
+ * @param {string} parentEntityId - Parent entity ID
+ */
+async function saveNewSubtask(parentEntityId) {
+    try {
+        const titleInput = document.getElementById('newSubtaskTitle');
+        const contentInput = document.getElementById('newSubtaskContent');
+        const prioritySelect = document.getElementById('newSubtaskPriority');
+        const dueDateInput = document.getElementById('newSubtaskDueDate');
+        
+        if (!titleInput || !titleInput.value.trim()) {
+            showStatusMessage('Please enter a subtask title', 'warning');
+            if (titleInput) titleInput.focus();
+            return;
+        }
+        
+        const subtaskData = {
+            title: titleInput.value.trim(),
+            content: contentInput?.value.trim() || '',
+            priority: prioritySelect?.value || 'medium',
+            dueDate: dueDateInput?.value || null
+        };
+        
+        const { addSubtask, getEntity } = await import('./entity-core.js');
+        
+        const subtask = await addSubtask(parentEntityId, subtaskData);
+        if (subtask) {
+            showStatusMessage('Subtask added successfully', 'success');
+            
+            // Clear form
+            if (titleInput) titleInput.value = '';
+            if (contentInput) contentInput.value = '';
+            if (prioritySelect) prioritySelect.value = 'medium';
+            if (dueDateInput) dueDateInput.value = '';
+            
+            // Hide form
+            cancelAddSubtask();
+            
+            // Refresh the subtasks display
+            const parentEntity = await getEntity(parentEntityId);
+            if (parentEntity && currentEditingEntity?.id === parentEntityId) {
+                await populateSubtasks(parentEntity);
+            }
+            
+            // Update any board displays showing progress
+            refreshEntityDisplays(parentEntityId);
+        }
+    } catch (error) {
+        console.error('Failed to save subtask:', error);
+        showStatusMessage('Failed to add subtask', 'error');
+    }
+}
+
+/**
+ * Cancel adding a new subtask
+ */
+function cancelAddSubtask() {
+    const addSubtaskForm = document.getElementById('addSubtaskForm');
+    const addSubtaskBtn = document.querySelector('[data-action="addSubtask"]');
+    
+    if (addSubtaskForm) addSubtaskForm.style.display = 'none';
+    if (addSubtaskBtn) addSubtaskBtn.style.display = 'inline-flex';
+    
+    // Clear form
+    const titleInput = document.getElementById('newSubtaskTitle');
+    const contentInput = document.getElementById('newSubtaskContent');
+    const prioritySelect = document.getElementById('newSubtaskPriority');
+    const dueDateInput = document.getElementById('newSubtaskDueDate');
+    
+    if (titleInput) titleInput.value = '';
+    if (contentInput) contentInput.value = '';
+    if (prioritySelect) prioritySelect.value = 'medium';
+    if (dueDateInput) dueDateInput.value = '';
+}
+
+/**
+ * Edit a subtask (opens entity detail modal)
+ * @param {string} subtaskId - Subtask entity ID
+ * @param {string} parentEntityId - Parent entity ID
+ */
+async function editSubtask(subtaskId, parentEntityId) {
+    try {
+        await showEntityDetail(subtaskId);
+    } catch (error) {
+        console.error('Failed to edit subtask:', error);
+        showStatusMessage('Failed to open subtask for editing', 'error');
+    }
+}
+
+/**
+ * Move subtask to top level (make independent)
+ * @param {string} subtaskId - Subtask entity ID
+ * @param {string} parentEntityId - Parent entity ID
+ */
+async function moveSubtaskToTopLevel(subtaskId, parentEntityId) {
+    try {
+        const { moveSubtask, getEntity } = await import('./entity-core.js');
+        
+        if (confirm('Make this subtask an independent task?')) {
+            const success = await moveSubtask(subtaskId, null); // null makes it independent
+            
+            if (success) {
+                showStatusMessage('Subtask moved to top level', 'success');
+                
+                // Refresh the subtasks display
+                const parentEntity = await getEntity(parentEntityId);
+                if (parentEntity && currentEditingEntity?.id === parentEntityId) {
+                    await populateSubtasks(parentEntity);
+                }
+                
+                // Update any board displays
+                refreshEntityDisplays(parentEntityId);
+            }
+        }
+    } catch (error) {
+        console.error('Failed to move subtask:', error);
+        showStatusMessage('Failed to move subtask', 'error');
+    }
+}
+
+/**
+ * Delete a subtask
+ * @param {string} subtaskId - Subtask entity ID
+ * @param {string} parentEntityId - Parent entity ID
+ */
+async function deleteSubtask(subtaskId, parentEntityId) {
+    try {
+        const { deleteSubtask: deleteSubtaskCore, getEntity } = await import('./entity-core.js');
+        
+        if (confirm('Are you sure you want to delete this subtask?')) {
+            const success = await deleteSubtaskCore(subtaskId);
+            
+            if (success) {
+                showStatusMessage('Subtask deleted', 'success');
+                
+                // Refresh the subtasks display
+                const parentEntity = await getEntity(parentEntityId);
+                if (parentEntity && currentEditingEntity?.id === parentEntityId) {
+                    await populateSubtasks(parentEntity);
+                }
+                
+                // Update any board displays
+                refreshEntityDisplays(parentEntityId);
+            }
+        }
+    } catch (error) {
+        console.error('Failed to delete subtask:', error);
+        showStatusMessage('Failed to delete subtask', 'error');
+    }
+}
+
 // Make functions available globally
 if (typeof window !== 'undefined') {
     window.entityRenderer = {
@@ -1813,7 +2222,14 @@ if (typeof window !== 'undefined') {
         confirmPeopleLinking,
         updateSelectedPeople,
         setupPeopleModalSearch,
-        removeSelectedPerson
+        removeSelectedPerson,
+        addSubtaskToEntity,
+        toggleSubtaskCompletion,
+        saveNewSubtask,
+        cancelAddSubtask,
+        editSubtask,
+        moveSubtaskToTopLevel,
+        deleteSubtask
     };
     
     // Individual global functions for backward compatibility
@@ -1821,5 +2237,14 @@ if (typeof window !== 'undefined') {
     window.confirmPeopleLinking = confirmPeopleLinking;
     window.updateSelectedPeople = updateSelectedPeople;
     window.removeSelectedPerson = removeSelectedPerson;
+    
+    // Subtask management functions
+    window.addSubtaskToEntity = addSubtaskToEntity;
+    window.toggleSubtaskCompletion = toggleSubtaskCompletion;
+    window.saveNewSubtask = saveNewSubtask;
+    window.cancelAddSubtask = cancelAddSubtask;
+    window.editSubtask = editSubtask;
+    window.moveSubtaskToTopLevel = moveSubtaskToTopLevel;
+    window.deleteSubtask = deleteSubtask;
 }
 

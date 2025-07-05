@@ -96,6 +96,7 @@ function getTypeSpecificFields(type, data) {
                 estimatedTime: data.estimatedTime || null,
                 actualTime: data.actualTime || null,
                 subtasks: data.subtasks || [],
+                parentEntityId: data.parentEntityId || null,
                 assignee: data.assignee || null
             };
             
@@ -119,7 +120,9 @@ function getTypeSpecificFields(type, data) {
                 endDate: data.endDate || null,
                 budget: data.budget || null,
                 team: data.team || [],
-                milestones: data.milestones || []
+                milestones: data.milestones || [],
+                subtasks: data.subtasks || [],
+                parentEntityId: data.parentEntityId || null
             };
             
         case ENTITY_TYPES.PERSON:
@@ -958,6 +961,258 @@ export async function getAllEntities() {
 }
 
 /**
+ * Add a subtask to a parent entity
+ * @param {string} parentEntityId - Parent entity ID
+ * @param {Object} subtaskData - Subtask data
+ * @returns {Promise<Object|null>} Created subtask entity or null
+ */
+export async function addSubtask(parentEntityId, subtaskData) {
+    try {
+        // Get parent entity
+        const parentEntity = await getEntity(parentEntityId);
+        if (!parentEntity) {
+            console.error('Parent entity not found:', parentEntityId);
+            return null;
+        }
+        
+        // Create subtask entity with parent reference
+        const subtask = await createEntity(ENTITY_TYPES.TASK, {
+            ...subtaskData,
+            parentEntityId: parentEntityId
+        });
+        
+        if (!subtask) {
+            console.error('Failed to create subtask');
+            return null;
+        }
+        
+        // Update parent's subtasks array
+        const parentSubtasks = parentEntity.subtasks || [];
+        if (!parentSubtasks.includes(subtask.id)) {
+            parentSubtasks.push(subtask.id);
+            await updateEntity(parentEntityId, { subtasks: parentSubtasks });
+        }
+        
+        console.log('Created subtask:', subtask.id, 'for parent:', parentEntityId);
+        return subtask;
+        
+    } catch (error) {
+        console.error('Failed to add subtask:', error);
+        showStatusMessage('Failed to add subtask', 'error');
+        return null;
+    }
+}
+
+/**
+ * Remove a subtask from a parent entity
+ * @param {string} parentEntityId - Parent entity ID
+ * @param {string} subtaskEntityId - Subtask entity ID
+ * @returns {Promise<boolean>} Success status
+ */
+export async function removeSubtask(parentEntityId, subtaskEntityId) {
+    try {
+        // Get parent entity
+        const parentEntity = await getEntity(parentEntityId);
+        if (!parentEntity) {
+            console.error('Parent entity not found:', parentEntityId);
+            return false;
+        }
+        
+        // Remove from parent's subtasks array
+        const parentSubtasks = parentEntity.subtasks || [];
+        const index = parentSubtasks.indexOf(subtaskEntityId);
+        if (index > -1) {
+            parentSubtasks.splice(index, 1);
+            await updateEntity(parentEntityId, { subtasks: parentSubtasks });
+        }
+        
+        // Update subtask to remove parent reference
+        const subtask = await getEntity(subtaskEntityId);
+        if (subtask && subtask.parentEntityId === parentEntityId) {
+            await updateEntity(subtaskEntityId, { parentEntityId: null });
+        }
+        
+        console.log('Removed subtask:', subtaskEntityId, 'from parent:', parentEntityId);
+        return true;
+        
+    } catch (error) {
+        console.error('Failed to remove subtask:', error);
+        showStatusMessage('Failed to remove subtask', 'error');
+        return false;
+    }
+}
+
+/**
+ * Get all subtasks for a parent entity
+ * @param {string} parentEntityId - Parent entity ID
+ * @returns {Promise<Array>} Array of subtask entities
+ */
+export async function getSubtasks(parentEntityId) {
+    try {
+        const parentEntity = await getEntity(parentEntityId);
+        if (!parentEntity || !parentEntity.subtasks || parentEntity.subtasks.length === 0) {
+            return [];
+        }
+        
+        // Fetch all subtask entities
+        const subtasks = [];
+        for (const subtaskId of parentEntity.subtasks) {
+            const subtask = await getEntity(subtaskId);
+            if (subtask) {
+                subtasks.push(subtask);
+            }
+        }
+        
+        return subtasks;
+        
+    } catch (error) {
+        console.error('Failed to get subtasks:', error);
+        return [];
+    }
+}
+
+/**
+ * Get parent entity for a subtask
+ * @param {string} subtaskEntityId - Subtask entity ID
+ * @returns {Promise<Object|null>} Parent entity or null
+ */
+export async function getParentEntity(subtaskEntityId) {
+    try {
+        const subtask = await getEntity(subtaskEntityId);
+        if (!subtask || !subtask.parentEntityId) {
+            return null;
+        }
+        
+        return await getEntity(subtask.parentEntityId);
+        
+    } catch (error) {
+        console.error('Failed to get parent entity:', error);
+        return null;
+    }
+}
+
+/**
+ * Move a subtask to a different parent entity
+ * @param {string} subtaskEntityId - Subtask entity ID
+ * @param {string} newParentEntityId - New parent entity ID (null to make independent)
+ * @returns {Promise<boolean>} Success status
+ */
+export async function moveSubtask(subtaskEntityId, newParentEntityId) {
+    try {
+        const subtask = await getEntity(subtaskEntityId);
+        if (!subtask) {
+            console.error('Subtask not found:', subtaskEntityId);
+            return false;
+        }
+        
+        // Remove from old parent if exists
+        if (subtask.parentEntityId) {
+            await removeSubtask(subtask.parentEntityId, subtaskEntityId);
+        }
+        
+        // Add to new parent or make independent
+        if (newParentEntityId) {
+            const newParent = await getEntity(newParentEntityId);
+            if (!newParent) {
+                console.error('New parent entity not found:', newParentEntityId);
+                return false;
+            }
+            
+            // Update subtask's parent reference
+            await updateEntity(subtaskEntityId, { parentEntityId: newParentEntityId });
+            
+            // Add to new parent's subtasks array
+            const parentSubtasks = newParent.subtasks || [];
+            if (!parentSubtasks.includes(subtaskEntityId)) {
+                parentSubtasks.push(subtaskEntityId);
+                await updateEntity(newParentEntityId, { subtasks: parentSubtasks });
+            }
+            
+            console.log('Moved subtask:', subtaskEntityId, 'to new parent:', newParentEntityId);
+        } else {
+            // Make independent (no parent)
+            await updateEntity(subtaskEntityId, { parentEntityId: null });
+            console.log('Made subtask independent:', subtaskEntityId);
+        }
+        
+        return true;
+        
+    } catch (error) {
+        console.error('Failed to move subtask:', error);
+        showStatusMessage('Failed to move subtask', 'error');
+        return false;
+    }
+}
+
+/**
+ * Delete a subtask and clean up parent references
+ * @param {string} subtaskEntityId - Subtask entity ID
+ * @returns {Promise<boolean>} Success status
+ */
+export async function deleteSubtask(subtaskEntityId) {
+    try {
+        const subtask = await getEntity(subtaskEntityId);
+        if (!subtask) {
+            console.warn('Subtask not found for deletion:', subtaskEntityId);
+            return false;
+        }
+        
+        // Remove from parent if exists
+        if (subtask.parentEntityId) {
+            await removeSubtask(subtask.parentEntityId, subtaskEntityId);
+        }
+        
+        // Delete the entity
+        return await deleteEntity(subtaskEntityId);
+        
+    } catch (error) {
+        console.error('Failed to delete subtask:', error);
+        showStatusMessage('Failed to delete subtask', 'error');
+        return false;
+    }
+}
+
+/**
+ * Calculate task progress based on subtask completion
+ * @param {Object} taskEntity - Task entity object
+ * @returns {Promise<number>} Progress percentage (0-100)
+ */
+export async function calculateTaskProgress(taskEntity) {
+    try {
+        // If no subtasks, progress is based on task completion
+        if (!taskEntity.subtasks || taskEntity.subtasks.length === 0) {
+            return taskEntity.completed ? 100 : 0;
+        }
+        
+        // Get all subtasks
+        const subtasks = await getSubtasks(taskEntity.id);
+        if (subtasks.length === 0) {
+            return taskEntity.completed ? 100 : 0;
+        }
+        
+        // Calculate percentage of completed subtasks
+        const completedCount = subtasks.filter(st => st.completed).length;
+        const progress = Math.round((completedCount / subtasks.length) * 100);
+        
+        return progress;
+        
+    } catch (error) {
+        console.error('Failed to calculate task progress:', error);
+        return 0;
+    }
+}
+
+/**
+ * Check if entity can have subtasks
+ * @param {Object} entity - Entity object
+ * @returns {boolean} Whether entity can have subtasks
+ */
+export function canHaveSubtasks(entity) {
+    // Currently only tasks and projects can have subtasks
+    return entity && (entity.type === ENTITY_TYPES.TASK || entity.type === ENTITY_TYPES.PROJECT);
+}
+
+/**
  * Debug function to list all entities
  * @returns {Promise<Object>} Debug information about entities
  */
@@ -1014,6 +1269,15 @@ if (typeof window !== 'undefined') {
         getEntitiesByType,
         getAllEntities,
         debugEntities,
+        // Subtask functions
+        addSubtask,
+        removeSubtask,
+        getSubtasks,
+        getParentEntity,
+        moveSubtask,
+        deleteSubtask,
+        calculateTaskProgress,
+        canHaveSubtasks,
         ENTITY_TYPES,
         CONTEXT_TYPES
     };
