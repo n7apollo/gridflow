@@ -350,27 +350,15 @@ class GridFlowModals extends HTMLElement {
                                 <div class="card-body">
                                     <div class="flex items-center justify-between mb-3">
                                         <h4 class="card-title text-base">Linked People</h4>
-                                        <button class="btn btn-xs btn-primary" id="addPersonLinkBtn">
+                                        <button class="btn btn-xs btn-primary" data-action="showPeopleLinkingModal">
                                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                                             </svg>
-                                            Link
+                                            Link People
                                         </button>
                                     </div>
                                     <div class="space-y-2" id="linkedPeople">
                                         <!-- Linked people will be populated here -->
-                                    </div>
-                                    
-                                    <!-- Add Person Dropdown (initially hidden) -->
-                                    <div class="hidden mt-3" id="addPersonDropdown">
-                                        <select class="select select-bordered select-sm w-full" id="personSelector">
-                                            <option value="">Select a person...</option>
-                                            <!-- People options will be populated here -->
-                                        </select>
-                                        <div class="flex gap-2 mt-2">
-                                            <button class="btn btn-xs btn-primary" id="confirmAddPerson">Add</button>
-                                            <button class="btn btn-xs btn-ghost" id="cancelAddPerson">Cancel</button>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1120,6 +1108,38 @@ class GridFlowModals extends HTMLElement {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- People Linking Modal -->
+            <div class="modal" id="peopleLinkingModal">
+                <div class="modal-box w-full max-w-2xl">
+                    <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2 close">✕</button>
+                    <h2 class="text-xl font-bold mb-4">Link People to Entity</h2>
+                    
+                    <!-- Search Bar -->
+                    <div class="form-control mb-4">
+                        <input type="text" id="peopleSearchInput" class="input input-bordered w-full" placeholder="Search people by name...">
+                    </div>
+                    
+                    <!-- People List -->
+                    <div class="space-y-2 max-h-80 overflow-y-auto mb-4" id="peopleSelectorList">
+                        <!-- People will be populated here -->
+                    </div>
+                    
+                    <!-- Selected People -->
+                    <div class="mb-4">
+                        <h3 class="font-semibold mb-2">Selected People (<span id="selectedPeopleCount">0</span>)</h3>
+                        <div class="flex flex-wrap gap-2" id="selectedPeopleContainer">
+                            <!-- Selected people will appear here -->
+                        </div>
+                    </div>
+                    
+                    <!-- Actions -->
+                    <div class="modal-action">
+                        <button class="btn btn-primary" data-action="confirmPeopleLinking">Link Selected People</button>
+                        <button class="btn btn-ghost close">Cancel</button>
                     </div>
                 </div>
             </div>

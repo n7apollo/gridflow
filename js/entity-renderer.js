@@ -1315,7 +1315,6 @@ function populateChecklistItems(entity) {
  */
 async function populateLinkedPeople(entity) {
     const linkedPeopleContainer = document.getElementById('linkedPeople');
-    const personSelector = document.getElementById('personSelector');
     
     if (!linkedPeopleContainer) return;
     
@@ -1326,7 +1325,7 @@ async function populateLinkedPeople(entity) {
         // Populate linked people
         if (entity.people && entity.people.length > 0) {
             for (const personId of entity.people) {
-                const person = await window.peopleService?.getPersonById(personId);
+                const person = await window.peopleService?.getPerson(personId);
                 if (person) {
                     const personElement = createLinkedPersonElement(person, entity.id);
                     linkedPeopleContainer.appendChild(personElement);
@@ -1335,14 +1334,6 @@ async function populateLinkedPeople(entity) {
         } else {
             linkedPeopleContainer.innerHTML = '<p class="text-xs text-base-content/60">No people linked</p>';
         }
-        
-        // Populate person selector dropdown
-        if (personSelector) {
-            await populatePersonSelector(personSelector, entity.people || []);
-        }
-        
-        // Setup event listeners for people linking
-        setupPeopleLinkingListeners(entity);
         
     } catch (error) {
         console.error('Failed to populate linked people:', error);
@@ -1384,91 +1375,195 @@ function createLinkedPersonElement(person, entityId) {
  * @param {HTMLElement} selector - Select element
  * @param {Array} excludeIds - Person IDs to exclude (already linked)
  */
-async function populatePersonSelector(selector, excludeIds = []) {
+/**
+ * Show people linking modal
+ * @param {Object} entity - Current entity being edited
+ */
+async function showPeopleLinkingModal(entity) {
+    const modal = document.getElementById('peopleLinkingModal');
+    if (!modal) return;
+    
+    // Store current entity for linking
+    window.currentEntityForLinking = entity;
+    
+    // Show modal
+    modal.classList.add('modal-open');
+    
+    // Populate people list
+    await populatePeopleSelectorModal(entity.people || []);
+    
+    // Setup search functionality
+    setupPeopleModalSearch();
+}
+
+/**
+ * Populate people selector modal
+ * @param {Array} linkedIds - Array of person IDs already linked (should be pre-checked)
+ */
+async function populatePeopleSelectorModal(linkedIds = []) {
+    const peopleSelectorList = document.getElementById('peopleSelectorList');
+    if (!peopleSelectorList) return;
+    
     try {
-        // Clear existing options except the first one
-        selector.innerHTML = '<option value="">Select a person...</option>';
-        
         // Get all people
         const people = await window.peopleService?.getAllPeople() || [];
+        console.log('Loaded people for modal:', people);
         
-        // Filter out already linked people
-        const availablePeople = people.filter(person => !excludeIds.includes(person.id));
+        // Clear existing content
+        peopleSelectorList.innerHTML = '';
         
-        // Add options for available people
-        availablePeople.forEach(person => {
-            const option = document.createElement('option');
-            option.value = person.id;
-            option.textContent = person.name || person.title || 'Unnamed';
-            selector.appendChild(option);
-        });
-        
-        // If no people available, show message
-        if (availablePeople.length === 0) {
-            const option = document.createElement('option');
-            option.value = '';
-            option.textContent = 'No people available to link';
-            option.disabled = true;
-            selector.appendChild(option);
+        if (people.length === 0) {
+            peopleSelectorList.innerHTML = `
+                <div class="text-center py-8 text-base-content/60">
+                    <p>No people found</p>
+                    <p class="text-sm">Create people in the People view first</p>
+                </div>
+            `;
+            return;
         }
         
+        // Create person selection items for ALL people
+        people.forEach(person => {
+            const isLinked = linkedIds.includes(person.id);
+            const personItem = createPersonSelectorItem(person, isLinked);
+            peopleSelectorList.appendChild(personItem);
+        });
+        
+        // Update selected people display to show currently linked
+        updateSelectedPeople();
+        
     } catch (error) {
-        console.error('Failed to populate person selector:', error);
-        selector.innerHTML = '<option value="">Error loading people</option>';
+        console.error('Failed to populate people selector modal:', error);
+        peopleSelectorList.innerHTML = `
+            <div class="alert alert-error">
+                <span>Failed to load people</span>
+            </div>
+        `;
     }
 }
 
 /**
- * Setup event listeners for people linking functionality
- * @param {Object} entity - Current entity
+ * Create person selector item
+ * @param {Object} person - Person object
+ * @param {boolean} isLinked - Whether this person is already linked (pre-checked)
+ * @returns {HTMLElement} Person selector item
  */
-function setupPeopleLinkingListeners(entity) {
-    const addPersonBtn = document.getElementById('addPersonLinkBtn');
-    const addPersonDropdown = document.getElementById('addPersonDropdown');
-    const confirmAddBtn = document.getElementById('confirmAddPerson');
-    const cancelAddBtn = document.getElementById('cancelAddPerson');
-    const personSelector = document.getElementById('personSelector');
+function createPersonSelectorItem(person, isLinked = false) {
+    const personItem = document.createElement('div');
+    personItem.className = 'flex items-center gap-3 p-3 rounded-lg border border-base-300 hover:bg-base-200 cursor-pointer';
+    personItem.dataset.personId = person.id;
     
-    if (!addPersonBtn || !addPersonDropdown) return;
+    const initials = (person.name || 'U').split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
     
-    // Show/hide dropdown
-    addPersonBtn.onclick = () => {
-        addPersonDropdown.classList.toggle('hidden');
-        if (!addPersonDropdown.classList.contains('hidden')) {
-            personSelector.focus();
+    personItem.innerHTML = `
+        <input type="checkbox" class="checkbox checkbox-primary" data-person-id="${person.id}" ${isLinked ? 'checked' : ''}>
+        <div class="avatar placeholder">
+            <div class="bg-primary text-primary-content rounded-full w-10 h-10">
+                <span class="text-sm font-semibold">${initials}</span>
+            </div>
+        </div>
+        <div class="flex-1">
+            <div class="font-medium">${person.name || 'Unnamed'}</div>
+            <div class="text-sm text-base-content/60">
+                ${person.role && person.company ? `${person.role} at ${person.company}` : 
+                  person.company || person.role || person.relationshipType || 'No details'}
+            </div>
+        </div>
+        ${isLinked ? '<div class="badge badge-success badge-sm">Linked</div>' : ''}
+    `;
+    
+    // Click handler to toggle checkbox
+    personItem.addEventListener('click', (e) => {
+        if (e.target.type !== 'checkbox') {
+            const checkbox = personItem.querySelector('input[type="checkbox"]');
+            checkbox.checked = !checkbox.checked;
+            updateSelectedPeople();
         }
-    };
+    });
     
-    // Cancel adding person
-    if (cancelAddBtn) {
-        cancelAddBtn.onclick = () => {
-            addPersonDropdown.classList.add('hidden');
-            personSelector.value = '';
-        };
+    // Checkbox change handler
+    const checkbox = personItem.querySelector('input[type="checkbox"]');
+    checkbox.addEventListener('change', updateSelectedPeople);
+    
+    return personItem;
+}
+
+/**
+ * Update selected people display
+ */
+function updateSelectedPeople() {
+    const selectedPeopleContainer = document.getElementById('selectedPeopleContainer');
+    const selectedPeopleCount = document.getElementById('selectedPeopleCount');
+    const checkboxes = document.querySelectorAll('#peopleSelectorList input[type="checkbox"]:checked');
+    
+    if (!selectedPeopleContainer || !selectedPeopleCount) return;
+    
+    selectedPeopleCount.textContent = checkboxes.length;
+    selectedPeopleContainer.innerHTML = '';
+    
+    checkboxes.forEach(checkbox => {
+        const personItem = checkbox.closest('[data-person-id]');
+        if (!personItem) return; // Skip if no parent item found
+        
+        const personId = personItem.dataset.personId;
+        const nameElement = personItem.querySelector('.font-medium');
+        if (!nameElement) return; // Skip if name element not found
+        
+        const personName = nameElement.textContent;
+        const initials = personName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+        
+        const selectedTag = document.createElement('div');
+        selectedTag.className = 'badge badge-primary gap-2 p-3';
+        selectedTag.dataset.personId = personId;
+        selectedTag.innerHTML = `
+            <div class="avatar placeholder">
+                <div class="bg-primary-content text-primary rounded-full w-5 h-5">
+                    <span class="text-xs">${initials}</span>
+                </div>
+            </div>
+            <span>${personName}</span>
+            <button class="btn btn-xs btn-ghost btn-circle" onclick="removeSelectedPerson('${personId}')">✕</button>
+        `;
+        selectedPeopleContainer.appendChild(selectedTag);
+    });
+}
+
+/**
+ * Remove selected person from selection
+ * @param {string} personId - Person ID to remove
+ */
+function removeSelectedPerson(personId) {
+    // Uncheck the checkbox in the people list
+    const checkbox = document.querySelector(`#peopleSelectorList input[data-person-id="${personId}"]`);
+    if (checkbox) {
+        checkbox.checked = false;
     }
     
-    // Confirm adding person
-    if (confirmAddBtn) {
-        confirmAddBtn.onclick = async () => {
-            const selectedPersonId = personSelector.value;
-            if (selectedPersonId) {
-                await linkPersonToEntity(entity.id, selectedPersonId);
-                addPersonDropdown.classList.add('hidden');
-                personSelector.value = '';
-            }
-        };
-    }
+    // Update the selected people display
+    updateSelectedPeople();
+}
+
+/**
+ * Setup people modal search functionality
+ */
+function setupPeopleModalSearch() {
+    const searchInput = document.getElementById('peopleSearchInput');
+    if (!searchInput) return;
     
-    // Handle Enter key in selector
-    if (personSelector) {
-        personSelector.onkeydown = (e) => {
-            if (e.key === 'Enter' && personSelector.value) {
-                confirmAddBtn.click();
-            } else if (e.key === 'Escape') {
-                cancelAddBtn.click();
-            }
-        };
-    }
+    searchInput.addEventListener('input', (e) => {
+        const searchTerm = e.target.value.toLowerCase();
+        const personItems = document.querySelectorAll('#peopleSelectorList [data-person-id]');
+        
+        personItems.forEach(item => {
+            const name = item.querySelector('.font-medium').textContent.toLowerCase();
+            const details = item.querySelector('.text-base-content\\/60').textContent.toLowerCase();
+            const matches = name.includes(searchTerm) || details.includes(searchTerm);
+            item.style.display = matches ? 'flex' : 'none';
+        });
+    });
+    
+    // Clear search when modal is opened
+    searchInput.value = '';
 }
 
 /**
@@ -1635,5 +1730,96 @@ async function unlinkPersonFromEntity(entityId, personId) {
         console.error('Failed to unlink person from entity:', error);
         showStatusMessage('Failed to unlink person', 'error');
     }
+}
+
+/**
+ * Show people linking modal (global function)
+ */
+async function showPeopleLinkingModalGlobal() {
+    if (window.currentEntityForLinking) {
+        await showPeopleLinkingModal(window.currentEntityForLinking);
+    } else if (currentEditingEntity) {
+        await showPeopleLinkingModal(currentEditingEntity);
+    }
+}
+
+/**
+ * Confirm people linking from modal
+ */
+async function confirmPeopleLinking() {
+    const entity = window.currentEntityForLinking || currentEditingEntity;
+    if (!entity) {
+        showStatusMessage('No entity available for linking', 'error');
+        return;
+    }
+    
+    try {
+        const { addEntityToContext, removeEntityFromContext, CONTEXT_TYPES } = await import('./entity-core.js');
+        
+        // Get current linked people and selected people
+        const currentLinkedIds = entity.people || [];
+        const allCheckboxes = document.querySelectorAll('#peopleSelectorList input[type="checkbox"]');
+        const selectedPersonIds = Array.from(allCheckboxes)
+            .filter(cb => cb.checked)
+            .map(cb => cb.dataset.personId);
+        
+        // Find people to link (newly selected)
+        const toLink = selectedPersonIds.filter(id => !currentLinkedIds.includes(id));
+        
+        // Find people to unlink (previously linked but now unchecked)
+        const toUnlink = currentLinkedIds.filter(id => !selectedPersonIds.includes(id));
+        
+        let changes = 0;
+        
+        // Link new people
+        for (const personId of toLink) {
+            await addEntityToContext(entity.id, CONTEXT_TYPES.PEOPLE, { personId });
+            changes++;
+        }
+        
+        // Unlink removed people
+        for (const personId of toUnlink) {
+            await removeEntityFromContext(entity.id, CONTEXT_TYPES.PEOPLE, { personId });
+            changes++;
+        }
+        
+        if (changes === 0) {
+            showStatusMessage('No changes made', 'info');
+        } else {
+            showStatusMessage(`Updated ${changes} people links successfully`, 'success');
+        }
+        
+        // Close modal
+        const modal = document.getElementById('peopleLinkingModal');
+        if (modal) modal.classList.remove('modal-open');
+        
+        // Refresh the linked people section
+        const updatedEntity = await getEntity(entity.id);
+        if (updatedEntity) {
+            await populateLinkedPeople(updatedEntity);
+        }
+        
+    } catch (error) {
+        console.error('Failed to update people links:', error);
+        showStatusMessage('Failed to update people links', 'error');
+    }
+}
+
+// Make functions available globally
+if (typeof window !== 'undefined') {
+    window.entityRenderer = {
+        ...window.entityRenderer,
+        showPeopleLinkingModal: showPeopleLinkingModalGlobal,
+        confirmPeopleLinking,
+        updateSelectedPeople,
+        setupPeopleModalSearch,
+        removeSelectedPerson
+    };
+    
+    // Individual global functions for backward compatibility
+    window.showPeopleLinkingModal = showPeopleLinkingModalGlobal;
+    window.confirmPeopleLinking = confirmPeopleLinking;
+    window.updateSelectedPeople = updateSelectedPeople;
+    window.removeSelectedPerson = removeSelectedPerson;
 }
 
