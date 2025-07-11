@@ -207,22 +207,11 @@ function updateIdCounters() {
  * Show data management modal
  */
 export function showDataManagementModal() {
-    console.log('showDataManagementModal called');
-    const modal = document.getElementById('dataManagementModal');
-    if (modal) {
-        console.log('Data management modal found, opening...');
-        modal.classList.add('modal-open');
-        
-        // Update Dexie Cloud sync status
-        try {
-            if (window.updateDataManagementDexieSyncStatus) {
-                window.updateDataManagementDexieSyncStatus();
-            }
-        } catch (error) {
-            console.warn('Failed to update Dexie Cloud sync status:', error);
-        }
-    } else {
-        console.error('Data management modal not found!');
+    console.log('showDataManagementModal called - redirecting to settings view');
+    
+    // Switch to settings view instead of showing modal
+    if (window.switchToView) {
+        window.switchToView('settings');
     }
 }
 
@@ -230,9 +219,11 @@ export function showDataManagementModal() {
  * Close data management modal
  */
 export function closeDataManagementModal() {
-    const modal = document.getElementById('dataManagementModal');
-    if (modal) {
-        modal.classList.remove('modal-open');
+    console.log('closeDataManagementModal called - switching back to board view');
+    
+    // Switch back to board view instead of closing modal
+    if (window.switchToView) {
+        window.switchToView('board');
     }
 }
 

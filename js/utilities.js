@@ -189,7 +189,6 @@ export function setupEventListeners() {
         const columnModal = document.getElementById('columnModal');
         const groupModal = document.getElementById('groupModal');
         const exportModal = document.getElementById('exportModal');
-        const dataManagementModal = document.getElementById('dataManagementModal');
         const entityDetailModal = document.getElementById('entityDetailModal');
         const outlineModal = document.getElementById('outlineModal');
         const boardModal = document.getElementById('boardModal');
@@ -204,7 +203,6 @@ export function setupEventListeners() {
         if (event.target === columnModal && columnModal.classList.contains('modal-open')) window.closeColumnModal();
         if (event.target === groupModal && groupModal.classList.contains('modal-open')) window.closeGroupModal();
         if (event.target === exportModal && exportModal.classList.contains('modal-open')) window.closeExportModal();
-        if (event.target === dataManagementModal && dataManagementModal.classList.contains('modal-open')) window.closeDataManagementModal();
         if (event.target === entityDetailModal && entityDetailModal.classList.contains('modal-open')) window.entityRenderer.closeEntityDetailModal();
         if (event.target === outlineModal && outlineModal.classList.contains('modal-open')) closeOutlineModal();
         if (event.target === boardModal && boardModal.classList.contains('modal-open')) window.closeBoardModal();
@@ -222,7 +220,6 @@ export function setupEventListeners() {
             window.closeColumnModal();
             window.closeGroupModal();
             window.closeExportModal();
-            window.closeDataManagementModal();
             if (window.entityRenderer) window.entityRenderer.closeEntityDetailModal();
             closeOutlineModal();
             window.closeBoardModal();

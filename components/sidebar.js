@@ -106,21 +106,10 @@ class GridFlowSidebar extends HTMLElement {
                                     Tags
                                 </a>
                             </li>
-                        </ul>
-                    </div>
-                    <div>
-                        <ul class="menu bg-base-200 rounded-box">
-                            <li class="menu-title">Actions</li>
                             <li>
-                                <a href="#" data-action="showSettingsModal">
+                                <a href="#" id="sidebarSettingsView" data-view="settings">
                                     <span class="mr-2">⚙️</span>
                                     Settings
-                                </a>
-                            </li>
-                            <li>
-                                <a href="#" data-action="showDataManagementModal">
-                                    <span class="mr-2">💾</span>
-                                    Data Management
                                 </a>
                             </li>
                         </ul>

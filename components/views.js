@@ -1085,6 +1085,217 @@ class GridFlowViews extends HTMLElement {
                     </div>
                 </div>
             </div>
+
+            <!-- Settings View -->
+            <div class="settings-container min-h-screen hidden" id="settingsContainer">
+                <div class="settings-view" id="settingsView">
+                    <div class="container mx-auto max-w-4xl p-4">
+                        <!-- Settings Header -->
+                        <div class="settings-header bg-gradient-to-r from-primary/10 to-secondary/10 rounded-2xl p-6 mb-6">
+                            <div class="flex items-center gap-4">
+                                <!-- Mobile Menu Button -->
+                                <button class="btn btn-square btn-ghost lg:hidden" onclick="document.getElementById('drawer-toggle').checked = true" title="Open Menu">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-menu"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+                                </button>
+                                
+                                <!-- Settings Icon & Title -->
+                                <div class="flex items-center gap-3">
+                                    <div class="p-3 bg-primary/20 rounded-xl">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings text-primary"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                                    </div>
+                                    <div>
+                                        <h1 class="text-2xl font-bold text-base-content">Settings</h1>
+                                        <p class="text-base-content/70">Manage your GridFlow preferences and data</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Settings Content -->
+                        <div class="settings-content grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            
+                            <!-- Cloud Sync Section -->
+                            <div class="space-y-6">
+                                <!-- Dexie Cloud Sync Configuration -->
+                                <div class="card bg-base-100 shadow-md">
+                                    <div class="card-body">
+                                        <h3 class="card-title text-lg">☁️ Dexie Cloud Sync</h3>
+                                        <div class="space-y-4">
+                                            <div class="form-control">
+                                                <label class="label">
+                                                    <span class="label-text font-medium">Database URL</span>
+                                                    <a href="https://dexie.org/cloud/#getting-started" target="_blank" class="link link-primary text-xs">Learn more →</a>
+                                                </label>
+                                                <div class="bg-base-200 rounded p-3">
+                                                    <code class="text-xs">https://z87sp4xp5.dexie.cloud</code>
+                                                    <p class="text-xs text-base-content/60 mt-1">
+                                                        Built-in database URL - no configuration needed
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Authentication Section -->
+                                            <div id="dexieAuthSection" class="space-y-3">
+                                                <!-- Login Section (shown when not authenticated) -->
+                                                <div id="dexieLoginSection" class="form-control">
+                                                    <label class="label">
+                                                        <span class="label-text font-medium">Email Authentication (Optional)</span>
+                                                        <span class="label-text-alt text-xs">For cross-device sync</span>
+                                                    </label>
+                                                    <div class="flex gap-2">
+                                                        <input type="email" id="dexieCloudEmail" class="input input-bordered flex-1" placeholder="your@email.com">
+                                                        <button class="btn btn-secondary" data-action="loginToDexieCloud">Login</button>
+                                                    </div>
+                                                    <p class="text-xs text-base-content/60 mt-1">
+                                                        We'll send you a login link via email (no password needed). Data syncs anonymously without login.
+                                                    </p>
+                                                </div>
+                                                
+                                                <!-- User Section (shown when authenticated) -->
+                                                <div id="dexieUserSection" class="bg-base-200 rounded-lg p-3" style="display: none;">
+                                                    <div class="flex items-center justify-between">
+                                                        <div>
+                                                            <div class="font-medium">Logged in as:</div>
+                                                            <div class="text-sm text-base-content/70 user-email">user@example.com</div>
+                                                        </div>
+                                                        <button class="btn btn-ghost btn-sm" data-action="logoutFromDexieCloud">Logout</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="form-control">
+                                                <label class="label cursor-pointer">
+                                                    <span class="label-text">Enable cloud sync</span>
+                                                    <input type="checkbox" id="dexieCloudEnabled" class="checkbox" data-action="toggleDexieCloudSync">
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Sync Status -->
+                                <div class="card bg-base-100 shadow-md">
+                                    <div class="card-body">
+                                        <h3 class="card-title text-lg">📊 Sync Status</h3>
+                                        <div class="grid grid-cols-2 gap-3" id="dexieSyncStatusGrid">
+                                            <div class="stat">
+                                                <div class="stat-title">Status</div>
+                                                <div class="stat-value text-sm" id="dexieSyncStatus">Not configured</div>
+                                            </div>
+                                            <div class="stat">
+                                                <div class="stat-title">Last Sync</div>
+                                                <div class="stat-value text-sm" id="dexieLastSync">Never</div>
+                                            </div>
+                                            <div class="stat">
+                                                <div class="stat-title">Current User</div>
+                                                <div class="stat-value text-sm" id="dexieCurrentUser">Not logged in</div>
+                                            </div>
+                                            <div class="stat">
+                                                <div class="stat-title">Database URL</div>
+                                                <div class="stat-value text-sm" id="dexieDatabaseUrl">Not configured</div>
+                                            </div>
+                                        </div>
+                                        <div class="mt-4 space-y-2">
+                                            <button class="btn btn-primary btn-sm w-full" data-action="manualDexieSync">🔄 Auto-Syncing</button>
+                                            <div id="dexieSyncMessages" class="text-xs text-base-content/60">
+                                                Dexie Cloud syncs automatically in real-time
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Help -->
+                                <div class="card bg-info/10 border border-info/20">
+                                    <div class="card-body">
+                                        <h3 class="card-title text-lg text-info">💡 How Dexie Cloud works</h3>
+                                        <div class="text-sm space-y-2">
+                                            <p>• Data syncs instantly in real-time across all your devices</p>
+                                            <p>• Works offline - changes sync when you're back online</p>
+                                            <p>• No data size limits or request quotas</p>
+                                            <p>• Passwordless authentication: we email you a login link</p>
+                                            <p>• Login sessions last for months (no repeated logins)</p>
+                                            <p>• Data can sync anonymously without login</p>
+                                            <p>• Built-in shared database for all users</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Data Management Section -->
+                            <div class="space-y-6">
+                                <!-- Manual Backup -->
+                                <div class="card bg-base-100 shadow-md">
+                                    <div class="card-body">
+                                        <h3 class="card-title text-lg">📤 Manual Backup</h3>
+                                        <p class="mb-4">Export all your GridFlow data as a JSON backup file:</p>
+                                        <button class="btn btn-primary w-full" data-action="exportToJSON">💾 Download Backup (JSON)</button>
+                                    </div>
+                                </div>
+
+                                <!-- Import Data -->
+                                <div class="card bg-base-100 shadow-md">
+                                    <div class="card-body">
+                                        <h3 class="card-title text-lg">📥 Import Data</h3>
+                                        <p class="mb-4">Select a JSON backup file to import:</p>
+                                        <div class="flex items-center gap-2">
+                                            <input type="file" id="importFile" accept=".json" class="file-input file-input-bordered flex-1">
+                                            <button class="btn btn-primary" data-action="importFromJSON">📤 Upload</button>
+                                        </div>
+                                        <p class="text-xs text-base-content/60 mt-2">
+                                            <strong>Note:</strong> Importing will merge data with your current workspace. Export your current data first if you want to preserve it.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <!-- Export Options -->
+                                <div class="card bg-base-100 shadow-md">
+                                    <div class="card-body">
+                                        <h3 class="card-title text-lg">📊 Export Options</h3>
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <button class="btn btn-outline" data-action="exportToPDF">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-text"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+                                                Export to PDF
+                                            </button>
+                                            <button class="btn btn-outline" data-action="exportToPNG">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-image"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                                                Export to PNG
+                                            </button>
+                                            <button class="btn btn-outline" data-action="exportToExcel">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-table"><path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>
+                                                Export to Excel
+                                            </button>
+                                            <button class="btn btn-outline" data-action="exportToJSON">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                                                Export to JSON
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Account Actions -->
+                                <div class="card bg-warning/10 border border-warning/20">
+                                    <div class="card-body">
+                                        <h3 class="card-title text-lg text-warning">⚠️ Account Actions</h3>
+                                        <p class="text-sm text-base-content/60 mb-4">
+                                            Logout from your Dexie Cloud account to switch users.
+                                        </p>
+                                        <button class="btn btn-warning btn-sm w-full" data-action="clearDexieCloudData">🚪 Logout</button>
+                                    </div>
+                                </div>
+
+                                <!-- Danger Zone -->
+                                <div class="card bg-error/10 border border-error/20">
+                                    <div class="card-body">
+                                        <h3 class="card-title text-lg text-error">⚠️ Danger Zone</h3>
+                                        <p class="text-sm text-base-content/60 mb-4">Clear all data and start fresh. This action cannot be undone.</p>
+                                        <button class="btn btn-error w-full" data-action="clearAllData">🗑️ Clear All Data</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         `;
     }
 }

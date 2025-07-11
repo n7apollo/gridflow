@@ -11,8 +11,8 @@ import { showStatusMessage } from './utilities.js';
 // ============================================
 
 /**
- * Switch between different views (board, tasks, weekly, people, collections, tags)
- * @param {string} view - View to switch to ('board', 'tasks', 'weekly', 'people', 'collections', 'tags')
+ * Switch between different views (board, tasks, weekly, people, collections, tags, settings)
+ * @param {string} view - View to switch to ('board', 'tasks', 'weekly', 'people', 'collections', 'tags', 'settings')
  */
 export function switchToView(view) {
     // Hide all containers using CSS classes
@@ -22,6 +22,7 @@ export function switchToView(view) {
     const peopleContainer = document.getElementById('peopleContainer');
     const collectionsContainer = document.getElementById('collectionsContainer');
     const tagsContainer = document.getElementById('tagsContainer');
+    const settingsContainer = document.getElementById('settingsContainer');
     
     if (boardContainer) boardContainer.classList.add('hidden');
     if (taskContainer) taskContainer.classList.add('hidden');
@@ -29,6 +30,7 @@ export function switchToView(view) {
     if (peopleContainer) peopleContainer.classList.add('hidden');
     if (collectionsContainer) collectionsContainer.classList.add('hidden');
     if (tagsContainer) tagsContainer.classList.add('hidden');
+    if (settingsContainer) settingsContainer.classList.add('hidden');
     
     // Remove active class from all view buttons (header) - check if they exist
     const boardViewBtn = document.getElementById('boardViewBtn');
@@ -101,6 +103,12 @@ export function switchToView(view) {
         const sidebarTagsView = document.getElementById('sidebarTagsView');
         if (sidebarTagsView) sidebarTagsView.classList.add('active');
         if (window.initializeTagsView) window.initializeTagsView();
+    } else if (view === 'settings') {
+        if (settingsContainer) settingsContainer.classList.remove('hidden');
+        const sidebarSettingsView = document.getElementById('sidebarSettingsView');
+        if (sidebarSettingsView) sidebarSettingsView.classList.add('active');
+        // Initialize the Dexie Cloud UI when settings view is opened
+        if (window.initializeDexieCloudUI) window.initializeDexieCloudUI();
     }
 }
 

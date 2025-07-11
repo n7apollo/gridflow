@@ -18,27 +18,20 @@ function closeModal() {
 // ============================================
 
 function showSettingsModal() {
-    console.log('showSettingsModal called');
-    const modal = document.getElementById('settingsModal');
-    if (modal) {
-        console.log('Settings modal found, opening...');
-        modal.classList.add('modal-open');
-        
-        // Initialize Dexie Cloud sync UI
-        if (window.initializeDexieCloudUI) {
-            window.initializeDexieCloudUI();
-        }
-    } else {
-        console.error('Settings modal not found!');
+    console.log('showSettingsModal called - redirecting to settings view');
+    
+    // Switch to settings view instead of showing modal
+    if (window.switchToView) {
+        window.switchToView('settings');
     }
 }
 
 function closeSettingsModal() {
-    const modal = document.getElementById('settingsModal');
-    if (modal) {
-        modal.classList.remove('modal-open');
-    } else {
-        console.warn('Settings modal not found');
+    console.log('closeSettingsModal called - switching back to board view');
+    
+    // Switch back to board view instead of closing modal
+    if (window.switchToView) {
+        window.switchToView('board');
     }
 }
 
