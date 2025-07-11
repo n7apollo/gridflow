@@ -9,7 +9,9 @@ import { showStatusMessage } from './utilities.js';
 
 /**
  * Show the add subtask form
+ * DEPRECATED: Use addSubtaskToEntity from entity-renderer.js instead
  */
+/*
 export function showAddSubtaskForm() {
     // Get the current entity being edited
     const currentEntity = window.currentEditingEntity;
@@ -37,10 +39,13 @@ export function showAddSubtaskForm() {
         });
     }
 }
+*/
 
 /**
- * Hide the add subtask form
+ * Hide the add subtask form  
+ * DEPRECATED: Use cancelAddSubtask from entity-renderer.js instead
  */
+/*
 export function hideAddSubtaskForm() {
     // Get the current entity being edited
     const currentEntity = window.currentEditingEntity;
@@ -56,86 +61,92 @@ export function hideAddSubtaskForm() {
     if (form) form.style.display = 'none';
     if (button) button.style.display = 'inline-flex';
 }
+*/
 
 /**
  * Save a new subtask to the current detail card
+ * DEPRECATED: Use the saveNewSubtask function from entity-renderer.js instead
  */
-export async function saveNewSubtask() {
-    const currentEntity = window.currentEditingEntity;
-    if (!currentEntity) {
-        console.warn('No current entity found for saveNewSubtask');
-        return;
-    }
-    
-    const entityId = currentEntity.id;
-    const input = document.getElementById(`newSubtaskTitle-${entityId}`);
-    if (!input) {
-        console.warn('Subtask input not found:', `newSubtaskTitle-${entityId}`);
-        return;
-    }
-    
-    const text = input.value.trim();
-    
-    if (!text) {
-        input.focus();
-        return;
-    }
-    
-    try {
-        // Import necessary functions from entity-core
-        const { createEntity, ENTITY_TYPES } = await import('./entity-core.js');
-        
-        // Create new task entity using proper entity system
-        const subtaskData = {
-            title: text,
-            content: '',
-            completed: false,
-            dueDate: null,
-            priority: 'medium',
-            tags: []
-        };
-        
-        const subtaskId = createEntity(ENTITY_TYPES.TASK, subtaskData);
-        
-        if (subtaskId) {
-            // Add subtask to current entity's subtasks
-            if (!currentEntity.subtasks) {
-                currentEntity.subtasks = [];
-            }
-            currentEntity.subtasks.push(subtaskId);
-            
-            // Update the entity
-            const { updateEntity } = await import('./entity-core.js');
-            updateEntity(currentEntity.id, { subtasks: currentEntity.subtasks });
-            
-            console.log('✅ Subtask created successfully:', subtaskId);
-            
-            // Clear form and hide it
-            input.value = '';
-            hideAddSubtaskForm();
-            
-            // Refresh the subtasks display
-            if (window.populateSubtasks) {
-                window.populateSubtasks(currentEntity.id);
-            }
-            
-            // Show success message
-            if (window.showStatusMessage) {
-                window.showStatusMessage('Subtask added successfully', 'success');
-            }
-        } else {
-            console.error('Failed to create subtask');
-            if (window.showStatusMessage) {
-                window.showStatusMessage('Failed to create subtask', 'error');
-            }
-        }
-    } catch (error) {
-        console.error('Error saving subtask:', error);
-        if (window.showStatusMessage) {
-            window.showStatusMessage('Error saving subtask', 'error');
-        }
-    }
-}
+// export async function saveNewSubtask() {
+//     const currentEntity = window.currentEditingEntity;
+//     if (!currentEntity) {
+//         console.warn('No current entity found for saveNewSubtask');
+//         return;
+//     }
+//     
+//     const entityId = currentEntity.id;
+//     const input = document.getElementById(`newSubtaskTitle-${entityId}`);
+//     if (!input) {
+//         console.warn('Subtask input not found:', `newSubtaskTitle-${entityId}`);
+//         return;
+//     }
+//     
+//     const text = input.value.trim();
+//     
+//     if (!text) {
+//         input.focus();
+//         return;
+//     }
+//     
+//     try {
+//         // Import necessary functions from entity-core
+//         const { createEntity, ENTITY_TYPES } = await import('./entity-core.js');
+//         
+//         // Create new task entity using proper entity system
+//         const subtaskData = {
+//             title: text,
+//             content: '',
+//             completed: false,
+//             dueDate: null,
+//             priority: 'medium',
+//             tags: []
+//         };
+//         
+//         const subtaskId = createEntity(ENTITY_TYPES.TASK, subtaskData);
+//         
+//         if (subtaskId) {
+//             // Add subtask to current entity's subtasks
+//             if (!currentEntity.subtasks) {
+//                 currentEntity.subtasks = [];
+//             }
+//             currentEntity.subtasks.push(subtaskId);
+//             
+//             // Update the entity
+//             const { updateEntity } = await import('./entity-core.js');
+//             updateEntity(currentEntity.id, { subtasks: currentEntity.subtasks });
+//             
+//             console.log('✅ Subtask created successfully:', subtaskId);
+//             
+//             // Clear form and hide it
+//             input.value = '';
+//             hideAddSubtaskForm();
+//             
+//             // Refresh the subtasks display
+//             // Note: populateSubtasks expects an entity object, not just an ID
+//             // We need to refresh by re-populating from the updated entity
+//             const { getEntity } = await import('./entity-core.js');
+//             const updatedEntity = await getEntity(currentEntity.id);
+//             if (updatedEntity && window.populateSubtasks) {
+//                 window.populateSubtasks(updatedEntity);
+//             }
+//             
+//             // Show success message
+//             if (window.showStatusMessage) {
+//                 window.showStatusMessage('Subtask added successfully', 'success');
+//             }
+//         } else {
+//             console.error('Failed to create subtask');
+//             if (window.showStatusMessage) {
+//                 window.showStatusMessage('Failed to create subtask', 'error');
+//             }
+//         }
+//     } catch (error) {
+//         console.error('Error saving subtask:', error);
+//         if (window.showStatusMessage) {
+//             window.showStatusMessage('Error saving subtask', 'error');
+//         }
+//     }
+// }
 
 /**
  * Start editing a subtask inline
@@ -258,8 +269,8 @@ export function toggleSubtask(taskId) {
 }
 
 // Make functions available globally for backward compatibility
-window.showAddSubtaskForm = showAddSubtaskForm;
-window.hideAddSubtaskForm = hideAddSubtaskForm;
+// window.showAddSubtaskForm = showAddSubtaskForm; // Commented out - use addSubtaskToEntity from entity-renderer.js
+// window.hideAddSubtaskForm = hideAddSubtaskForm; // Commented out - use cancelAddSubtask from entity-renderer.js
 // Note: saveNewSubtask is handled by entity-renderer.js for the new entity system
 window.startEditSubtask = startEditSubtask;
 window.saveEditSubtask = saveEditSubtask;

@@ -815,6 +815,7 @@ export async function showEntityDetail(entityId) {
     
     // Store current entity for modal operations
     currentEditingEntity = entity;
+    window.currentEditingEntity = entity; // Expose to window for subtask-management.js
     
     // Clear any existing subtasks content first to prevent stale data
     const subtasksList = document.getElementById('subtasksList');
@@ -826,7 +827,7 @@ export async function showEntityDetail(entityId) {
     }
     
     // Populate modal with entity data
-    populateEntityDetailModal(entity);
+    await populateEntityDetailModal(entity);
     
     // Show modal
     modal.classList.add('modal-open');
@@ -849,6 +850,7 @@ export async function editEntity(entityId) {
  */
 function setupEntityEditModal(modal, entity) {
     currentEditingEntity = entity;
+    window.currentEditingEntity = entity; // Expose to window for subtask-management.js
     
     // Update modal title
     const modalTitle = modal.querySelector('h2');
@@ -886,6 +888,7 @@ function setupEntityEditModal(modal, entity) {
             btn.onclick = function() {
                 if (originalOnClick) saveButton.onclick = originalOnClick;
                 currentEditingEntity = null;
+                window.currentEditingEntity = null; // Clear window reference too
                 if (originalClose) originalClose();
             };
         });
@@ -932,6 +935,7 @@ function saveEntityFromModal(modal) {
     // Close modal
     modal.classList.remove('modal-open');
     currentEditingEntity = null;
+    window.currentEditingEntity = null; // Clear window reference too
     
     // Refresh displays
     refreshEntityDisplays(currentEditingEntity?.id);
@@ -1043,7 +1047,7 @@ function getContextDataFromElement(element) {
  * Populate the entity detail modal with entity data
  * @param {Object} entity - Entity object
  */
-function populateEntityDetailModal(entity) {
+async function populateEntityDetailModal(entity) {
     // Get all the modal elements
     const elements = {
         icon: document.getElementById('entityIcon'),
@@ -1099,7 +1103,7 @@ function populateEntityDetailModal(entity) {
     populateEntityTags(entity);
     
     // Populate subtasks
-    populateSubtasks(entity);
+    await populateSubtasks(entity);
     
     // Populate checklist items if checklist
     if (entity.type === ENTITY_TYPES.CHECKLIST) {
@@ -1224,6 +1228,7 @@ export function closeEntityDetailModal() {
     const modal = document.getElementById('entityDetailModal');
     if (modal) modal.classList.remove('modal-open');
     currentEditingEntity = null;
+    window.currentEditingEntity = null; // Clear window reference too
 }
 
 /**
@@ -2461,5 +2466,6 @@ if (typeof window !== 'undefined') {
     window.deleteSubtask = deleteSubtask;
     window.addSubtaskToWeekly = addSubtaskToWeekly;
     window.removeFromWeekly = removeFromWeekly;
+    window.populateSubtasks = populateSubtasks; // Expose for subtask-management.js
 }
 
