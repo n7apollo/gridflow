@@ -866,18 +866,18 @@ class GridFlowModals extends HTMLElement {
                     <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" data-action="closeDataManagementModal">✕</button>
                     <h2 class="text-xl font-bold mb-4">Data Management</h2>
                     <div class="space-y-6">
-                        <!-- Cloud Sync Status -->
+                        <!-- Dexie Cloud Sync Status -->
                         <div class="card bg-base-100 border border-base-300">
                             <div class="card-body">
-                                <h3 class="card-title text-base">☁️ Cloud Sync</h3>
+                                <h3 class="card-title text-base">☁️ Dexie Cloud Sync</h3>
                                 <div class="flex items-center justify-between mb-2">
-                                    <span class="text-sm" id="dataSyncStatus">Not configured</span>
+                                    <span class="text-sm" id="dataDexieSyncStatus">Not configured</span>
                                     <button class="btn btn-primary btn-sm" data-action="showSettingsModal">Configure</button>
                                 </div>
-                                <div class="text-xs text-base-content/60" id="dataSyncDetails">
-                                    Configure cloud sync in Settings to automatically backup your data
+                                <div class="text-xs text-base-content/60" id="dataDexieSyncDetails">
+                                    Configure Dexie Cloud in Settings for automatic sync across devices
                                 </div>
-                                <button class="btn btn-outline w-full mt-2" data-action="manualSync" id="dataSyncButton" disabled>🔄 Sync Now</button>
+                                <button class="btn btn-outline w-full mt-2" data-action="manualDexieSync" id="dataDexieSyncButton" disabled>🔄 Auto-Syncing</button>
                             </div>
                         </div>
                         <div class="card bg-base-100 border border-base-300">
@@ -1009,82 +1009,89 @@ class GridFlowModals extends HTMLElement {
                     <h2 class="text-xl font-bold mb-4">Settings</h2>
                     <div class="settings-container">
                         <div class="space-y-6">
-                            <!-- Cloud Sync Configuration -->
+                            <!-- Dexie Cloud Sync Configuration -->
                             <div class="card bg-base-100 border border-base-300">
                                 <div class="card-body">
-                                    <h3 class="card-title text-base">⚙️ Cloud Sync Configuration</h3>
+                                    <h3 class="card-title text-base">☁️ Dexie Cloud Sync</h3>
                                     <div class="space-y-4">
                                         <div class="form-control">
                                             <label class="label">
-                                                <span class="label-text font-medium">API Key</span>
-                                                <a href="https://app.jsonstorage.net" target="_blank" class="link link-primary text-xs">Get your key →</a>
+                                                <span class="label-text font-medium">Database URL</span>
+                                                <a href="https://dexie.org/cloud/#getting-started" target="_blank" class="link link-primary text-xs">Learn more →</a>
                                             </label>
-                                            <div class="flex gap-2">
-                                                <div class="relative flex-1">
-                                                    <input type="password" id="syncApiKey" class="input input-bordered w-full pr-10" placeholder="Enter your jsonstorage.net API key">
-                                                    <button type="button" id="toggleApiKeyVisibility" class="btn btn-ghost btn-sm absolute right-1 top-1/2 -translate-y-1/2 p-1 h-8 w-8 min-h-0" title="Toggle visibility">
-                                                        <i data-lucide="eye" class="w-4 h-4"></i>
-                                                    </button>
-                                                </div>
-                                                <button class="btn btn-primary" data-action="configureSyncApiKey" id="saveApiKeyBtn">Save</button>
+                                            <div class="bg-base-200 rounded p-3">
+                                                <code class="text-xs">https://z87sp4xp5.dexie.cloud</code>
+                                                <p class="text-xs text-base-content/60 mt-1">
+                                                    Built-in database URL - no configuration needed
+                                                </p>
                                             </div>
-                                            <p class="text-xs text-base-content/60 mt-1">
-                                                Your API key is stored securely on your device and never shared.
-                                            </p>
                                         </div>
-                                        <div class="form-control">
-                                            <label class="label">
-                                                <span class="label-text font-medium">Plan Type</span>
-                                            </label>
-                                            <select id="syncPlanType" class="select select-bordered" data-action="updateSyncPlan">
-                                                <option value="free">Free (512 requests/day, 32kb)</option>
-                                                <option value="paid">Paid ($1/month - 1440 requests/day, 64kb)</option>
-                                            </select>
+                                        
+                                        <!-- Authentication Section -->
+                                        <div id="dexieAuthSection" class="space-y-3">
+                                            <!-- Login Section (shown when not authenticated) -->
+                                            <div id="dexieLoginSection" class="form-control">
+                                                <label class="label">
+                                                    <span class="label-text font-medium">Email Authentication (Optional)</span>
+                                                    <span class="label-text-alt text-xs">For cross-device sync</span>
+                                                </label>
+                                                <div class="flex gap-2">
+                                                    <input type="email" id="dexieCloudEmail" class="input input-bordered flex-1" placeholder="your@email.com">
+                                                    <button class="btn btn-secondary" data-action="loginToDexieCloud">Login</button>
+                                                </div>
+                                                <p class="text-xs text-base-content/60 mt-1">
+                                                    We'll send you a login link via email (no password needed). Data syncs anonymously without login.
+                                                </p>
+                                            </div>
+                                            
+                                            <!-- User Section (shown when authenticated) -->
+                                            <div id="dexieUserSection" class="bg-base-200 rounded-lg p-3" style="display: none;">
+                                                <div class="flex items-center justify-between">
+                                                    <div>
+                                                        <div class="font-medium">Logged in as:</div>
+                                                        <div class="text-sm text-base-content/70 user-email">user@example.com</div>
+                                                    </div>
+                                                    <button class="btn btn-ghost btn-sm" data-action="logoutFromDexieCloud">Logout</button>
+                                                </div>
+                                            </div>
                                         </div>
+                                        
                                         <div class="form-control">
                                             <label class="label cursor-pointer">
-                                                <span class="label-text">Enable automatic sync</span>
-                                                <input type="checkbox" id="autoSyncEnabled" class="checkbox" data-action="toggleAutoSync">
+                                                <span class="label-text">Enable cloud sync</span>
+                                                <input type="checkbox" id="dexieCloudEnabled" class="checkbox" data-action="toggleDexieCloudSync">
                                             </label>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Sync Status & Usage -->
+                            <!-- Dexie Cloud Status -->
                             <div class="card bg-base-100 border border-base-300">
                                 <div class="card-body">
-                                    <h3 class="card-title text-base">📊 Status & Usage</h3>
-                                    <div class="grid grid-cols-2 gap-3" id="syncStatusGrid">
+                                    <h3 class="card-title text-base">📊 Sync Status</h3>
+                                    <div class="grid grid-cols-2 gap-3" id="dexieSyncStatusGrid">
                                         <div class="stat">
                                             <div class="stat-title">Status</div>
-                                            <div class="stat-value text-sm" id="syncStatus">Not configured</div>
+                                            <div class="stat-value text-sm" id="dexieSyncStatus">Not configured</div>
                                         </div>
                                         <div class="stat">
                                             <div class="stat-title">Last Sync</div>
-                                            <div class="stat-value text-sm" id="lastSyncTime">Never</div>
+                                            <div class="stat-value text-sm" id="dexieLastSync">Never</div>
                                         </div>
                                         <div class="stat">
-                                            <div class="stat-title">Daily Requests</div>
-                                            <div class="stat-value text-sm" id="requestsUsed">0/512</div>
+                                            <div class="stat-title">Current User</div>
+                                            <div class="stat-value text-sm" id="dexieCurrentUser">Not logged in</div>
                                         </div>
                                         <div class="stat">
-                                            <div class="stat-title">Data Size</div>
-                                            <div class="stat-value text-sm" id="dataSize">0 KB</div>
-                                        </div>
-                                        <div class="stat">
-                                            <div class="stat-title">Total Syncs</div>
-                                            <div class="stat-value text-sm" id="totalSyncs">0</div>
-                                        </div>
-                                        <div class="stat">
-                                            <div class="stat-title">Errors</div>
-                                            <div class="stat-value text-sm" id="syncErrors">0</div>
+                                            <div class="stat-title">Database URL</div>
+                                            <div class="stat-value text-sm" id="dexieDatabaseUrl">Not configured</div>
                                         </div>
                                     </div>
                                     <div class="mt-4 space-y-2">
-                                        <button class="btn btn-primary btn-sm w-full" data-action="manualSync">🔄 Sync Now</button>
-                                        <div id="syncMessages" class="text-xs text-base-content/60">
-                                            Configure your API key to enable cloud sync
+                                        <button class="btn btn-primary btn-sm w-full" data-action="manualDexieSync">🔄 Auto-Syncing</button>
+                                        <div id="dexieSyncMessages" class="text-xs text-base-content/60">
+                                            Dexie Cloud syncs automatically in real-time
                                         </div>
                                     </div>
                                 </div>
@@ -1093,13 +1100,15 @@ class GridFlowModals extends HTMLElement {
                             <!-- Help -->
                             <div class="card bg-info/10 border border-info/20">
                                 <div class="card-body">
-                                    <h3 class="card-title text-base text-info">💡 How it works</h3>
+                                    <h3 class="card-title text-base text-info">💡 How Dexie Cloud works</h3>
                                     <div class="text-sm space-y-2">
-                                        <p>• Your data syncs automatically when changes are made</p>
-                                        <p>• Free tier: 512 syncs per day, up to 32kb data</p>
-                                        <p>• Paid tier: 1440 syncs per day, up to 64kb data</p>
-                                        <p>• Data is stored securely at jsonstorage.net</p>
-                                        <p>• Each user manages their own API key and data</p>
+                                        <p>• Data syncs instantly in real-time across all your devices</p>
+                                        <p>• Works offline - changes sync when you're back online</p>
+                                        <p>• No data size limits or request quotas</p>
+                                        <p>• Passwordless authentication: we email you a login link</p>
+                                        <p>• Login sessions last for months (no repeated logins)</p>
+                                        <p>• Data can sync anonymously without login</p>
+                                        <p>• Built-in shared database for all users</p>
                                     </div>
                                 </div>
                             </div>
@@ -1107,11 +1116,11 @@ class GridFlowModals extends HTMLElement {
                             <!-- Danger Zone -->
                             <div class="card bg-error/10 border border-error/20">
                                 <div class="card-body">
-                                    <h3 class="card-title text-base text-error">⚠️ Reset Sync</h3>
+                                    <h3 class="card-title text-base text-error">⚠️ Reset Cloud Sync</h3>
                                     <p class="text-sm text-base-content/60 mb-4">
-                                        Clear all sync configuration and usage data.
+                                        Logout from your Dexie Cloud account to switch users.
                                     </p>
-                                    <button class="btn btn-error btn-sm" data-action="clearSyncData">🗑️ Clear Sync Data</button>
+                                    <button class="btn btn-error btn-sm" data-action="clearDexieCloudData">🚪 Logout</button>
                                 </div>
                             </div>
                         </div>

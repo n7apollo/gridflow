@@ -6,8 +6,15 @@
     <title>GridFlow - Project Management Tool</title>
     <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
     <link rel="stylesheet" href="style.css" type="text/css" />
-    <!-- Dexie.js for database management -->
-    <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+    <!-- Import map for ES6 modules from CDN -->
+    <script type="importmap">
+    {
+      "imports": {
+        "dexie": "https://cdn.skypack.dev/dexie",
+        "dexie-cloud-addon": "https://cdn.skypack.dev/dexie-cloud-addon"
+      }
+    }
+    </script>
 
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>

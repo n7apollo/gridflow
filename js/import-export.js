@@ -213,14 +213,14 @@ export function showDataManagementModal() {
         console.log('Data management modal found, opening...');
         modal.classList.add('modal-open');
         
-        // Cloud sync disabled - no longer using jsonstorage.net
-        // try {
-        //     if (window.updateDataManagementSyncStatus && window.gridFlowDB && window.gridFlowDB.isReady()) {
-        //         window.updateDataManagementSyncStatus();
-        //     }
-        // } catch (error) {
-        //     console.warn('Failed to update sync status:', error);
-        // }
+        // Update Dexie Cloud sync status
+        try {
+            if (window.updateDataManagementDexieSyncStatus) {
+                window.updateDataManagementDexieSyncStatus();
+            }
+        } catch (error) {
+            console.warn('Failed to update Dexie Cloud sync status:', error);
+        }
     } else {
         console.error('Data management modal not found!');
     }

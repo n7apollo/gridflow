@@ -27,9 +27,9 @@ import * as entityRenderer from './entity-renderer.js';
 import * as entitySync from './entity-sync.js';
 import * as dataMigration from './data-migration.js';
 import * as dragDrop from './drag-drop.js';
-// Cloud sync disabled - no longer using jsonstorage.net
-// import * as cloudSync from './cloud-sync.js';
-// import * as syncUI from './sync-ui.js';
+// Dexie Cloud sync modules
+import { dexieCloudSync } from './dexie-cloud-sync.js';
+import * as dexieCloudUI from './dexie-cloud-ui.js';
 
 // Debug tools for development
 import './debug-data-source.js';
@@ -83,9 +83,9 @@ async function initializeGridFlow() {
         window.entitySync = entitySync;
         window.dataMigration = dataMigration;
         window.dragDrop = dragDrop;
-        // Cloud sync disabled
-        // window.cloudSync = cloudSync.cloudSync; // Export the instance
-        // window.syncUI = syncUI;
+        // Dexie Cloud sync modules
+        window.dexieCloudSync = dexieCloudSync;
+        window.dexieCloudUI = dexieCloudUI;
         
         // Make People System available globally
         window.peopleService = peopleService;
@@ -147,11 +147,11 @@ async function initializeGridFlow() {
         // Initialize collections (populate defaults if needed)
         collections.initializeSampleCollections();
         
-        // Initialize cloud sync (load settings and start auto-sync if enabled)
-        if (window.cloudSync) {
-            console.log('☁️ Initializing cloud sync...');
-            window.cloudSync.loadSyncSettings();
-            console.log('✅ Cloud sync initialized');
+        // Initialize Dexie Cloud sync
+        if (window.dexieCloudSync) {
+            console.log('☁️ Initializing Dexie Cloud sync...');
+            await window.dexieCloudSync.initialize();
+            console.log('✅ Dexie Cloud sync initialized');
         }
         
         // Verify data integrity
@@ -244,7 +244,7 @@ async function getAppHealthStatus() {
             },
             features: {
                 peopleSystem: !!window.peopleService,
-                cloudSync: !!window.cloudSync,
+                dexieCloudSync: !!window.dexieCloudSync,
                 weeklyPlanning: !!window.weeklyPlanning
             }
         };

@@ -110,10 +110,7 @@ export async function saveData() {
             }
         }
 
-        // Mark changes for cloud sync
-        if (window.cloudSync && window.cloudSync.isEnabled) {
-            window.cloudSync.markChanges();
-        }
+        // Dexie Cloud automatically tracks changes
         
         showStatusMessage('Data saved successfully', 'success');
     } catch (error) {

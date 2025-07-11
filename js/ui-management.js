@@ -24,9 +24,9 @@ function showSettingsModal() {
         console.log('Settings modal found, opening...');
         modal.classList.add('modal-open');
         
-        // Initialize sync UI
-        if (window.initializeSyncUI) {
-            window.initializeSyncUI();
+        // Initialize Dexie Cloud sync UI
+        if (window.initializeDexieCloudUI) {
+            window.initializeDexieCloudUI();
         }
     } else {
         console.error('Settings modal not found!');
