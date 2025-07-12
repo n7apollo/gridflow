@@ -369,22 +369,25 @@ class NotesManager {
 
         notesList.innerHTML = filteredNotes.map(note => {
             const isActive = this.currentNote && this.currentNote.id === note.id;
-            const previewText = note.content.substring(0, 100);
+            const previewText = note.content.substring(0, 80);
             const hasLinks = (note.tags && note.tags.length > 0) || (note.people && note.people.length > 0);
             
             return `
-                <li class="note-item ${isActive ? 'bg-primary/10 border-l-4 border-primary' : ''}" data-note-id="${note.id}">
-                    <a href="#" class="block p-3 hover:bg-base-200 transition-colors">
-                        <div class="flex items-start justify-between mb-1">
-                            <h4 class="font-medium text-sm truncate flex-1">${this.escapeHtml(note.title)}</h4>
-                            <div class="flex items-center gap-1 ml-2">
+                <li class="list-row note-item ${isActive ? 'bg-primary/10' : ''} hover:bg-base-200 cursor-pointer" data-note-id="${note.id}">
+                    <div class="p-3">
+                        <div class="flex items-center gap-2 mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-text text-primary"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+                            <div class="flex-1 min-w-0">
+                                <h4 class="font-medium text-sm truncate">${this.escapeHtml(note.title)}</h4>
+                            </div>
+                            <div class="flex items-center gap-1">
                                 ${note.isPrivate ? '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-lock text-base-content/50"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>' : ''}
                                 ${hasLinks ? '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link text-primary"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>' : ''}
                             </div>
                         </div>
-                        <p class="text-xs text-base-content/60 truncate mb-1">${this.escapeHtml(previewText)}</p>
+                        ${previewText ? `<p class="text-xs text-base-content/60 line-clamp-2 mb-1">${this.escapeHtml(previewText)}</p>` : ''}
                         <p class="text-xs text-base-content/50">${this.formatTimeAgo(note.updatedAt)}</p>
-                    </a>
+                    </div>
                 </li>
             `;
         }).join('');

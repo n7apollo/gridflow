@@ -8,6 +8,7 @@
 
 import { getEntity, updateEntity, toggleEntityCompletion, removeEntityFromContext, ENTITY_TYPES, CONTEXT_TYPES } from './entity-core.js';
 import { showStatusMessage } from './utilities.js';
+import { db } from './db.js';
 
 // Global variable to track entity being edited
 let currentEditingEntity = null;

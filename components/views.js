@@ -582,10 +582,10 @@ class GridFlowViews extends HTMLElement {
             </div>
 
             <!-- Notes Management Interface -->
-            <div class="notes-container min-h-screen flex" id="notesContainer">
+            <div class="notes-container h-full flex flex-row overflow-hidden" id="notesContainer">
                 <!-- Notes List Pane -->
-                <div class="notes-list-pane w-1/3 min-w-80 bg-base-200 border-r border-base-300" id="notesListPane">
-                    <div class="p-4">
+                <div class="notes-list-pane w-1/3 min-w-80 bg-base-200 border-r border-base-300 flex flex-col" id="notesListPane">
+                    <div class="p-4 flex-shrink-0">
                         <!-- Notes Header -->
                         <div class="notes-header mb-6">
                             <div class="flex items-center justify-between mb-4">
@@ -635,19 +635,20 @@ class GridFlowViews extends HTMLElement {
                             </div>
                         </div>
 
-                        <!-- Notes List -->
-                        <div class="notes-list">
-                            <ul class="menu bg-base-100 rounded-box p-0 space-y-1" id="notesList">
-                                <!-- Notes will be populated here -->
-                                <li class="text-center text-base-content/50 py-8">
-                                    <div>
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-plus mx-auto mb-2"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 12h4"/><path d="M12 10v4"/></svg>
-                                        <p class="text-sm">No notes yet</p>
-                                        <p class="text-xs">Create your first note to get started</p>
-                                    </div>
-                                </li>
-                            </ul>
-                        </div>
+                    </div>
+                    
+                    <!-- Notes List -->
+                    <div class="notes-list flex-1 overflow-hidden px-4 pb-4">
+                        <ul class="list bg-base-100 rounded-box h-full overflow-y-auto" id="notesList">
+                            <!-- Notes will be populated here -->
+                            <li class="text-center text-base-content/50 py-8">
+                                <div>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-plus mx-auto mb-2"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 12h4"/><path d="M12 10v4"/></svg>
+                                    <p class="text-sm">No notes yet</p>
+                                    <p class="text-xs">Create your first note to get started</p>
+                                </div>
+                            </li>
+                        </ul>
                     </div>
                 </div>
 

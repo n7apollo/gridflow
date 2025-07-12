@@ -68,8 +68,8 @@ class GridFlowSidebar extends HTMLElement {
                 
                 <div class="p-4 flex flex-col gap-6">
                     <div>
-                        <ul class="menu bg-base-200 rounded-box">
-                            <li class="menu-title">Views</li>
+                        <ul class="menu bg-base-200 rounded-box w-full">
+                            <li class="menu-title">VIEWS</li>
                             <li>
                                 <a href="#" id="sidebarBoardView" data-view="board">
                                     <span class="mr-2">📋</span>
