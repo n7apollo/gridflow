@@ -38,6 +38,9 @@ import './debug-data-source.js';
 import peopleService from './people-service.js';
 import * as peopleView from './people-view.js';
 
+// Notes System
+import { notesManager } from './notes-management.js';
+
 // Collections and Tags System
 import * as collectionsView from './collections-view.js';
 import * as tagsView from './tags-view.js';
@@ -346,6 +349,7 @@ export {
     dragDrop, 
     peopleService, 
     peopleView,
+    notesManager,
     getAppHealthStatus,
     emergencyDataRecovery
 };

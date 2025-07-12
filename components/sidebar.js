@@ -89,6 +89,12 @@ class GridFlowSidebar extends HTMLElement {
                                 </a>
                             </li>
                             <li>
+                                <a href="#" id="sidebarNotesView" data-view="notes">
+                                    <span class="mr-2">📝</span>
+                                    Notes
+                                </a>
+                            </li>
+                            <li>
                                 <a href="#" id="sidebarPeopleView" data-view="people">
                                     <span class="mr-2">👥</span>
                                     People

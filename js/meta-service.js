@@ -222,7 +222,7 @@ export class MetaService {
    */
   async createCollection(name, type = 'saved_search', category = 'general', filters = {}, autoUpdate = true) {
     const collection = {
-      id: `collection_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `cll${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       name,
       type, // 'saved_search', 'manual', 'smart'
       category,
@@ -364,7 +364,7 @@ export class MetaService {
    */
   async createTemplate(name, description = '', category = 'general', structure = {}) {
     const template = {
-      id: `template_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `tmp${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       name,
       description,
       category,

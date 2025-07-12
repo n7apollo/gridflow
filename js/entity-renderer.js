@@ -76,6 +76,9 @@ function renderEntityAsCard(entity, contextData = {}) {
                 <div class="flex items-center gap-2">
                     <span class="text-lg">${getEntityTypeIcon(entity.type, true)}</span>
                     ${entity.completed ? '<span class="badge badge-success badge-sm">✓</span>' : ''}
+                    <div class="cross-context-indicators" id="crossContext${entity.id}">
+                        <!-- Cross-context indicators will be added here -->
+                    </div>
                 </div>
                 <span class="badge badge-outline badge-sm">${entity.type}</span>
             </div>
@@ -131,6 +134,9 @@ function renderEntityAsCard(entity, contextData = {}) {
     
     // Add event listeners
     setupCardEventListeners(cardElement, entity);
+    
+    // Load cross-context indicators asynchronously
+    loadCrossContextIndicators(entity.id);
     
     return cardElement;
 }
@@ -773,6 +779,79 @@ function formatDate(dateString) {
     if (diffDays < 0 && diffDays >= -7) return `${Math.abs(diffDays)} days ago`;
     
     return date.toLocaleDateString();
+}
+
+/**
+ * Load and display cross-context indicators for an entity
+ * @param {string} entityId - Entity ID
+ */
+async function loadCrossContextIndicators(entityId) {
+    try {
+        const indicators = [];
+        
+        // Check if entity exists in weekly plans
+        const weeklyItems = await db.weeklyItems.where('entityId').equals(entityId).toArray();
+        if (weeklyItems.length > 0) {
+            indicators.push({
+                icon: '📅',
+                title: `In ${weeklyItems.length} weekly plan${weeklyItems.length > 1 ? 's' : ''}`,
+                class: 'badge-info'
+            });
+        }
+        
+        // Check if entity exists in other boards
+        const positions = await db.entityPositions.where('entityId').equals(entityId).toArray();
+        const boardPositions = positions.filter(p => p.context === 'board');
+        if (boardPositions.length > 1) { // More than current board
+            indicators.push({
+                icon: '📋',
+                title: `In ${boardPositions.length} board${boardPositions.length > 1 ? 's' : ''}`,
+                class: 'badge-primary'
+            });
+        }
+        
+        // Check if entity is linked to people
+        const entity = await db.entities.get(entityId);
+        if (entity && entity.people && entity.people.length > 0) {
+            indicators.push({
+                icon: '👥',
+                title: `Linked to ${entity.people.length} person${entity.people.length > 1 ? 's' : ''}`,
+                class: 'badge-secondary'
+            });
+        }
+        
+        // Check if entity is in collections
+        const collections = await db.collections.filter(collection => 
+            collection.items && collection.items.includes(entityId)
+        ).toArray();
+        if (collections.length > 0) {
+            indicators.push({
+                icon: '📂',
+                title: `In ${collections.length} collection${collections.length > 1 ? 's' : ''}`,
+                class: 'badge-accent'
+            });
+        }
+        
+        // Check if entity has tags
+        if (entity && entity.tags && entity.tags.length > 0) {
+            indicators.push({
+                icon: '🏷️',
+                title: `${entity.tags.length} tag${entity.tags.length > 1 ? 's' : ''}`,
+                class: 'badge-neutral'
+            });
+        }
+        
+        // Update the UI
+        const indicatorContainer = document.getElementById(`crossContext${entityId}`);
+        if (indicatorContainer && indicators.length > 0) {
+            indicatorContainer.innerHTML = indicators.map(indicator => 
+                `<span class="badge badge-xs ${indicator.class}" title="${indicator.title}">${indicator.icon}</span>`
+            ).join('');
+        }
+        
+    } catch (error) {
+        console.error('Failed to load cross-context indicators:', error);
+    }
 }
 
 /**
@@ -1819,22 +1898,91 @@ function setupPeopleModalSearch() {
 /**
  * Duplicate current entity
  */
-function duplicateCurrentEntity() {
-    if (!currentEditingEntity) return;
+async function duplicateCurrentEntity() {
+    if (!currentEditingEntity) {
+        showStatusMessage('No entity selected for duplication', 'warning');
+        return;
+    }
     
-    // Implementation would depend on your entity creation system
-    showStatusMessage('Duplicate functionality coming soon', 'info');
+    try {
+        const { createEntity } = await import('./entity-core.js');
+        
+        // Create a copy of the entity data
+        const entityData = { ...currentEditingEntity };
+        delete entityData.id;
+        delete entityData.createdAt;
+        delete entityData.updatedAt;
+        
+        // Add " (Copy)" to the title if it exists
+        if (entityData.title) {
+            entityData.title = `${entityData.title} (Copy)`;
+        }
+        if (entityData.name) {
+            entityData.name = `${entityData.name} (Copy)`;
+        }
+        
+        // Create the duplicate entity
+        const duplicatedEntity = await createEntity(currentEditingEntity.type, entityData);
+        
+        if (duplicatedEntity) {
+            showStatusMessage(`${currentEditingEntity.type.charAt(0).toUpperCase() + currentEditingEntity.type.slice(1)} duplicated successfully`, 'success');
+            
+            // Refresh the current view to show the new entity
+            if (window.renderBoard) window.renderBoard();
+            if (window.populateTaskView) window.populateTaskView();
+            if (window.renderWeeklyPlan) window.renderWeeklyPlan();
+            if (window.notesManager && window.notesManager.loadAllNotes) window.notesManager.loadAllNotes();
+        } else {
+            showStatusMessage('Failed to duplicate entity', 'error');
+        }
+    } catch (error) {
+        console.error('Failed to duplicate entity:', error);
+        showStatusMessage('Failed to duplicate entity', 'error');
+    }
 }
 
 /**
  * Delete current entity
  */
-function deleteCurrentEntity() {
-    if (!currentEditingEntity) return;
+async function deleteCurrentEntity() {
+    if (!currentEditingEntity) {
+        showStatusMessage('No entity selected for deletion', 'warning');
+        return;
+    }
     
-    if (confirm(`Are you sure you want to delete this ${currentEditingEntity.type}?`)) {
-        // Implementation would depend on your entity deletion system
-        showStatusMessage('Delete functionality coming soon', 'info');
+    const entityTitle = currentEditingEntity.title || currentEditingEntity.name || 'this entity';
+    const entityType = currentEditingEntity.type.charAt(0).toUpperCase() + currentEditingEntity.type.slice(1);
+    
+    if (confirm(`Are you sure you want to delete ${entityType} "${entityTitle}"?\n\nThis action cannot be undone and will remove it from all contexts (boards, weekly plans, etc.).`)) {
+        try {
+            const { deleteEntity } = await import('./entity-core.js');
+            
+            const success = await deleteEntity(currentEditingEntity.id);
+            
+            if (success) {
+                showStatusMessage(`${entityType} deleted successfully`, 'success');
+                
+                // Close any open modals
+                const modal = document.querySelector('.modal-open');
+                if (modal) {
+                    modal.classList.remove('modal-open');
+                }
+                
+                // Refresh all views to remove the deleted entity
+                if (window.renderBoard) window.renderBoard();
+                if (window.populateTaskView) window.populateTaskView();
+                if (window.renderWeeklyPlan) window.renderWeeklyPlan();
+                if (window.notesManager && window.notesManager.loadAllNotes) window.notesManager.loadAllNotes();
+                
+                // Clear current editing entity
+                currentEditingEntity = null;
+            } else {
+                showStatusMessage('Failed to delete entity', 'error');
+            }
+        } catch (error) {
+            console.error('Failed to delete entity:', error);
+            showStatusMessage('Failed to delete entity', 'error');
+        }
     }
 }
 
@@ -1880,8 +2028,54 @@ function addSubtaskToEntity() {
     console.log('✅ Subtask form displayed successfully in dedicated container');
 }
 
-function addChecklistItemToEntity() {
-    showStatusMessage('Add checklist item functionality coming soon', 'info');
+async function addChecklistItemToEntity() {
+    if (!currentEditingEntity) {
+        showStatusMessage('No entity selected', 'warning');
+        return;
+    }
+    
+    if (currentEditingEntity.type !== 'checklist') {
+        showStatusMessage('This feature is only available for checklist entities', 'warning');
+        return;
+    }
+    
+    const newItem = prompt('Enter new checklist item:');
+    if (!newItem || !newItem.trim()) {
+        return;
+    }
+    
+    try {
+        const { updateEntity } = await import('./entity-core.js');
+        
+        // Add the new item to the checklist
+        const currentItems = currentEditingEntity.items || [];
+        const updatedItems = [...currentItems, {
+            id: Date.now().toString(),
+            text: newItem.trim(),
+            completed: false
+        }];
+        
+        const updatedEntity = await updateEntity(currentEditingEntity.id, {
+            items: updatedItems,
+            updatedAt: new Date().toISOString()
+        });
+        
+        if (updatedEntity) {
+            // Update the current editing entity
+            currentEditingEntity = updatedEntity;
+            showStatusMessage('Checklist item added', 'success');
+            
+            // Refresh views
+            if (window.renderBoard) window.renderBoard();
+            if (window.populateTaskView) window.populateTaskView();
+            if (window.renderWeeklyPlan) window.renderWeeklyPlan();
+        } else {
+            showStatusMessage('Failed to add checklist item', 'error');
+        }
+    } catch (error) {
+        console.error('Failed to add checklist item:', error);
+        showStatusMessage('Failed to add checklist item', 'error');
+    }
 }
 
 /**

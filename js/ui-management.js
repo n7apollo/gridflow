@@ -23,6 +23,19 @@ function showSettingsModal() {
     // Switch to settings view instead of showing modal
     if (window.switchToView) {
         window.switchToView('settings');
+        
+        // Set up settings functionality after a brief delay to ensure DOM is ready
+        setTimeout(() => {
+            // Initialize settings page functionality
+            if (window.setupSettingsEventListeners) {
+                window.setupSettingsEventListeners();
+            }
+            
+            // Show Cloud Sync tab by default
+            if (window.switchSettingsTab) {
+                window.switchSettingsTab('sync');
+            }
+        }, 100);
     }
 }
 
@@ -117,35 +130,15 @@ function showMobileTabList() {
     });
 }
 
-// Handle window resize to switch between mobile and desktop modes
+// Handle window resize for settings - simplified for new tab structure
 function handleSettingsResize() {
-    const modal = document.getElementById('settingsModal');
-    if (!modal.classList.contains('modal-open')) return;
+    // The new Settings view uses DaisyUI tabs which handle responsive behavior automatically
+    // This function is kept for compatibility but no longer needed for the current implementation
+    const settingsContainer = document.getElementById('settingsContainer');
+    if (!settingsContainer || settingsContainer.classList.contains('hidden')) return;
     
-    const isMobile = window.innerWidth <= 768;
-    const settingsTabs = document.querySelector('.settings-tabs');
-    const contentArea = document.querySelector('.settings-content-area');
-    
-    if (!isMobile) {
-        // Switch to desktop mode
-        settingsTabs.classList.remove('mobile-hidden');
-        contentArea.classList.remove('mobile-active');
-        
-        // Reset mobile classes
-        document.querySelectorAll('.tab-content').forEach(content => {
-            content.classList.remove('mobile-current');
-        });
-        
-        // Apply desktop active states
-        const activeButton = document.querySelector('.tab-button.active');
-        if (activeButton) {
-            const tabName = activeButton.dataset.tab;
-            document.getElementById(`${tabName}-tab`).classList.add('active');
-        }
-    } else {
-        // Switch to mobile mode - show tab list by default
-        showMobileTabList();
-    }
+    // DaisyUI tabs component handles responsive behavior automatically
+    // No manual intervention required
 }
 
 // ============================================

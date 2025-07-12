@@ -581,6 +581,219 @@ class GridFlowViews extends HTMLElement {
                 </div>
             </div>
 
+            <!-- Notes Management Interface -->
+            <div class="notes-container min-h-screen flex" id="notesContainer">
+                <!-- Notes List Pane -->
+                <div class="notes-list-pane w-1/3 min-w-80 bg-base-200 border-r border-base-300" id="notesListPane">
+                    <div class="p-4">
+                        <!-- Notes Header -->
+                        <div class="notes-header mb-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="p-2 bg-primary/20 rounded-xl">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-text text-primary"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+                                    </div>
+                                    <div>
+                                        <h2 class="text-xl font-bold text-base-content">Notes</h2>
+                                        <p class="text-xs text-base-content/70">All your notes in one place</p>
+                                    </div>
+                                </div>
+                                <button class="btn btn-primary btn-sm" data-action="createNewNote">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                                    New Note
+                                </button>
+                            </div>
+
+                            <!-- Search and Filter -->
+                            <div class="space-y-3">
+                                <div class="form-control">
+                                    <input type="text" placeholder="Search notes..." class="input input-bordered input-sm w-full" id="notesSearchInput">
+                                </div>
+                                <div class="flex gap-2">
+                                    <select class="select select-bordered select-sm flex-1" id="notesFilterBy">
+                                        <option value="all">All Notes</option>
+                                        <option value="recent">Recent</option>
+                                        <option value="linked">Linked</option>
+                                        <option value="unlinked">Unlinked</option>
+                                        <option value="private">Private</option>
+                                    </select>
+                                    <select class="select select-bordered select-sm flex-1" id="notesSortBy">
+                                        <option value="updated">Last Updated</option>
+                                        <option value="created">Date Created</option>
+                                        <option value="title">Title A-Z</option>
+                                        <option value="title-desc">Title Z-A</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Notes Stats -->
+                        <div class="stats stats-vertical w-full mb-4">
+                            <div class="stat p-3">
+                                <div class="stat-title text-xs">Total Notes</div>
+                                <div class="stat-value text-lg" id="notesTotalCount">0</div>
+                            </div>
+                        </div>
+
+                        <!-- Notes List -->
+                        <div class="notes-list">
+                            <ul class="menu bg-base-100 rounded-box p-0 space-y-1" id="notesList">
+                                <!-- Notes will be populated here -->
+                                <li class="text-center text-base-content/50 py-8">
+                                    <div>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-plus mx-auto mb-2"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 12h4"/><path d="M12 10v4"/></svg>
+                                        <p class="text-sm">No notes yet</p>
+                                        <p class="text-xs">Create your first note to get started</p>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notes Editor Pane -->
+                <div class="notes-editor-pane flex-1 bg-base-100" id="notesEditorPane">
+                    <!-- Welcome State -->
+                    <div class="notes-welcome-state flex items-center justify-center h-full" id="notesWelcomeState">
+                        <div class="text-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-text mx-auto mb-4 text-base-content/30"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+                            <h3 class="text-lg font-semibold text-base-content/70 mb-2">Select a note to edit</h3>
+                            <p class="text-sm text-base-content/50">Choose a note from the list or create a new one</p>
+                        </div>
+                    </div>
+
+                    <!-- Note Editor -->
+                    <div class="note-editor hidden h-full flex flex-col" id="noteEditor">
+                        <!-- Editor Header -->
+                        <div class="editor-header bg-base-200 border-b border-base-300 p-4">
+                            <div class="flex items-start justify-between mb-3">
+                                <div class="flex-1 mr-4">
+                                    <input type="text" placeholder="Note title..." class="input input-ghost w-full text-xl font-bold p-0 border-none focus:outline-none" id="noteTitle">
+                                    <div class="flex items-center gap-4 mt-2 text-xs text-base-content/60">
+                                        <span id="noteCreatedDate">Created: --</span>
+                                        <span id="noteUpdatedDate">Updated: --</span>
+                                        <span id="noteWordCount">0 words</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button class="btn btn-ghost btn-sm" id="notePrivateToggle" data-action="toggleNotePrivate">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye-off"><path d="m15 18-.722-3.25"/><path d="m2 2 20 20"/><path d="m20 2-3.5 8.5"/><path d="m6.5 8.5L9.5 12"/><circle cx="12" cy="9" r="1"/></svg>
+                                        Private
+                                    </button>
+                                    <button class="btn btn-ghost btn-sm" data-action="deleteCurrentNote">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-2 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                                    </button>
+                                    <button class="btn btn-primary btn-sm" data-action="saveCurrentNote">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-save"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>
+                                        Save
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Tags and Links Bar -->
+                            <div class="editor-metadata flex flex-wrap items-center gap-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-medium text-base-content/70">Tags:</span>
+                                    <div class="flex flex-wrap gap-1" id="noteTagsContainer">
+                                        <!-- Tags will be added here -->
+                                    </div>
+                                    <button class="btn btn-ghost btn-xs" data-action="addNoteTag">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                                        Add Tag
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Editor Content Area -->
+                        <div class="editor-content flex-1 flex">
+                            <!-- Main Content Editor -->
+                            <div class="content-editor flex-1 p-4">
+                                <textarea 
+                                    class="textarea w-full h-full resize-none border-none focus:outline-none text-base leading-relaxed" 
+                                    placeholder="Start writing your note..."
+                                    id="noteContent"
+                                ></textarea>
+                            </div>
+
+                            <!-- Relationships Sidebar -->
+                            <div class="relationships-sidebar w-80 bg-base-50 border-l border-base-300 p-4" id="relationshipsSidebar">
+                                <h4 class="font-semibold mb-3 flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                                    Linked To
+                                </h4>
+
+                                <!-- Boards Section -->
+                                <div class="relationship-section mb-4">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-sm font-medium">📋 Boards</span>
+                                        <button class="btn btn-ghost btn-xs" data-action="linkNoteToBoard">Link</button>
+                                    </div>
+                                    <div class="relationship-items space-y-1" id="noteBoardLinks">
+                                        <p class="text-xs text-base-content/50">No board links</p>
+                                    </div>
+                                </div>
+
+                                <!-- Weekly Plans Section -->
+                                <div class="relationship-section mb-4">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-sm font-medium">📅 Weekly Plans</span>
+                                        <button class="btn btn-ghost btn-xs" data-action="linkNoteToWeekly">Link</button>
+                                    </div>
+                                    <div class="relationship-items space-y-1" id="noteWeeklyLinks">
+                                        <p class="text-xs text-base-content/50">No weekly links</p>
+                                    </div>
+                                </div>
+
+                                <!-- People Section -->
+                                <div class="relationship-section mb-4">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-sm font-medium">👥 People</span>
+                                        <button class="btn btn-ghost btn-xs" data-action="linkNoteToPerson">Link</button>
+                                    </div>
+                                    <div class="relationship-items space-y-1" id="notePeopleLinks">
+                                        <p class="text-xs text-base-content/50">No people links</p>
+                                    </div>
+                                </div>
+
+                                <!-- Collections Section -->
+                                <div class="relationship-section mb-4">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-sm font-medium">📂 Collections</span>
+                                        <button class="btn btn-ghost btn-xs" data-action="linkNoteToCollection">Link</button>
+                                    </div>
+                                    <div class="relationship-items space-y-1" id="noteCollectionLinks">
+                                        <p class="text-xs text-base-content/50">No collection links</p>
+                                    </div>
+                                </div>
+
+                                <!-- Related Notes Section -->
+                                <div class="relationship-section mb-4">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-sm font-medium">📝 Related Notes</span>
+                                        <button class="btn btn-ghost btn-xs" data-action="linkNoteToNote">Link</button>
+                                    </div>
+                                    <div class="relationship-items space-y-1" id="noteRelatedLinks">
+                                        <p class="text-xs text-base-content/50">No related notes</p>
+                                    </div>
+                                </div>
+
+                                <!-- Attachments Section -->
+                                <div class="relationship-section">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-sm font-medium">📎 Attachments</span>
+                                        <button class="btn btn-ghost btn-xs" data-action="addNoteAttachment">Add</button>
+                                    </div>
+                                    <div class="relationship-items space-y-1" id="noteAttachments">
+                                        <p class="text-xs text-base-content/50">No attachments</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Collections Management Interface -->
             <div class="collections-container min-h-screen" id="collectionsContainer">
                 <!-- Collections List View -->
@@ -915,28 +1128,6 @@ class GridFlowViews extends HTMLElement {
                     </div>
                 </div>
             </div>
-                    </div>
-
-                    <!-- Tagged Entities -->
-                    <div class="tagged-entities">
-                        <div class="entities-header flex items-center justify-between mb-2">
-                            <h4 class="font-semibold">Tagged Items</h4>
-                            <div class="entities-filters flex gap-2">
-                                <select id="taggedEntitiesTypeFilter" class="select select-sm select-bordered">
-                                    <option value="">All Types</option>
-                                    <option value="${ENTITY_TYPES.TASK}">Tasks</option>
-                                    <option value="${ENTITY_TYPES.NOTE}">Notes</option>
-                                    <option value="${ENTITY_TYPES.CHECKLIST}">Checklists</option>
-                                    <option value="${ENTITY_TYPES.PROJECT}">Projects</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="entities-content space-y-2 max-h-96 overflow-y-auto" id="taggedEntities">
-                            <!-- Tagged entities will be populated here -->
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             <!-- Weekly Planning Interface -->
             <div class="weekly-container card bg-base-100 shadow-lg p-4 mt-4 hidden" id="weeklyContainer">
@@ -1089,37 +1280,59 @@ class GridFlowViews extends HTMLElement {
             <!-- Settings View -->
             <div class="settings-container min-h-screen hidden" id="settingsContainer">
                 <div class="settings-view" id="settingsView">
-                    <div class="container mx-auto max-w-4xl p-4">
+                    <div class="container mx-auto max-w-6xl p-4">
                         <!-- Settings Header -->
-                        <div class="settings-header bg-gradient-to-r from-primary/10 to-secondary/10 rounded-2xl p-6 mb-6">
-                            <div class="flex items-center gap-4">
+                        <div class="settings-header bg-gradient-to-br from-primary/10 via-secondary/10 to-accent/10 rounded-3xl p-8 mb-8 relative overflow-hidden">
+                            <!-- Background Pattern -->
+                            <div class="absolute inset-0 opacity-5">
+                                <svg class="w-full h-full" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                                    <defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
+                                        <path d="M 10 0 L 0 0 0 10" fill="none" stroke="currentColor" stroke-width="1"/>
+                                    </pattern></defs>
+                                    <rect width="100" height="100" fill="url(#grid)"/>
+                                </svg>
+                            </div>
+                            
+                            <div class="relative flex items-center gap-6">
                                 <!-- Mobile Menu Button -->
                                 <button class="btn btn-square btn-ghost lg:hidden" onclick="document.getElementById('drawer-toggle').checked = true" title="Open Menu">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-menu"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
                                 </button>
                                 
                                 <!-- Settings Icon & Title -->
-                                <div class="flex items-center gap-3">
-                                    <div class="p-3 bg-primary/20 rounded-xl">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings text-primary"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                                <div class="flex items-center gap-4">
+                                    <div class="p-4 bg-gradient-to-br from-primary to-primary/80 rounded-2xl shadow-lg">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
                                     </div>
                                     <div>
-                                        <h1 class="text-2xl font-bold text-base-content">Settings</h1>
-                                        <p class="text-base-content/70">Manage your GridFlow preferences and data</p>
+                                        <h1 class="text-3xl font-bold text-base-content">Settings</h1>
+                                        <p class="text-lg text-base-content/70">Customize your GridFlow experience and manage your data</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
+                        <!-- Settings Navigation Tabs -->
+                        <div class="tabs tabs-boxed bg-base-200 p-1 mb-8 rounded-2xl">
+                            <button class="tab tab-active" onclick="switchSettingsTab('sync')">☁️ Cloud Sync</button>
+                            <button class="tab" onclick="switchSettingsTab('data')">📊 Data Management</button>
+                            <button class="tab" onclick="switchSettingsTab('preferences')">⚙️ Preferences</button>
+                        </div>
+
                         <!-- Settings Content -->
-                        <div class="settings-content grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="settings-content">
                             
-                            <!-- Cloud Sync Section -->
-                            <div class="space-y-6">
+                            <!-- Cloud Sync Tab -->
+                            <div id="syncTab" class="settings-tab space-y-8">
                                 <!-- Dexie Cloud Sync Configuration -->
-                                <div class="card bg-base-100 shadow-md">
+                                <div class="card bg-gradient-to-br from-base-100 to-base-200/50 shadow-xl border border-base-300">
                                     <div class="card-body">
-                                        <h3 class="card-title text-lg">☁️ Dexie Cloud Sync</h3>
+                                        <div class="flex items-center gap-3 mb-4">
+                                            <div class="p-2 bg-info/20 rounded-xl">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-cloud text-info"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
+                                            </div>
+                                            <h3 class="card-title text-xl">Dexie Cloud Sync</h3>
+                                        </div>
                                         <div class="space-y-4">
                                             <div class="form-control">
                                                 <label class="label">
@@ -1174,9 +1387,14 @@ class GridFlowViews extends HTMLElement {
                                 </div>
 
                                 <!-- Sync Status -->
-                                <div class="card bg-base-100 shadow-md">
+                                <div class="card bg-gradient-to-br from-success/5 to-success/10 shadow-xl border border-success/20">
                                     <div class="card-body">
-                                        <h3 class="card-title text-lg">📊 Sync Status</h3>
+                                        <div class="flex items-center gap-3 mb-4">
+                                            <div class="p-2 bg-success/20 rounded-xl">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-activity text-success"><path d="m22 12-4-4-6 6-2-2-4 4"/></svg>
+                                            </div>
+                                            <h3 class="card-title text-xl">Sync Status</h3>
+                                        </div>
                                         <div class="grid grid-cols-2 gap-3" id="dexieSyncStatusGrid">
                                             <div class="stat">
                                                 <div class="stat-title">Status</div>
@@ -1205,90 +1423,242 @@ class GridFlowViews extends HTMLElement {
                                 </div>
 
                                 <!-- Help -->
-                                <div class="card bg-info/10 border border-info/20">
+                                <div class="card bg-gradient-to-br from-info/10 to-info/5 border-2 border-info/30 shadow-lg">
                                     <div class="card-body">
-                                        <h3 class="card-title text-lg text-info">💡 How Dexie Cloud works</h3>
-                                        <div class="text-sm space-y-2">
-                                            <p>• Data syncs instantly in real-time across all your devices</p>
-                                            <p>• Works offline - changes sync when you're back online</p>
-                                            <p>• No data size limits or request quotas</p>
-                                            <p>• Passwordless authentication: we email you a login link</p>
-                                            <p>• Login sessions last for months (no repeated logins)</p>
-                                            <p>• Data can sync anonymously without login</p>
-                                            <p>• Built-in shared database for all users</p>
+                                        <div class="flex items-center gap-3 mb-4">
+                                            <div class="p-2 bg-info/20 rounded-xl">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-help-circle text-info"><circle cx="12" cy="12" r="10"/><path d="m9 9 3-3 3 3"/><path d="m9 15 3 3 3-3"/></svg>
+                                            </div>
+                                            <h3 class="card-title text-xl text-info">How Dexie Cloud Works</h3>
+                                        </div>
+                                        <div class="text-sm space-y-3">
+                                            <div class="flex items-start gap-3">
+                                                <div class="p-1 bg-success/20 rounded-full mt-0.5">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-zap text-success"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg>
+                                                </div>
+                                                <p>Data syncs instantly in real-time across all your devices</p>
+                                            </div>
+                                            <div class="flex items-start gap-3">
+                                                <div class="p-1 bg-info/20 rounded-full mt-0.5">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-wifi-off text-info"><path d="M12 20h.01"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><path d="M5 12.859a10 10 0 0 1 5.17-2.69"/><path d="M19 12.859a10 10 0 0 0-2.007-1.523"/><path d="M2 8.82a15 15 0 0 1 4.177-2.643"/><path d="M22 8.82a15 15 0 0 0-11.288-3.764"/><path d="m2 2 20 20"/></svg>
+                                                </div>
+                                                <p>Works offline - changes sync when you're back online</p>
+                                            </div>
+                                            <div class="flex items-start gap-3">
+                                                <div class="p-1 bg-warning/20 rounded-full mt-0.5">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-infinity text-warning"><path d="M12 12c-2-2.67-4-4-6-4a4 4 0 1 0 0 8c2 0 4-1.33 6-4s4-4 6-4a4 4 0 1 1 0 8c-2 0-4-1.33-6-4z"/></svg>
+                                                </div>
+                                                <p>No data size limits or request quotas</p>
+                                            </div>
+                                            <div class="flex items-start gap-3">
+                                                <div class="p-1 bg-secondary/20 rounded-full mt-0.5">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mail text-secondary"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                                                </div>
+                                                <p>Passwordless authentication: we email you a login link</p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Data Management Section -->
-                            <div class="space-y-6">
-                                <!-- Manual Backup -->
-                                <div class="card bg-base-100 shadow-md">
+                            <!-- Data Management Tab -->
+                            <div id="dataTab" class="settings-tab space-y-8 hidden">
+                                <!-- App Data Backup -->
+                                <div class="card bg-gradient-to-br from-primary/5 to-primary/10 shadow-xl border border-primary/20">
                                     <div class="card-body">
-                                        <h3 class="card-title text-lg">📤 Manual Backup</h3>
-                                        <p class="mb-4">Export all your GridFlow data as a JSON backup file:</p>
-                                        <button class="btn btn-primary w-full" data-action="exportToJSON">💾 Download Backup (JSON)</button>
+                                        <div class="flex items-center gap-3 mb-4">
+                                            <div class="p-2 bg-primary/20 rounded-xl">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-database text-primary"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/></svg>
+                                            </div>
+                                            <div>
+                                                <h3 class="card-title text-xl">Complete App Backup</h3>
+                                                <p class="text-sm text-base-content/60">Export all your GridFlow data</p>
+                                            </div>
+                                        </div>
+                                        <p class="mb-4 text-base-content/80">Download a complete backup of all your boards, tasks, notes, people, collections, and settings as a JSON file:</p>
+                                        <button class="btn btn-primary btn-lg w-full group" data-action="exportToJSON">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download group-hover:animate-bounce"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                                            Download Complete Backup (JSON)
+                                        </button>
                                     </div>
                                 </div>
 
                                 <!-- Import Data -->
-                                <div class="card bg-base-100 shadow-md">
+                                <div class="card bg-gradient-to-br from-secondary/5 to-secondary/10 shadow-xl border border-secondary/20">
                                     <div class="card-body">
-                                        <h3 class="card-title text-lg">📥 Import Data</h3>
-                                        <p class="mb-4">Select a JSON backup file to import:</p>
-                                        <div class="flex items-center gap-2">
-                                            <input type="file" id="importFile" accept=".json" class="file-input file-input-bordered flex-1">
-                                            <button class="btn btn-primary" data-action="importFromJSON">📤 Upload</button>
+                                        <div class="flex items-center gap-3 mb-4">
+                                            <div class="p-2 bg-secondary/20 rounded-xl">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-upload text-secondary"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                                            </div>
+                                            <div>
+                                                <h3 class="card-title text-xl">Import Backup Data</h3>
+                                                <p class="text-sm text-base-content/60">Restore from a JSON backup file</p>
+                                            </div>
                                         </div>
-                                        <p class="text-xs text-base-content/60 mt-2">
-                                            <strong>Note:</strong> Importing will merge data with your current workspace. Export your current data first if you want to preserve it.
-                                        </p>
+                                        <p class="mb-4 text-base-content/80">Select a GridFlow JSON backup file to import:</p>
+                                        <div class="flex items-center gap-3">
+                                            <input type="file" id="importFile" accept=".json" class="file-input file-input-bordered file-input-secondary flex-1">
+                                            <button class="btn btn-secondary btn-lg" data-action="importFromJSON">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-upload"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                                                Import
+                                            </button>
+                                        </div>
+                                        <div class="alert alert-warning mt-4">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-alert-triangle"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="m12 17 .01 0"/></svg>
+                                            <span class="text-sm"><strong>Note:</strong> Importing will merge data with your current workspace. Export your current data first if you want to preserve it.</span>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <!-- Export Options -->
-                                <div class="card bg-base-100 shadow-md">
+                                <!-- Data Statistics -->
+                                <div class="card bg-gradient-to-br from-accent/5 to-accent/10 shadow-xl border border-accent/20">
                                     <div class="card-body">
-                                        <h3 class="card-title text-lg">📊 Export Options</h3>
-                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                            <button class="btn btn-outline" data-action="exportToPDF">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-text"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
-                                                Export to PDF
-                                            </button>
-                                            <button class="btn btn-outline" data-action="exportToPNG">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-image"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-                                                Export to PNG
-                                            </button>
-                                            <button class="btn btn-outline" data-action="exportToExcel">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-table"><path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>
-                                                Export to Excel
-                                            </button>
-                                            <button class="btn btn-outline" data-action="exportToJSON">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-                                                Export to JSON
-                                            </button>
+                                        <div class="flex items-center gap-3 mb-4">
+                                            <div class="p-2 bg-accent/20 rounded-xl">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bar-chart text-accent"><line x1="12" x2="12" y1="20" y2="10"/><line x1="18" x2="18" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="16"/></svg>
+                                            </div>
+                                            <div>
+                                                <h3 class="card-title text-xl">Your Data Overview</h3>
+                                                <p class="text-sm text-base-content/60">Current workspace statistics</p>
+                                            </div>
+                                        </div>
+                                        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                                            <div class="stat">
+                                                <div class="stat-title text-xs">Boards</div>
+                                                <div class="stat-value text-lg" id="dataBoardCount">1</div>
+                                            </div>
+                                            <div class="stat">
+                                                <div class="stat-title text-xs">Entities</div>
+                                                <div class="stat-value text-lg" id="dataEntityCount">4</div>
+                                            </div>
+                                            <div class="stat">
+                                                <div class="stat-title text-xs">People</div>
+                                                <div class="stat-value text-lg" id="dataPeopleCount">0</div>
+                                            </div>
+                                            <div class="stat">
+                                                <div class="stat-title text-xs">Collections</div>
+                                                <div class="stat-value text-lg" id="dataCollectionCount">3</div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
                                 <!-- Account Actions -->
-                                <div class="card bg-warning/10 border border-warning/20">
+                                <div class="card bg-gradient-to-br from-warning/10 to-warning/5 border-2 border-warning/30 shadow-lg">
                                     <div class="card-body">
-                                        <h3 class="card-title text-lg text-warning">⚠️ Account Actions</h3>
-                                        <p class="text-sm text-base-content/60 mb-4">
-                                            Logout from your Dexie Cloud account to switch users.
+                                        <div class="flex items-center gap-3 mb-4">
+                                            <div class="p-2 bg-warning/20 rounded-xl">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-log-out text-warning"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+                                            </div>
+                                            <h3 class="card-title text-xl text-warning">Account Actions</h3>
+                                        </div>
+                                        <p class="text-sm text-base-content/70 mb-4">
+                                            Logout from your Dexie Cloud account to switch users or stop syncing.
                                         </p>
-                                        <button class="btn btn-warning btn-sm w-full" data-action="clearDexieCloudData">🚪 Logout</button>
+                                        <button class="btn btn-warning w-full" data-action="clearDexieCloudData">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-log-out"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+                                            Logout from Cloud Account
+                                        </button>
                                     </div>
                                 </div>
 
                                 <!-- Danger Zone -->
-                                <div class="card bg-error/10 border border-error/20">
+                                <div class="card bg-gradient-to-br from-error/10 to-error/5 border-2 border-error/30 shadow-lg">
                                     <div class="card-body">
-                                        <h3 class="card-title text-lg text-error">⚠️ Danger Zone</h3>
-                                        <p class="text-sm text-base-content/60 mb-4">Clear all data and start fresh. This action cannot be undone.</p>
-                                        <button class="btn btn-error w-full" data-action="clearAllData">🗑️ Clear All Data</button>
+                                        <div class="flex items-center gap-3 mb-4">
+                                            <div class="p-2 bg-error/20 rounded-xl">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2 text-error"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-2 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                                            </div>
+                                            <h3 class="card-title text-xl text-error">Danger Zone</h3>
+                                        </div>
+                                        <p class="text-sm text-base-content/70 mb-4">Clear all data and start fresh. This action cannot be undone.</p>
+                                        <button class="btn btn-error w-full" data-action="clearAllData">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-2 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                                            Clear All Data
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+
+                            <!-- Preferences Tab -->
+                            <div id="preferencesTab" class="settings-tab space-y-8 hidden">
+                                <!-- App-Wide Preferences -->
+                                <div class="card bg-gradient-to-br from-primary/5 to-primary/10 shadow-xl border border-primary/20">
+                                    <div class="card-body">
+                                        <div class="flex items-center gap-3 mb-4">
+                                            <div class="p-2 bg-primary/20 rounded-xl">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings text-primary"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                                            </div>
+                                            <div>
+                                                <h3 class="card-title text-xl">Application Preferences</h3>
+                                                <p class="text-sm text-base-content/60">General app behavior and defaults</p>
+                                            </div>
+                                        </div>
+                                        <div class="space-y-4">
+                                            <div class="form-control">
+                                                <label class="label cursor-pointer">
+                                                    <span class="label-text font-medium">Auto-save changes</span>
+                                                    <input type="checkbox" class="checkbox checkbox-primary" checked id="autoSavePref">
+                                                </label>
+                                                <div class="label">
+                                                    <span class="label-text-alt text-base-content/60">Automatically save changes as you work</span>
+                                                </div>
+                                            </div>
+                                            <div class="form-control">
+                                                <label class="label cursor-pointer">
+                                                    <span class="label-text font-medium">Remember last board</span>
+                                                    <input type="checkbox" class="checkbox checkbox-primary" checked id="rememberLastBoardPref">
+                                                </label>
+                                                <div class="label">
+                                                    <span class="label-text-alt text-base-content/60">Open the last board you were working on</span>
+                                                </div>
+                                            </div>
+                                            <div class="form-control">
+                                                <label class="label cursor-pointer">
+                                                    <span class="label-text font-medium">Confirm before deleting</span>
+                                                    <input type="checkbox" class="checkbox checkbox-primary" checked id="confirmDeletePref">
+                                                </label>
+                                                <div class="label">
+                                                    <span class="label-text-alt text-base-content/60">Show confirmation dialogs for destructive actions</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Notification Settings -->
+                                <div class="card bg-gradient-to-br from-accent/5 to-accent/10 shadow-xl border border-accent/20">
+                                    <div class="card-body">
+                                        <div class="flex items-center gap-3 mb-4">
+                                            <div class="p-2 bg-accent/20 rounded-xl">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bell text-accent"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+                                            </div>
+                                            <div>
+                                                <h3 class="card-title text-xl">Notifications & Alerts</h3>
+                                                <p class="text-sm text-base-content/60">Control when and how you're notified</p>
+                                            </div>
+                                        </div>
+                                        <div class="space-y-4">
+                                            <div class="form-control">
+                                                <label class="label cursor-pointer">
+                                                    <span class="label-text font-medium">Show success messages</span>
+                                                    <input type="checkbox" class="checkbox checkbox-accent" checked id="showSuccessMessages">
+                                                </label>
+                                            </div>
+                                            <div class="form-control">
+                                                <label class="label cursor-pointer">
+                                                    <span class="label-text font-medium">Show sync notifications</span>
+                                                    <input type="checkbox" class="checkbox checkbox-accent" checked id="showSyncNotifications">
+                                                </label>
+                                            </div>
+                                            <div class="form-control">
+                                                <label class="label cursor-pointer">
+                                                    <span class="label-text font-medium">Auto-save confirmation</span>
+                                                    <input type="checkbox" class="checkbox checkbox-accent" id="showAutoSaveConfirmation">
+                                                </label>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1302,3 +1672,144 @@ class GridFlowViews extends HTMLElement {
 
 // Register the custom element
 customElements.define('gridflow-views', GridFlowViews);
+
+// Settings Tab Management
+window.switchSettingsTab = function(tabId) {
+    // Map short names to actual element IDs
+    const tabMapping = {
+        'sync': 'syncTab',
+        'cloudTab': 'syncTab', // Alternative mapping
+        'data': 'dataTab', 
+        'preferences': 'preferencesTab'
+    };
+    
+    const actualTabId = tabMapping[tabId] || tabId;
+    const originalTabId = tabId; // Keep original for button matching
+    
+    // Hide all tabs
+    document.querySelectorAll('.settings-tab').forEach(tab => {
+        tab.classList.add('hidden');
+    });
+    
+    // Remove active state from all tab buttons
+    document.querySelectorAll('.settings-tabs .tab').forEach(tab => {
+        tab.classList.remove('tab-active');
+    });
+    
+    // Show selected tab
+    const selectedTab = document.getElementById(actualTabId);
+    if (selectedTab) {
+        selectedTab.classList.remove('hidden');
+    }
+    
+    // Set active state on clicked tab button
+    const activeButton = document.querySelector(`[onclick="switchSettingsTab('${originalTabId}')"]`);
+    if (activeButton) {
+        activeButton.classList.add('tab-active');
+    }
+    
+    // Update data statistics when switching to data tab
+    if (actualTabId === 'dataTab') {
+        updateDataStatistics();
+    }
+};
+
+// Update data statistics
+window.updateDataStatistics = async function() {
+    try {
+        if (window.db) {
+            const [boards, entities, people, collections] = await Promise.all([
+                window.db.boards.count(),
+                window.db.entities.count(),
+                window.db.people.count(),
+                window.db.collections.count()
+            ]);
+            
+            document.getElementById('dataBoardCount').textContent = boards;
+            document.getElementById('dataEntityCount').textContent = entities;
+            document.getElementById('dataPeopleCount').textContent = people;
+            document.getElementById('dataCollectionCount').textContent = collections;
+        }
+    } catch (error) {
+        console.warn('Could not update data statistics:', error);
+    }
+};
+
+// Load and save settings preferences
+window.loadSettingsPreferences = async function() {
+    try {
+        if (window.metaService) {
+            // Load app-wide preferences
+            const autoSave = await window.metaService.getSetting('autoSave');
+            const rememberLastBoard = await window.metaService.getSetting('rememberLastBoard');
+            const confirmDelete = await window.metaService.getSetting('confirmDelete');
+            const showSuccessMessages = await window.metaService.getSetting('showSuccessMessages');
+            const showSyncNotifications = await window.metaService.getSetting('showSyncNotifications');
+            const showAutoSaveConfirmation = await window.metaService.getSetting('showAutoSaveConfirmation');
+            
+            // Set checkbox states
+            const autoSavePref = document.getElementById('autoSavePref');
+            if (autoSavePref && autoSave !== null) {
+                autoSavePref.checked = autoSave;
+            }
+            
+            const rememberLastBoardPref = document.getElementById('rememberLastBoardPref');
+            if (rememberLastBoardPref && rememberLastBoard !== null) {
+                rememberLastBoardPref.checked = rememberLastBoard;
+            }
+            
+            const confirmDeletePref = document.getElementById('confirmDeletePref');
+            if (confirmDeletePref && confirmDelete !== null) {
+                confirmDeletePref.checked = confirmDelete;
+            }
+            
+            const showSuccessMessagesPref = document.getElementById('showSuccessMessages');
+            if (showSuccessMessagesPref && showSuccessMessages !== null) {
+                showSuccessMessagesPref.checked = showSuccessMessages;
+            }
+            
+            const showSyncNotificationsPref = document.getElementById('showSyncNotifications');
+            if (showSyncNotificationsPref && showSyncNotifications !== null) {
+                showSyncNotificationsPref.checked = showSyncNotifications;
+            }
+            
+            const showAutoSaveConfirmationPref = document.getElementById('showAutoSaveConfirmation');
+            if (showAutoSaveConfirmationPref && showAutoSaveConfirmation !== null) {
+                showAutoSaveConfirmationPref.checked = showAutoSaveConfirmation;
+            }
+        }
+    } catch (error) {
+        console.warn('Could not load settings preferences:', error);
+    }
+};
+
+// Save settings preferences when changed
+window.saveSettingsPreference = async function(key, value) {
+    try {
+        if (window.metaService) {
+            await window.metaService.setSetting(key, value, 'preferences');
+            
+            // Show success message for important settings
+            if (window.showStatusMessage && ['autoSave', 'rememberLastBoard', 'confirmDelete'].includes(key)) {
+                window.showStatusMessage(`${key.replace(/([A-Z])/g, ' $1').toLowerCase()} ${value ? 'enabled' : 'disabled'}`, 'success');
+            }
+        }
+    } catch (error) {
+        console.warn('Could not save setting:', key, error);
+    }
+};
+
+// Set up settings event listeners when settings panel is shown
+window.setupSettingsEventListeners = function() {
+    // App preference change handlers
+    const appPrefCheckboxes = document.querySelectorAll('#preferencesTab input[type="checkbox"]');
+    appPrefCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const key = this.id.replace('Pref', '');
+            window.saveSettingsPreference(key, this.checked);
+        });
+    });
+    
+    // Load current preferences
+    window.loadSettingsPreferences();
+};

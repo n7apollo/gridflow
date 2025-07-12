@@ -11,14 +11,15 @@ import { showStatusMessage } from './utilities.js';
 // ============================================
 
 /**
- * Switch between different views (board, tasks, weekly, people, collections, tags, settings)
- * @param {string} view - View to switch to ('board', 'tasks', 'weekly', 'people', 'collections', 'tags', 'settings')
+ * Switch between different views (board, tasks, weekly, notes, people, collections, tags, settings)
+ * @param {string} view - View to switch to ('board', 'tasks', 'weekly', 'notes', 'people', 'collections', 'tags', 'settings')
  */
 export function switchToView(view) {
     // Hide all containers using CSS classes
     const boardContainer = document.getElementById('boardContainer');
     const taskContainer = document.getElementById('taskContainer');
     const weeklyContainer = document.getElementById('weeklyContainer');
+    const notesContainer = document.getElementById('notesContainer');
     const peopleContainer = document.getElementById('peopleContainer');
     const collectionsContainer = document.getElementById('collectionsContainer');
     const tagsContainer = document.getElementById('tagsContainer');
@@ -27,6 +28,7 @@ export function switchToView(view) {
     if (boardContainer) boardContainer.classList.add('hidden');
     if (taskContainer) taskContainer.classList.add('hidden');
     if (weeklyContainer) weeklyContainer.classList.add('hidden');
+    if (notesContainer) notesContainer.classList.add('hidden');
     if (peopleContainer) peopleContainer.classList.add('hidden');
     if (collectionsContainer) collectionsContainer.classList.add('hidden');
     if (tagsContainer) tagsContainer.classList.add('hidden');
@@ -80,6 +82,18 @@ export function switchToView(view) {
         const sidebarWeeklyView = document.getElementById('sidebarWeeklyView');
         if (sidebarWeeklyView) sidebarWeeklyView.classList.add('active');
         if (window.switchToWeeklyView) window.switchToWeeklyView();
+    } else if (view === 'notes') {
+        if (notesContainer) notesContainer.classList.remove('hidden');
+        const sidebarNotesView = document.getElementById('sidebarNotesView');
+        if (sidebarNotesView) sidebarNotesView.classList.add('active');
+        if (window.notesManager && window.notesManager.initialize) {
+            window.notesManager.initialize().catch(error => {
+                console.error('Error initializing notes view:', error);
+                if (window.showStatusMessage) {
+                    window.showStatusMessage('Error loading notes view', 'error');
+                }
+            });
+        }
     } else if (view === 'people') {
         if (peopleContainer) peopleContainer.classList.remove('hidden');
         const sidebarPeopleView = document.getElementById('sidebarPeopleView');
